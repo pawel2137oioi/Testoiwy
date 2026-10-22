@@ -1,0 +1,1810 @@
+TAP version 13
+# Subtest: Polish Work textarea is detected and hidden copies are ignored
+ok 1 - Polish Work textarea is detected and hidden copies are ignored
+  ---
+  duration_ms: 7.643476
+  type: 'test'
+  ...
+# Subtest: transcript editors and dialogs cannot become the composer
+ok 2 - transcript editors and dialogs cannot become the composer
+  ---
+  duration_ms: 3.460031
+  type: 'test'
+  ...
+# Subtest: Work units render once and nested final markdown is read once
+ok 3 - Work units render once and nested final markdown is read once
+  ---
+  duration_ms: 3.898611
+  type: 'test'
+  ...
+# Subtest: reasoning tool-shaped text is excluded from final Work reply
+ok 4 - reasoning tool-shaped text is excluded from final Work reply
+  ---
+  duration_ms: 2.465025
+  type: 'test'
+  ...
+# Subtest: unit without search message ids is still recognized
+ok 5 - unit without search message ids is still recognized
+  ---
+  duration_ms: 1.80694
+  type: 'test'
+  ...
+# Subtest: growing Work message ids do not change turn identity
+ok 6 - growing Work message ids do not change turn identity
+  ---
+  duration_ms: 2.011403
+  type: 'test'
+  ...
+# Subtest: Polish stop remains a hard generation signal throughout silent reasoning
+ok 7 - Polish stop remains a hard generation signal throughout silent reasoning
+  ---
+  duration_ms: 4.459293
+  type: 'test'
+  ...
+# Subtest: native send and stop clicks call the correct handlers
+ok 8 - native send and stop clicks call the correct handlers
+  ---
+  duration_ms: 2.928432
+  type: 'test'
+  ...
+# Subtest: aria-disabled Work send is never clicked
+ok 9 - aria-disabled Work send is never clicked
+  ---
+  duration_ms: 5.56351
+  type: 'test'
+  ...
+# Subtest: ordinary Chat messages remain readable
+ok 10 - ordinary Chat messages remain readable
+  ---
+  duration_ms: 3.010705
+  type: 'test'
+  ...
+# Subtest: native startup and real result preserve the API tool_call_id
+ok 11 - native startup and real result preserve the API tool_call_id
+  ---
+  duration_ms: 4.282651
+  type: 'test'
+  ...
+# Subtest: ordinary JSON or Luau content is never promoted to an API command
+ok 12 - ordinary JSON or Luau content is never promoted to an API command
+  ---
+  duration_ms: 1.164828
+  type: 'test'
+  ...
+# Subtest: API refusal overrides a tool-shaped payload
+ok 13 - API refusal overrides a tool-shaped payload
+  ---
+  duration_ms: 1.008636
+  type: 'test'
+  ...
+# Subtest: invalid native response stops without execution: multiple
+ok 14 - invalid native response stops without execution: multiple
+  ---
+  duration_ms: 1.643868
+  type: 'test'
+  ...
+# Subtest: invalid native response stops without execution: unknown
+ok 15 - invalid native response stops without execution: unknown
+  ---
+  duration_ms: 0.994865
+  type: 'test'
+  ...
+# Subtest: invalid native response stops without execution: bad JSON
+ok 16 - invalid native response stops without execution: bad JSON
+  ---
+  duration_ms: 1.137747
+  type: 'test'
+  ...
+# Subtest: invalid native response stops without execution: cut off
+ok 17 - invalid native response stops without execution: cut off
+  ---
+  duration_ms: 0.924041
+  type: 'test'
+  ...
+# Subtest: invalid native response stops without execution: wrong first tool
+ok 18 - invalid native response stops without execution: wrong first tool
+  ---
+  duration_ms: 0.938902
+  type: 'test'
+  ...
+# Subtest: invalid native response stops without execution: missing id
+ok 19 - invalid native response stops without execution: missing id
+  ---
+  duration_ms: 0.912694
+  type: 'test'
+  ...
+# Subtest: invalid native response stops without execution: wrong finish
+ok 20 - invalid native response stops without execution: wrong finish
+  ---
+  duration_ms: 1.042456
+  type: 'test'
+  ...
+# Subtest: a pending tool cannot receive a user message as its execution result
+ok 21 - a pending tool cannot receive a user message as its execution result
+  ---
+  duration_ms: 1.017639
+  type: 'test'
+  ...
+# Subtest: reused native call id is rejected
+ok 22 - reused native call id is rejected
+  ---
+  duration_ms: 0.933324
+  type: 'test'
+  ...
+# Subtest: all result text is retained without truncating the API transcript
+ok 23 - all result text is retained without truncating the API transcript
+  ---
+  duration_ms: 4.092889
+  type: 'test'
+  ...
+# Subtest: proxy sends credentials only to fixed ChatWave API with redirects disabled
+ok 24 - proxy sends credentials only to fixed ChatWave API with redirects disabled
+  ---
+  duration_ms: 5.946499
+  type: 'test'
+  ...
+# Subtest: website content scripts cannot use the API proxy or its credentials
+ok 25 - website content scripts cannot use the API proxy or its credentials
+  ---
+  duration_ms: 0.910981
+  type: 'test'
+  ...
+# Subtest: HTTP 400 stops once without leaking response bodies or keys
+ok 26 - HTTP 400 stops once without leaking response bodies or keys
+  ---
+  duration_ms: 1.171327
+  type: 'test'
+  ...
+# Subtest: HTTP 401 stops once without leaking response bodies or keys
+ok 27 - HTTP 401 stops once without leaking response bodies or keys
+  ---
+  duration_ms: 0.97076
+  type: 'test'
+  ...
+# Subtest: HTTP 403 stops once without leaking response bodies or keys
+ok 28 - HTTP 403 stops once without leaking response bodies or keys
+  ---
+  duration_ms: 0.852314
+  type: 'test'
+  ...
+# Subtest: HTTP 429 stops once without leaking response bodies or keys
+ok 29 - HTTP 429 stops once without leaking response bodies or keys
+  ---
+  duration_ms: 1.012031
+  type: 'test'
+  ...
+# Subtest: HTTP 500 stops once without leaking response bodies or keys
+ok 30 - HTTP 500 stops once without leaking response bodies or keys
+  ---
+  duration_ms: 0.907586
+  type: 'test'
+  ...
+# Subtest: network uncertainty never retries and does not leak exception details
+ok 31 - network uncertainty never retries and does not leak exception details
+  ---
+  duration_ms: 0.9776
+  type: 'test'
+  ...
+# Subtest: completion proxy preserves the native function schema
+ok 32 - completion proxy preserves the native function schema
+  ---
+  duration_ms: 2.235495
+  type: 'test'
+  ...
+# Subtest: cancel is bound to the originating extension tab and does not send another HTTP request
+ok 33 - cancel is bound to the originating extension tab and does not send another HTTP request
+  ---
+  duration_ms: 1.04504
+  type: 'test'
+  ...
+# Subtest: SSE assembles fragmented native arguments and Unicode without executing a partial call
+ok 34 - SSE assembles fragmented native arguments and Unicode without executing a partial call
+  ---
+  duration_ms: 7.33721
+  type: 'test'
+  ...
+# Subtest: SSE preserves final text while excluding reasoning fields
+ok 35 - SSE preserves final text while excluding reasoning fields
+  ---
+  duration_ms: 2.397646
+  type: 'test'
+  ...
+# Subtest: incomplete or invalid SSE fails closed: missing DONE
+ok 36 - incomplete or invalid SSE fails closed: missing DONE
+  ---
+  duration_ms: 1.30861
+  type: 'test'
+  ...
+# Subtest: incomplete or invalid SSE fails closed: missing finish
+ok 37 - incomplete or invalid SSE fails closed: missing finish
+  ---
+  duration_ms: 1.275231
+  type: 'test'
+  ...
+# Subtest: incomplete or invalid SSE fails closed: invalid JSON
+ok 38 - incomplete or invalid SSE fails closed: invalid JSON
+  ---
+  duration_ms: 1.104968
+  type: 'test'
+  ...
+# Subtest: incomplete or invalid SSE fails closed: error frame
+ok 39 - incomplete or invalid SSE fails closed: error frame
+  ---
+  duration_ms: 1.113171
+  type: 'test'
+  ...
+# Subtest: SSE cannot return a completed-looking command before the stream finishes
+ok 40 - SSE cannot return a completed-looking command before the stream finishes
+  ---
+  duration_ms: 1.221592
+  type: 'test'
+  ...
+# Subtest: actual startup links native function call, mocked bridge result and acknowledgement
+ok 41 - actual startup links native function call, mocked bridge result and acknowledgement
+  ---
+  duration_ms: 157.591815
+  type: 'test'
+  ...
+# Subtest: plain-text JSON from the API cannot arm startup or run a quoted command
+ok 42 - plain-text JSON from the API cannot arm startup or run a quoted command
+  ---
+  duration_ms: 41.282028
+  type: 'test'
+  ...
+# Subtest: API rejection leaves startup stopped without a text-protocol fallback
+ok 43 - API rejection leaves startup stopped without a text-protocol fallback
+  ---
+  duration_ms: 33.164139
+  type: 'test'
+  ...
+# Subtest: failed real catalogue read cannot produce a false API connection
+ok 44 - failed real catalogue read cannot produce a false API connection
+  ---
+  duration_ms: 21.149913
+  type: 'test'
+  ...
+# Subtest: API key never appears in chat rows, model messages or local bridge inputs
+ok 45 - API key never appears in chat rows, model messages or local bridge inputs
+  ---
+  duration_ms: 31.944046
+  type: 'test'
+  ...
+# Subtest: page renders untrusted model HTML as text
+ok 46 - page renders untrusted model HTML as text
+  ---
+  duration_ms: 27.496044
+  type: 'test'
+  ...
+# Subtest: native API page includes all script resources and existing command guards
+ok 47 - native API page includes all script resources and existing command guards
+  ---
+  duration_ms: 25.470942
+  type: 'test'
+  ...
+# Subtest: actual task loop dispatches one native command and feeds its result to the matching API call
+ok 48 - actual task loop dispatches one native command and feeds its result to the matching API call
+  ---
+  duration_ms: 43.012333
+  type: 'test'
+  ...
+# Subtest: actual task loop rejects invalid arguments before native command dispatch
+ok 49 - actual task loop rejects invalid arguments before native command dispatch
+  ---
+  duration_ms: 29.421946
+  type: 'test'
+  ...
+# Subtest: Stop ignores a native tool call that arrives late from the API
+ok 50 - Stop ignores a native tool call that arrives late from the API
+  ---
+  duration_ms: 32.375991
+  type: 'test'
+  ...
+# Subtest: 40 numbered lines, script header and final marker reach one submitted message
+ok 51 - 40 numbered lines, script header and final marker reach one submitted message
+  ---
+  duration_ms: 18.88198
+  type: 'test'
+  ...
+# Subtest: lost first batch is recovered before Send; the old 25-line writer submits a missing prefix
+ok 52 - lost first batch is recovered before Send; the old 25-line writer submits a missing prefix
+  ---
+  duration_ms: 11.860348
+  type: 'test'
+  ...
+# Subtest: persistent head damage prevents all submissions
+ok 53 - persistent head damage prevents all submissions
+  ---
+  duration_ms: 20.234576
+  type: 'test'
+  ...
+# Subtest: persistent middle damage prevents all submissions
+ok 54 - persistent middle damage prevents all submissions
+  ---
+  duration_ms: 17.934926
+  type: 'test'
+  ...
+# Subtest: persistent tail damage prevents all submissions
+ok 55 - persistent tail damage prevents all submissions
+  ---
+  duration_ms: 27.028902
+  type: 'test'
+  ...
+# Subtest: a same-length change is rejected even when the prefix and suffix still match
+ok 56 - a same-length change is rejected even when the prefix and suffix still match
+  ---
+  duration_ms: 14.061752
+  type: 'test'
+  ...
+# Subtest: long inline text retains all 700 lines, whitespace and Unicode
+ok 57 - long inline text retains all 700 lines, whitespace and Unicode
+  ---
+  duration_ms: 372.104347
+  type: 'test'
+  ...
+# Subtest: oversized standalone payload is refused rather than clipped
+ok 58 - oversized standalone payload is refused rather than clipped
+  ---
+  duration_ms: 1.30845
+  type: 'test'
+  ...
+# Subtest: host remount during typing aborts instead of writing to the replacement
+ok 59 - host remount during typing aborts instead of writing to the replacement
+  ---
+  duration_ms: 1.24768
+  type: 'test'
+  ...
+# Subtest: Stop during typing prevents Send and restores the unlocked editor
+ok 60 - Stop during typing prevents Send and restores the unlocked editor
+  ---
+  duration_ms: 1.269312
+  type: 'test'
+  ...
+# Subtest: lock sweeps cannot disable the editor halfway through an injection
+ok 61 - lock sweeps cannot disable the editor halfway through an injection
+  ---
+  duration_ms: 8.041495
+  type: 'test'
+  ...
+# Subtest: late corruption while Send is disabled is checked before the click
+ok 62 - late corruption while Send is disabled is checked before the click
+  ---
+  duration_ms: 6.609741
+  type: 'test'
+  ...
+# Subtest: disabled Send is reported; no synthetic Enter or speculative submission
+ok 63 - disabled Send is reported; no synthetic Enter or speculative submission
+  ---
+  duration_ms: 89.370168
+  type: 'test'
+  ...
+# Subtest: lost tail after the click is not delivery confirmation and never triggers a second click
+ok 64 - lost tail after the click is not delivery confirmation and never triggers a second click
+  ---
+  duration_ms: 157.053021
+  type: 'test'
+  ...
+# Subtest: a late receipt is awaited without resubmission
+ok 65 - a late receipt is awaited without resubmission
+  ---
+  duration_ms: 49.366667
+  type: 'test'
+  ...
+# Subtest: image feedback submits the complete caption only once
+ok 66 - image feedback submits the complete caption only once
+  ---
+  duration_ms: 6.610753
+  type: 'test'
+  ...
+# Subtest: caption corruption during image upload blocks submission
+ok 67 - caption corruption during image upload blocks submission
+  ---
+  duration_ms: 7.045017
+  type: 'test'
+  ...
+# Subtest: draft read/write preserves line breaks, empty lines and indentation
+ok 68 - draft read/write preserves line breaks, empty lines and indentation
+  ---
+  duration_ms: 3.035421
+  type: 'test'
+  ...
+# Subtest: composer serializer understands hard breaks and ignores only the editor placeholder
+ok 69 - composer serializer understands hard breaks and ignores only the editor placeholder
+  ---
+  duration_ms: 1.212839
+  type: 'test'
+  ...
+# Subtest: 14000-character result is reconstructable without running the command again
+ok 70 - 14000-character result is reconstructable without running the command again
+  ---
+  duration_ms: 5.929052
+  type: 'test'
+  ...
+# Subtest: 32000-character result is reconstructable without running the command again
+ok 71 - 32000-character result is reconstructable without running the command again
+  ---
+  duration_ms: 4.762362
+  type: 'test'
+  ...
+# Subtest: 120000-character result is reconstructable without running the command again
+ok 72 - 120000-character result is reconstructable without running the command again
+  ---
+  duration_ms: 5.758049
+  type: 'test'
+  ...
+# Subtest: 240000-character result is reconstructable without running the command again
+ok 73 - 240000-character result is reconstructable without running the command again
+  ---
+  duration_ms: 6.415173
+  type: 'test'
+  ...
+# Subtest: lower user limits still leave room for pagination headers
+ok 74 - lower user limits still leave room for pagination headers
+  ---
+  duration_ms: 5.984645
+  type: 'test'
+  ...
+# Subtest: disabling configured limits retains the Claude transport page bound
+ok 75 - disabling configured limits retains the Claude transport page bound
+  ---
+  duration_ms: 4.995007
+  type: 'test'
+  ...
+# Subtest: retained results stay scoped to their chat and engine
+ok 76 - retained results stay scoped to their chat and engine
+  ---
+  duration_ms: 4.463258
+  type: 'test'
+  ...
+# Subtest: one-character read at an emoji returns an error instead of a zero-progress page
+ok 77 - one-character read at an emoji returns an error instead of a zero-progress page
+  ---
+  duration_ms: 4.712808
+  type: 'test'
+  ...
+# Subtest: post-result reference additions also receive retained pagination
+ok 78 - post-result reference additions also receive retained pagination
+  ---
+  duration_ms: 4.829622
+  type: 'test'
+  ...
+# Subtest: every retained page passes through the actual Claude provider without loss
+ok 79 - every retained page passes through the actual Claude provider without loss
+  ---
+  duration_ms: 361.206756
+  type: 'test'
+  ...
+# Subtest: DeepSeek plain rendering reads complete short Luau with property dots and quotes
+ok 80 - DeepSeek plain rendering reads complete short Luau with property dots and quotes
+  ---
+  duration_ms: 85.349295
+  type: 'test'
+  ...
+# Subtest: DeepSeek plain rendering reads complete long Luau with property dots and quotes
+ok 81 - DeepSeek plain rendering reads complete long Luau with property dots and quotes
+  ---
+  duration_ms: 65.456325
+  type: 'test'
+  ...
+# Subtest: DeepSeek header rendering reads complete short Luau with property dots and quotes
+ok 82 - DeepSeek header rendering reads complete short Luau with property dots and quotes
+  ---
+  duration_ms: 15.775945
+  type: 'test'
+  ...
+# Subtest: DeepSeek header rendering reads complete long Luau with property dots and quotes
+ok 83 - DeepSeek header rendering reads complete long Luau with property dots and quotes
+  ---
+  duration_ms: 32.754127
+  type: 'test'
+  ...
+# Subtest: DeepSeek prose rendering reads complete short Luau with property dots and quotes
+ok 84 - DeepSeek prose rendering reads complete short Luau with property dots and quotes
+  ---
+  duration_ms: 20.073227
+  type: 'test'
+  ...
+# Subtest: DeepSeek prose rendering reads complete long Luau with property dots and quotes
+ok 85 - DeepSeek prose rendering reads complete long Luau with property dots and quotes
+  ---
+  duration_ms: 38.239135
+  type: 'test'
+  ...
+# Subtest: DeepSeek paragraphs rendering reads complete short Luau with property dots and quotes
+ok 86 - DeepSeek paragraphs rendering reads complete short Luau with property dots and quotes
+  ---
+  duration_ms: 19.237016
+  type: 'test'
+  ...
+# Subtest: DeepSeek paragraphs rendering reads complete long Luau with property dots and quotes
+ok 87 - DeepSeek paragraphs rendering reads complete long Luau with property dots and quotes
+  ---
+  duration_ms: 114.596035
+  type: 'test'
+  ...
+# Subtest: DeepSeek breaks rendering reads complete short Luau with property dots and quotes
+ok 88 - DeepSeek breaks rendering reads complete short Luau with property dots and quotes
+  ---
+  duration_ms: 25.899276
+  type: 'test'
+  ...
+# Subtest: DeepSeek breaks rendering reads complete long Luau with property dots and quotes
+ok 89 - DeepSeek breaks rendering reads complete long Luau with property dots and quotes
+  ---
+  duration_ms: 90.931974
+  type: 'test'
+  ...
+# Subtest: DeepSeek lines rendering reads complete short Luau with property dots and quotes
+ok 90 - DeepSeek lines rendering reads complete short Luau with property dots and quotes
+  ---
+  duration_ms: 14.986764
+  type: 'test'
+  ...
+# Subtest: DeepSeek lines rendering reads complete long Luau with property dots and quotes
+ok 91 - DeepSeek lines rendering reads complete long Luau with property dots and quotes
+  ---
+  duration_ms: 137.019067
+  type: 'test'
+  ...
+# Subtest: DeepSeek links rendering reads complete short Luau with property dots and quotes
+ok 92 - DeepSeek links rendering reads complete short Luau with property dots and quotes
+  ---
+  duration_ms: 12.129958
+  type: 'test'
+  ...
+# Subtest: DeepSeek links rendering reads complete long Luau with property dots and quotes
+ok 93 - DeepSeek links rendering reads complete long Luau with property dots and quotes
+  ---
+  duration_ms: 88.545565
+  type: 'test'
+  ...
+# Subtest: highlight rerender, Copy bar and PlazCode decoration cannot change the same call
+ok 94 - highlight rerender, Copy bar and PlazCode decoration cannot change the same call
+  ---
+  duration_ms: 20.563133
+  type: 'test'
+  ...
+# Subtest: code blank lines, indentation, literal backticks and UI-like identifiers stay verbatim
+ok 95 - code blank lines, indentation, literal backticks and UI-like identifiers stay verbatim
+  ---
+  duration_ms: 11.16103
+  type: 'test'
+  ...
+# Subtest: nested markdown surfaces are read once and reasoning/chips are excluded
+ok 96 - nested markdown surfaces are read once and reasoning/chips are excluded
+  ---
+  duration_ms: 11.759879
+  type: 'test'
+  ...
+# Subtest: code source containing Copy words, numerals and inline spans is never stripped
+ok 97 - code source containing Copy words, numerals and inline spans is never stripped
+  ---
+  duration_ms: 11.65961
+  type: 'test'
+  ...
+# Subtest: actual raw block is found after explanatory marker/JSON prose: Używam `\#\#\#LUA\#\#\#` do wykonania kodu.
+ok 98 - actual raw block is found after explanatory marker/JSON prose: Używam `\#\#\#LUA\#\#\#` do wykonania kodu.
+  ---
+  duration_ms: 7.960835
+  type: 'test'
+  ...
+# Subtest: actual raw block is found after explanatory marker/JSON prose: Poprzedni format to {"command":"execute_luau","params":{}}.
+ok 99 - actual raw block is found after explanatory marker/JSON prose: Poprzedni format to {"command":"execute_luau","params":{}}.
+  ---
+  duration_ms: 9.457926
+  type: 'test'
+  ...
+# Subtest: actual raw block is found after explanatory marker/JSON prose: Przykład znacznika \#\#\#LUA\#\#\# znajduje się poniżej.
+ok 100 - actual raw block is found after explanatory marker/JSON prose: Przykład znacznika \#\#\#LUA\#\#\# znajduje się poniżej.
+  ---
+  duration_ms: 8.087022
+  type: 'test'
+  ...
+# Subtest: a marker inside an incomplete multiline JSON value is never promoted to raw Luau
+ok 101 - a marker inside an incomplete multiline JSON value is never promoted to raw Luau
+  ---
+  duration_ms: 9.103579
+  type: 'test'
+  ...
+# Subtest: short JSON with Instance.new, UDim2 and Enum properties preserves its decoded source
+ok 102 - short JSON with Instance.new, UDim2 and Enum properties preserves its decoded source
+  ---
+  duration_ms: 10.652767
+  type: 'test'
+  ...
+# Subtest: an actually incomplete raw block remains incomplete even with a Copy control containing a closing marker
+ok 103 - an actually incomplete raw block remains incomplete even with a Copy control containing a closing marker
+  ---
+  duration_ms: 10.612978
+  type: 'test'
+  ...
+# Subtest: a prose-only mention of Lua delimiters is not an attempted command
+ok 104 - a prose-only mention of Lua delimiters is not an attempted command
+  ---
+  duration_ms: 8.100702
+  type: 'test'
+  ...
+# Subtest: highlighted source lines that already contain newlines are not doubled
+ok 105 - highlighted source lines that already contain newlines are not doubled
+  ---
+  duration_ms: 14.914597
+  type: 'test'
+  ...
+# Subtest: Copy controls containing their own code element cannot replace the actual source
+ok 106 - Copy controls containing their own code element cannot replace the actual source
+  ---
+  duration_ms: 9.61588
+  type: 'test'
+  ...
+# Subtest: actual response watcher reads a rendered DeepSeek block with prose and Copy controls
+ok 107 - actual response watcher reads a rendered DeepSeek block with prose and Copy controls
+  ---
+  duration_ms: 26.586494
+  type: 'test'
+  ...
+# Subtest: actual response watcher reads a rendered DeepSeek block after an interrupted stream
+ok 108 - actual response watcher reads a rendered DeepSeek block after an interrupted stream
+  ---
+  duration_ms: 72.506421
+  type: 'test'
+  ...
+# Subtest: actual status reports loaded transport versions for core/parser/DeepSeek
+ok 109 - actual status reports loaded transport versions for core/parser/DeepSeek
+  ---
+  duration_ms: 8.540045
+  type: 'test'
+  ...
+# Subtest: actual status reports loaded transport versions and identifies a stale parser
+ok 110 - actual status reports loaded transport versions and identifies a stale parser
+  ---
+  duration_ms: 7.334987
+  type: 'test'
+  ...
+# Subtest: exact reported UIBlox warning cannot become an automatic repair
+ok 111 - exact reported UIBlox warning cannot become an automatic repair
+  ---
+  duration_ms: 2.260822
+  type: 'test'
+  ...
+# Subtest: UIBlox root error is not reclassified by a later project caller frame
+ok 112 - UIBlox root error is not reclassified by a later project caller frame
+  ---
+  duration_ms: 2.562921
+  type: 'test'
+  ...
+# Subtest: a project string-format error is still reported even when its text mentions UIBlox
+ok 113 - a project string-format error is still reported even when its text mentions UIBlox
+  ---
+  duration_ms: 1.24076
+  type: 'test'
+  ...
+# Subtest: quoting a project path in an internal package message does not establish its source
+ok 114 - quoting a project path in an internal package message does not establish its source
+  ---
+  duration_ms: 0.963248
+  type: 'test'
+  ...
+# Subtest: DeepSeek native rate notice: Zbyt częste wiadomości. Spróbuj ponownie później.
+ok 115 - DeepSeek native rate notice: Zbyt częste wiadomości. Spróbuj ponownie później.
+  ---
+  duration_ms: 149.01136
+  type: 'test'
+  ...
+# Subtest: DeepSeek native rate notice: Too frequent messages. Please try again later.
+ok 116 - DeepSeek native rate notice: Too frequent messages. Please try again later.
+  ---
+  duration_ms: 42.557739
+  type: 'test'
+  ...
+# Subtest: DeepSeek native rate notice: Too many requests. Please try again later.
+ok 117 - DeepSeek native rate notice: Too many requests. Please try again later.
+  ---
+  duration_ms: 24.501855
+  type: 'test'
+  ...
+# Subtest: rate alert is detected with empty composer and enabled Send
+ok 118 - rate alert is detected with empty composer and enabled Send
+  ---
+  duration_ms: 17.965761
+  type: 'test'
+  ...
+# Subtest: latest assistant native error shell is detected outside markdown
+ok 119 - latest assistant native error shell is detected outside markdown
+  ---
+  duration_ms: 33.282145
+  type: 'test'
+  ...
+# Subtest: rate-like text in model does not pause the session
+ok 120 - rate-like text in model does not pause the session
+  ---
+  duration_ms: 22.235894
+  type: 'test'
+  ...
+# Subtest: rate-like text in code does not pause the session
+ok 121 - rate-like text in code does not pause the session
+  ---
+  duration_ms: 15.807121
+  type: 'test'
+  ...
+# Subtest: rate-like text in reasoning does not pause the session
+ok 122 - rate-like text in reasoning does not pause the session
+  ---
+  duration_ms: 15.655766
+  type: 'test'
+  ...
+# Subtest: rate-like text in user does not pause the session
+ok 123 - rate-like text in user does not pause the session
+  ---
+  duration_ms: 13.029792
+  type: 'test'
+  ...
+# Subtest: rate-like text in extension does not pause the session
+ok 124 - rate-like text in extension does not pause the session
+  ---
+  duration_ms: 13.960512
+  type: 'test'
+  ...
+# Subtest: rate-like text in old does not pause the session
+ok 125 - rate-like text in old does not pause the session
+  ---
+  duration_ms: 11.240759
+  type: 'test'
+  ...
+# Subtest: rate-like text in hidden does not pause the session
+ok 126 - rate-like text in hidden does not pause the session
+  ---
+  duration_ms: 9.908704
+  type: 'test'
+  ...
+# Subtest: rate notice before send preserves the user draft and commits nothing
+ok 127 - rate notice before send preserves the user draft and commits nothing
+  ---
+  duration_ms: 13.496955
+  type: 'test'
+  ...
+# Subtest: ordinary DeepSeek text delivery still clicks once when no limit exists
+ok 128 - ordinary DeepSeek text delivery still clicks once when no limit exists
+  ---
+  duration_ms: 19.111992
+  type: 'test'
+  ...
+# Subtest: core aborts before any composer change while native rate notice is visible
+ok 129 - core aborts before any composer change while native rate notice is visible
+  ---
+  duration_ms: 15.779399
+  type: 'test'
+  ...
+# Subtest: rate notice appearing at send stops core after one click without retrying
+ok 130 - rate notice appearing at send stops core after one click without retrying
+  ---
+  duration_ms: 27.716821
+  type: 'test'
+  ...
+# Subtest: rate notice wins over a cached parsed command in the actual response watcher
+ok 131 - rate notice wins over a cached parsed command in the actual response watcher
+  ---
+  duration_ms: 20.045506
+  type: 'test'
+  ...
+# Subtest: actual agent loop pauses on rate notice and always releases the input lock
+ok 132 - actual agent loop pauses on rate notice and always releases the input lock
+  ---
+  duration_ms: 28.260488
+  type: 'test'
+  ...
+# Subtest: rate notice appearing after parsing stops before tool decoration or dispatch
+ok 133 - rate notice appearing after parsing stops before tool decoration or dispatch
+  ---
+  duration_ms: 13.678805
+  type: 'test'
+  ...
+# Subtest: startup handles rate limit without classifying it as missing command handshake
+ok 134 - startup handles rate limit without classifying it as missing command handshake
+  ---
+  duration_ms: 12.08453
+  type: 'test'
+  ...
+# Subtest: nested virtual row preserves identity when a message id arrives after parsing
+ok 135 - nested virtual row preserves identity when a message id arrives after parsing
+  ---
+  duration_ms: 8.889863
+  type: 'test'
+  ...
+# Subtest: ownership failure pauses the actual loop without rearming the idle watchdog
+ok 136 - ownership failure pauses the actual loop without rearming the idle watchdog
+  ---
+  duration_ms: 13.303568
+  type: 'test'
+  ...
+# Subtest: remount of the same stable row rebinds to the live assistant item
+ok 137 - remount of the same stable row rebinds to the live assistant item
+  ---
+  duration_ms: 9.607287
+  type: 'test'
+  ...
+# Subtest: response ownership rejects changed row
+ok 138 - response ownership rejects changed row
+  ---
+  duration_ms: 13.660016
+  type: 'test'
+  ...
+# Subtest: response ownership rejects changed chat
+ok 139 - response ownership rejects changed chat
+  ---
+  duration_ms: 12.554327
+  type: 'test'
+  ...
+# Subtest: response ownership rejects changed send
+ok 140 - response ownership rejects changed send
+  ---
+  duration_ms: 10.264762
+  type: 'test'
+  ...
+# Subtest: response ownership rejects changed session
+ok 141 - response ownership rejects changed session
+  ---
+  duration_ms: 11.406865
+  type: 'test'
+  ...
+# Subtest: ordinary native busy toasts remain separate from message rate limits
+ok 142 - ordinary native busy toasts remain separate from message rate limits
+  ---
+  duration_ms: 15.926208
+  type: 'test'
+  ...
+# Subtest: model quotes and hidden alerts cannot trigger native busy retries
+ok 143 - model quotes and hidden alerts cannot trigger native busy retries
+  ---
+  duration_ms: 21.993804
+  type: 'test'
+  ...
+# Subtest: actual activity renderer mounts Worked summary outside the horizontal Motif row
+ok 144 - actual activity renderer mounts Worked summary outside the horizontal Motif row
+  ---
+  duration_ms: 105.068417
+  type: 'test'
+  ...
+# Subtest: collapsed and expanded activity cannot alter or fold the Motif answer
+ok 145 - collapsed and expanded activity cannot alter or fold the Motif answer
+  ---
+  duration_ms: 29.476601
+  type: 'test'
+  ...
+# Subtest: unknown Motif layout leaves the native answer intact without inserting into its flex row
+ok 146 - unknown Motif layout leaves the native answer intact without inserting into its flex row
+  ---
+  duration_ms: 29.948871
+  type: 'test'
+  ...
+# Subtest: activity placement follows the live native row after Motif reparents it
+ok 147 - activity placement follows the live native row after Motif reparents it
+  ---
+  duration_ms: 13.360403
+  type: 'test'
+  ...
+# Subtest: two independent summaries retain native message order and readable replies
+ok 148 - two independent summaries retain native message order and readable replies
+  ---
+  duration_ms: 18.413395
+  type: 'test'
+  ...
+# Subtest: long multi_edit parses when command follows twelve edit objects
+ok 149 - long multi_edit parses when command follows twelve edit objects
+  ---
+  duration_ms: 20.511367
+  type: 'test'
+  ...
+# Subtest: raw Luau containing a JSON example executes the complete Luau block
+ok 150 - raw Luau containing a JSON example executes the complete Luau block
+  ---
+  duration_ms: 1.123105
+  type: 'test'
+  ...
+# Subtest: markers inside a literal string do not replace ordinary Luau source
+ok 151 - markers inside a literal string do not replace ordinary Luau source
+  ---
+  duration_ms: 0.941236
+  type: 'test'
+  ...
+# Subtest: JSON inside MCP envelope is decoded before removing actual code markers
+ok 152 - JSON inside MCP envelope is decoded before removing actual code markers
+  ---
+  duration_ms: 2.00996
+  type: 'test'
+  ...
+# Subtest: an ordinary unmatched quotation mark in prose cannot hide a following JSON command
+ok 153 - an ordinary unmatched quotation mark in prose cannot hide a following JSON command
+  ---
+  duration_ms: 1.863303
+  type: 'test'
+  ...
+# Subtest: wrapped raw Luau preserves a literal end marker and leading source indentation
+ok 154 - wrapped raw Luau preserves a literal end marker and leading source indentation
+  ---
+  duration_ms: 1.201892
+  type: 'test'
+  ...
+# Subtest: canonical Luau preserves a first identifier named json: raw block
+ok 155 - canonical Luau preserves a first identifier named json: raw block
+  ---
+  duration_ms: 1.040973
+  type: 'test'
+  ...
+# Subtest: canonical Luau preserves a first identifier named json: JSON envelope
+ok 156 - canonical Luau preserves a first identifier named json: JSON envelope
+  ---
+  duration_ms: 1.055505
+  type: 'test'
+  ...
+# Subtest: an incomplete JSON envelope cannot fall back to escaped raw Luau
+ok 157 - an incomplete JSON envelope cannot fall back to escaped raw Luau
+  ---
+  duration_ms: 0.943409
+  type: 'test'
+  ...
+# Subtest: deepseek: complete long json command preserves quotes, braces, Unicode and all lines
+ok 158 - deepseek: complete long json command preserves quotes, braces, Unicode and all lines
+  ---
+  duration_ms: 102.040676
+  type: 'test'
+  ...
+# Subtest: deepseek: complete long raw command preserves quotes, braces, Unicode and all lines
+ok 159 - deepseek: complete long raw command preserves quotes, braces, Unicode and all lines
+  ---
+  duration_ms: 16.587508
+  type: 'test'
+  ...
+# Subtest: deepseek: complete long params-first command preserves quotes, braces, Unicode and all lines
+ok 160 - deepseek: complete long params-first command preserves quotes, braces, Unicode and all lines
+  ---
+  duration_ms: 17.782405
+  type: 'test'
+  ...
+# Subtest: chatgpt: complete long json command preserves quotes, braces, Unicode and all lines
+ok 161 - chatgpt: complete long json command preserves quotes, braces, Unicode and all lines
+  ---
+  duration_ms: 23.785637
+  type: 'test'
+  ...
+# Subtest: chatgpt: complete long raw command preserves quotes, braces, Unicode and all lines
+ok 162 - chatgpt: complete long raw command preserves quotes, braces, Unicode and all lines
+  ---
+  duration_ms: 16.94657
+  type: 'test'
+  ...
+# Subtest: chatgpt: complete long params-first command preserves quotes, braces, Unicode and all lines
+ok 163 - chatgpt: complete long params-first command preserves quotes, braces, Unicode and all lines
+  ---
+  duration_ms: 27.353743
+  type: 'test'
+  ...
+# Subtest: claude: complete long json command preserves quotes, braces, Unicode and all lines
+ok 164 - claude: complete long json command preserves quotes, braces, Unicode and all lines
+  ---
+  duration_ms: 19.687365
+  type: 'test'
+  ...
+# Subtest: claude: complete long raw command preserves quotes, braces, Unicode and all lines
+ok 165 - claude: complete long raw command preserves quotes, braces, Unicode and all lines
+  ---
+  duration_ms: 14.531789
+  type: 'test'
+  ...
+# Subtest: claude: complete long params-first command preserves quotes, braces, Unicode and all lines
+ok 166 - claude: complete long params-first command preserves quotes, braces, Unicode and all lines
+  ---
+  duration_ms: 21.95633
+  type: 'test'
+  ...
+# Subtest: motif: complete long json command preserves quotes, braces, Unicode and all lines
+ok 167 - motif: complete long json command preserves quotes, braces, Unicode and all lines
+  ---
+  duration_ms: 17.638786
+  type: 'test'
+  ...
+# Subtest: motif: complete long raw command preserves quotes, braces, Unicode and all lines
+ok 168 - motif: complete long raw command preserves quotes, braces, Unicode and all lines
+  ---
+  duration_ms: 10.612258
+  type: 'test'
+  ...
+# Subtest: motif: complete long params-first command preserves quotes, braces, Unicode and all lines
+ok 169 - motif: complete long params-first command preserves quotes, braces, Unicode and all lines
+  ---
+  duration_ms: 13.452979
+  type: 'test'
+  ...
+# Subtest: chatwave: complete long json command preserves quotes, braces, Unicode and all lines
+ok 170 - chatwave: complete long json command preserves quotes, braces, Unicode and all lines
+  ---
+  duration_ms: 15.166691
+  type: 'test'
+  ...
+# Subtest: chatwave: complete long raw command preserves quotes, braces, Unicode and all lines
+ok 171 - chatwave: complete long raw command preserves quotes, braces, Unicode and all lines
+  ---
+  duration_ms: 12.636754
+  type: 'test'
+  ...
+# Subtest: chatwave: complete long params-first command preserves quotes, braces, Unicode and all lines
+ok 172 - chatwave: complete long params-first command preserves quotes, braces, Unicode and all lines
+  ---
+  duration_ms: 15.296598
+  type: 'test'
+  ...
+# Subtest: tencent: complete long json command preserves quotes, braces, Unicode and all lines
+ok 173 - tencent: complete long json command preserves quotes, braces, Unicode and all lines
+  ---
+  duration_ms: 12.408651
+  type: 'test'
+  ...
+# Subtest: tencent: complete long raw command preserves quotes, braces, Unicode and all lines
+ok 174 - tencent: complete long raw command preserves quotes, braces, Unicode and all lines
+  ---
+  duration_ms: 12.163161
+  type: 'test'
+  ...
+# Subtest: tencent: complete long params-first command preserves quotes, braces, Unicode and all lines
+ok 175 - tencent: complete long params-first command preserves quotes, braces, Unicode and all lines
+  ---
+  duration_ms: 15.742375
+  type: 'test'
+  ...
+# Subtest: deepseek: entire large result reconstructs with default configured limits
+ok 176 - deepseek: entire large result reconstructs with default configured limits
+  ---
+  duration_ms: 11.534916
+  type: 'test'
+  ...
+# Subtest: deepseek: entire large result reconstructs with disabled configured limits
+ok 177 - deepseek: entire large result reconstructs with disabled configured limits
+  ---
+  duration_ms: 19.13757
+  type: 'test'
+  ...
+# Subtest: chatgpt: entire large result reconstructs with default configured limits
+ok 178 - chatgpt: entire large result reconstructs with default configured limits
+  ---
+  duration_ms: 10.489735
+  type: 'test'
+  ...
+# Subtest: chatgpt: entire large result reconstructs with disabled configured limits
+ok 179 - chatgpt: entire large result reconstructs with disabled configured limits
+  ---
+  duration_ms: 13.738223
+  type: 'test'
+  ...
+# Subtest: claude: entire large result reconstructs with default configured limits
+ok 180 - claude: entire large result reconstructs with default configured limits
+  ---
+  duration_ms: 11.409169
+  type: 'test'
+  ...
+# Subtest: claude: entire large result reconstructs with disabled configured limits
+ok 181 - claude: entire large result reconstructs with disabled configured limits
+  ---
+  duration_ms: 8.364444
+  type: 'test'
+  ...
+# Subtest: motif: entire large result reconstructs with default configured limits
+ok 182 - motif: entire large result reconstructs with default configured limits
+  ---
+  duration_ms: 10.881606
+  type: 'test'
+  ...
+# Subtest: motif: entire large result reconstructs with disabled configured limits
+ok 183 - motif: entire large result reconstructs with disabled configured limits
+  ---
+  duration_ms: 10.423888
+  type: 'test'
+  ...
+# Subtest: chatwave: entire large result reconstructs with default configured limits
+ok 184 - chatwave: entire large result reconstructs with default configured limits
+  ---
+  duration_ms: 10.217051
+  type: 'test'
+  ...
+# Subtest: chatwave: entire large result reconstructs with disabled configured limits
+ok 185 - chatwave: entire large result reconstructs with disabled configured limits
+  ---
+  duration_ms: 16.391468
+  type: 'test'
+  ...
+# Subtest: tencent: entire large result reconstructs with default configured limits
+ok 186 - tencent: entire large result reconstructs with default configured limits
+  ---
+  duration_ms: 17.459421
+  type: 'test'
+  ...
+# Subtest: tencent: entire large result reconstructs with disabled configured limits
+ok 187 - tencent: entire large result reconstructs with disabled configured limits
+  ---
+  duration_ms: 13.081249
+  type: 'test'
+  ...
+# Subtest: chatwave-api: entire large result reconstructs with default configured limits
+ok 188 - chatwave-api: entire large result reconstructs with default configured limits
+  ---
+  duration_ms: 10.367844
+  type: 'test'
+  ...
+# Subtest: chatwave-api: entire large result reconstructs with disabled configured limits
+ok 189 - chatwave-api: entire large result reconstructs with disabled configured limits
+  ---
+  duration_ms: 1.604469
+  type: 'test'
+  ...
+# Subtest: DeepSeek spaces automatic messages by at least 15 seconds with setting zero
+ok 190 - DeepSeek spaces automatic messages by at least 15 seconds with setting zero
+  ---
+  duration_ms: 9.293221
+  type: 'test'
+  ...
+# Subtest: DeepSeek also spaces extension-submitted explicit prompts and feedback after native user intent
+ok 191 - DeepSeek also spaces extension-submitted explicit prompts and feedback after native user intent
+  ---
+  duration_ms: 9.549151
+  type: 'test'
+  ...
+# Subtest: larger configured spacing is respected on DeepSeek
+ok 192 - larger configured spacing is respected on DeepSeek
+  ---
+  duration_ms: 10.252784
+  type: 'test'
+  ...
+# Subtest: Stop interrupts the pacing wait promptly
+ok 193 - Stop interrupts the pacing wait promptly
+  ---
+  duration_ms: 8.16619
+  type: 'test'
+  ...
+# Subtest: chatgpt: no DeepSeek-specific delay is introduced
+ok 194 - chatgpt: no DeepSeek-specific delay is introduced
+  ---
+  duration_ms: 9.186402
+  type: 'test'
+  ...
+# Subtest: claude: no DeepSeek-specific delay is introduced
+ok 195 - claude: no DeepSeek-specific delay is introduced
+  ---
+  duration_ms: 8.060072
+  type: 'test'
+  ...
+# Subtest: motif: no DeepSeek-specific delay is introduced
+ok 196 - motif: no DeepSeek-specific delay is introduced
+  ---
+  duration_ms: 10.595783
+  type: 'test'
+  ...
+# Subtest: chatwave: no DeepSeek-specific delay is introduced
+ok 197 - chatwave: no DeepSeek-specific delay is introduced
+  ---
+  duration_ms: 12.724039
+  type: 'test'
+  ...
+# Subtest: tencent: no DeepSeek-specific delay is introduced
+ok 198 - tencent: no DeepSeek-specific delay is introduced
+  ---
+  duration_ms: 6.679234
+  type: 'test'
+  ...
+# Subtest: DeepSeek refuses an oversized message without clipping it or changing the draft
+ok 199 - DeepSeek refuses an oversized message without clipping it or changing the draft
+  ---
+  duration_ms: 12.464374
+  type: 'test'
+  ...
+# Subtest: actual response watcher waits through a nine-second mid-command generation-signal gap
+ok 200 - actual response watcher waits through a nine-second mid-command generation-signal gap
+  ---
+  duration_ms: 53.09158
+  type: 'test'
+  ...
+# Subtest: a genuinely incomplete command eventually returns an error and never a partial call
+ok 201 - a genuinely incomplete command eventually returns an error and never a partial call
+  ---
+  duration_ms: 38.729192
+  type: 'test'
+  ...
+# Subtest: known internal UIBlox/CorePackages error is not a project auto-fix target
+ok 202 - known internal UIBlox/CorePackages error is not a project auto-fix target
+  ---
+  duration_ms: 3.249669
+  type: 'test'
+  ...
+# Subtest: a project script mentioning UIBlox is still a project error
+ok 203 - a project script mentioning UIBlox is still a project error
+  ---
+  duration_ms: 1.06509
+  type: 'test'
+  ...
+# Subtest: internal logs after a project error do not hide the real project error
+ok 204 - internal logs after a project error do not hide the real project error
+  ---
+  duration_ms: 0.771944
+  type: 'test'
+  ...
+# Subtest: warning with project location and error-like wording is not auto-fixed: Warning: 
+ok 205 - warning with project location and error-like wording is not auto-fixed: Warning: 
+  ---
+  duration_ms: 0.601752
+  type: 'test'
+  ...
+# Subtest: warning with project location and error-like wording is not auto-fixed: [Warning] 
+ok 206 - warning with project location and error-like wording is not auto-fixed: [Warning] 
+  ---
+  duration_ms: 0.602293
+  type: 'test'
+  ...
+# Subtest: warning with project location and error-like wording is not auto-fixed: 21:50:36.123 - Warning: 
+ok 207 - warning with project location and error-like wording is not auto-fixed: 21:50:36.123 - Warning: 
+  ---
+  duration_ms: 0.529155
+  type: 'test'
+  ...
+# Subtest: unknown-origin error is kept for manual inspection rather than an automatic repair
+ok 208 - unknown-origin error is kept for manual inspection rather than an automatic repair
+  ---
+  duration_ms: 0.562704
+  type: 'test'
+  ...
+# Subtest: actual auto-debug ignores warnings and internal package errors
+ok 209 - actual auto-debug ignores warnings and internal package errors
+  ---
+  duration_ms: 0.958512
+  type: 'test'
+  ...
+# Subtest: actual auto-debug retains a project error and its separately logged stack without clipping
+ok 210 - actual auto-debug retains a project error and its separately logged stack without clipping
+  ---
+  duration_ms: 0.886965
+  type: 'test'
+  ...
+# Subtest: actual playtest watcher does not stop Play or send a repair request for internal
+ok 211 - actual playtest watcher does not stop Play or send a repair request for internal
+  ---
+  duration_ms: 1.563258
+  type: 'test'
+  ...
+# Subtest: actual playtest watcher does not stop Play or send a repair request for warning
+ok 212 - actual playtest watcher does not stop Play or send a repair request for warning
+  ---
+  duration_ms: 0.741159
+  type: 'test'
+  ...
+# Subtest: actual playtest watcher reports a project error
+ok 213 - actual playtest watcher reports a project error
+  ---
+  duration_ms: 0.96371
+  type: 'test'
+  ...
+# Subtest: explicit debug command retains log messages beyond the old 240/4000-character cuts
+ok 214 - explicit debug command retains log messages beyond the old 240/4000-character cuts
+  ---
+  duration_ms: 0.771524
+  type: 'test'
+  ...
+# Subtest: execute_luau parse feedback requests literal Lua markers instead of another JSON wrapper
+ok 215 - execute_luau parse feedback requests literal Lua markers instead of another JSON wrapper
+  ---
+  duration_ms: 2.854142
+  type: 'test'
+  ...
+# Subtest: ChatWave native API preserves a long Luau argument through real JSON encoding
+ok 216 - ChatWave native API preserves a long Luau argument through real JSON encoding
+  ---
+  duration_ms: 1.34901
+  type: 'test'
+  ...
+# Subtest: motif: finds composer and sends complete multiline content once
+ok 217 - motif: finds composer and sends complete multiline content once
+  ---
+  duration_ms: 177.033444
+  type: 'test'
+  ...
+# Subtest: motif: reads assistant code verbatim and excludes user, controls and chips
+ok 218 - motif: reads assistant code verbatim and excludes user, controls and chips
+  ---
+  duration_ms: 50.839878
+  type: 'test'
+  ...
+# Subtest: motif: existing draft is preserved
+ok 219 - motif: existing draft is preserved
+  ---
+  duration_ms: 25.319891
+  type: 'test'
+  ...
+# Subtest: motif: rejects unsupported images before changing composer
+ok 220 - motif: rejects unsupported images before changing composer
+  ---
+  duration_ms: 23.124622
+  type: 'test'
+  ...
+# Subtest: motif: uncertain submission throws and never re-clicks
+ok 221 - motif: uncertain submission throws and never re-clicks
+  ---
+  duration_ms: 87.641555
+  type: 'test'
+  ...
+# Subtest: motif: clearing the editor alone does not confirm submission
+ok 222 - motif: clearing the editor alone does not confirm submission
+  ---
+  duration_ms: 61.719695
+  type: 'test'
+  ...
+# Subtest: motif: does not submit a changed draft
+ok 223 - motif: does not submit a changed draft
+  ---
+  duration_ms: 14.057245
+  type: 'test'
+  ...
+# Subtest: motif: Stop during typing prevents the commit
+ok 224 - motif: Stop during typing prevents the commit
+  ---
+  duration_ms: 28.183098
+  type: 'test'
+  ...
+# Subtest: motif: simultaneous sends cannot commit twice
+ok 225 - motif: simultaneous sends cannot commit twice
+  ---
+  duration_ms: 26.122207
+  type: 'test'
+  ...
+# Subtest: motif: changing chat after the click cannot confirm delivery
+ok 226 - motif: changing chat after the click cannot confirm delivery
+  ---
+  duration_ms: 26.427784
+  type: 'test'
+  ...
+# Subtest: motif: Co-work draft compare-and-swap and input lock
+ok 227 - motif: Co-work draft compare-and-swap and input lock
+  ---
+  duration_ms: 18.718758
+  type: 'test'
+  ...
+# Subtest: motif: chat key survives first turn, decoration and saved route
+ok 228 - motif: chat key survives first turn, decoration and saved route
+  ---
+  duration_ms: 19.945237
+  type: 'test'
+  ...
+# Subtest: motif: hard generation remains busy across long reasoning pause
+ok 229 - motif: hard generation remains busy across long reasoning pause
+  ---
+  duration_ms: 18.017068
+  type: 'test'
+  ...
+# Subtest: motif: login route blocks startup
+ok 230 - motif: login route blocks startup
+  ---
+  duration_ms: 13.611264
+  type: 'test'
+  ...
+# Subtest: chatwave: finds composer and sends complete multiline content once
+ok 231 - chatwave: finds composer and sends complete multiline content once
+  ---
+  duration_ms: 28.010638
+  type: 'test'
+  ...
+# Subtest: chatwave: reads assistant code verbatim and excludes user, controls and chips
+ok 232 - chatwave: reads assistant code verbatim and excludes user, controls and chips
+  ---
+  duration_ms: 19.337677
+  type: 'test'
+  ...
+# Subtest: chatwave: existing draft is preserved
+ok 233 - chatwave: existing draft is preserved
+  ---
+  duration_ms: 13.632004
+  type: 'test'
+  ...
+# Subtest: chatwave: rejects unsupported images before changing composer
+ok 234 - chatwave: rejects unsupported images before changing composer
+  ---
+  duration_ms: 21.053065
+  type: 'test'
+  ...
+# Subtest: chatwave: uncertain submission throws and never re-clicks
+ok 235 - chatwave: uncertain submission throws and never re-clicks
+  ---
+  duration_ms: 35.8016
+  type: 'test'
+  ...
+# Subtest: chatwave: clearing the editor alone does not confirm submission
+ok 236 - chatwave: clearing the editor alone does not confirm submission
+  ---
+  duration_ms: 42.72718
+  type: 'test'
+  ...
+# Subtest: chatwave: does not submit a changed draft
+ok 237 - chatwave: does not submit a changed draft
+  ---
+  duration_ms: 23.370185
+  type: 'test'
+  ...
+# Subtest: chatwave: Stop during typing prevents the commit
+ok 238 - chatwave: Stop during typing prevents the commit
+  ---
+  duration_ms: 16.455833
+  type: 'test'
+  ...
+# Subtest: chatwave: simultaneous sends cannot commit twice
+ok 239 - chatwave: simultaneous sends cannot commit twice
+  ---
+  duration_ms: 27.008562
+  type: 'test'
+  ...
+# Subtest: chatwave: changing chat after the click cannot confirm delivery
+ok 240 - chatwave: changing chat after the click cannot confirm delivery
+  ---
+  duration_ms: 20.157802
+  type: 'test'
+  ...
+# Subtest: chatwave: Co-work draft compare-and-swap and input lock
+ok 241 - chatwave: Co-work draft compare-and-swap and input lock
+  ---
+  duration_ms: 16.182747
+  type: 'test'
+  ...
+# Subtest: chatwave: chat key survives first turn, decoration and saved route
+ok 242 - chatwave: chat key survives first turn, decoration and saved route
+  ---
+  duration_ms: 14.781981
+  type: 'test'
+  ...
+# Subtest: chatwave: hard generation remains busy across long reasoning pause
+ok 243 - chatwave: hard generation remains busy across long reasoning pause
+  ---
+  duration_ms: 15.546634
+  type: 'test'
+  ...
+# Subtest: chatwave: login route blocks startup
+ok 244 - chatwave: login route blocks startup
+  ---
+  duration_ms: 11.536187
+  type: 'test'
+  ...
+# Subtest: tencent: finds composer and sends complete multiline content once
+ok 245 - tencent: finds composer and sends complete multiline content once
+  ---
+  duration_ms: 20.099386
+  type: 'test'
+  ...
+# Subtest: tencent: reads assistant code verbatim and excludes user, controls and chips
+ok 246 - tencent: reads assistant code verbatim and excludes user, controls and chips
+  ---
+  duration_ms: 17.009583
+  type: 'test'
+  ...
+# Subtest: tencent: existing draft is preserved
+ok 247 - tencent: existing draft is preserved
+  ---
+  duration_ms: 18.22735
+  type: 'test'
+  ...
+# Subtest: tencent: rejects unsupported images before changing composer
+ok 248 - tencent: rejects unsupported images before changing composer
+  ---
+  duration_ms: 11.655394
+  type: 'test'
+  ...
+# Subtest: tencent: uncertain submission throws and never re-clicks
+ok 249 - tencent: uncertain submission throws and never re-clicks
+  ---
+  duration_ms: 45.80152
+  type: 'test'
+  ...
+# Subtest: tencent: clearing the editor alone does not confirm submission
+ok 250 - tencent: clearing the editor alone does not confirm submission
+  ---
+  duration_ms: 39.992996
+  type: 'test'
+  ...
+# Subtest: tencent: does not submit a changed draft
+ok 251 - tencent: does not submit a changed draft
+  ---
+  duration_ms: 27.961133
+  type: 'test'
+  ...
+# Subtest: tencent: Stop during typing prevents the commit
+ok 252 - tencent: Stop during typing prevents the commit
+  ---
+  duration_ms: 12.96154
+  type: 'test'
+  ...
+# Subtest: tencent: simultaneous sends cannot commit twice
+ok 253 - tencent: simultaneous sends cannot commit twice
+  ---
+  duration_ms: 15.251036
+  type: 'test'
+  ...
+# Subtest: tencent: changing chat after the click cannot confirm delivery
+ok 254 - tencent: changing chat after the click cannot confirm delivery
+  ---
+  duration_ms: 11.471201
+  type: 'test'
+  ...
+# Subtest: tencent: Co-work draft compare-and-swap and input lock
+ok 255 - tencent: Co-work draft compare-and-swap and input lock
+  ---
+  duration_ms: 8.924504
+  type: 'test'
+  ...
+# Subtest: tencent: chat key survives first turn, decoration and saved route
+ok 256 - tencent: chat key survives first turn, decoration and saved route
+  ---
+  duration_ms: 8.517982
+  type: 'test'
+  ...
+# Subtest: tencent: hard generation remains busy across long reasoning pause
+ok 257 - tencent: hard generation remains busy across long reasoning pause
+  ---
+  duration_ms: 9.727824
+  type: 'test'
+  ...
+# Subtest: tencent: login route blocks startup
+ok 258 - tencent: login route blocks startup
+  ---
+  duration_ms: 7.259285
+  type: 'test'
+  ...
+# Subtest: ChatWave: applies observed 16000-character native limit without truncation
+ok 259 - ChatWave: applies observed 16000-character native limit without truncation
+  ---
+  duration_ms: 14.279525
+  type: 'test'
+  ...
+# Subtest: Motif: reported 50000-character threshold is checked before touching the draft
+ok 260 - Motif: reported 50000-character threshold is checked before touching the draft
+  ---
+  duration_ms: 12.782835
+  type: 'test'
+  ...
+# Subtest: native maxlength and the server limit both constrain outgoing messages
+ok 261 - native maxlength and the server limit both constrain outgoing messages
+  ---
+  duration_ms: 8.743656
+  type: 'test'
+  ...
+# Subtest: Motif: a native message-length rejection in a status toast ends an uncertain send once
+ok 262 - Motif: a native message-length rejection in a status toast ends an uncertain send once
+  ---
+  duration_ms: 13.045355
+  type: 'test'
+  ...
+# Subtest: ordinary status text is not mistaken for a native length error
+ok 263 - ordinary status text is not mistaken for a native length error
+  ---
+  duration_ms: 7.934306
+  type: 'test'
+  ...
+# Subtest: ChatWave: a 70000-character startup catalogue is delivered completely within native limits
+ok 264 - ChatWave: a 70000-character startup catalogue is delivered completely within native limits
+  ---
+  duration_ms: 122.118481
+  type: 'test'
+  ...
+# Subtest: ChatWave: startup chunk boundaries never split a Unicode surrogate pair
+ok 265 - ChatWave: startup chunk boundaries never split a Unicode surrogate pair
+  ---
+  duration_ms: 7.843841
+  type: 'test'
+  ...
+# Subtest: ChatWave: authentication error is never a successful response
+ok 266 - ChatWave: authentication error is never a successful response
+  ---
+  duration_ms: 16.679815
+  type: 'test'
+  ...
+# Subtest: ChatWave: an old error does not poison a later successful response
+ok 267 - ChatWave: an old error does not poison a later successful response
+  ---
+  duration_ms: 9.179552
+  type: 'test'
+  ...
+# Subtest: Tencent: unknown role is excluded instead of treated as an assistant command
+ok 268 - Tencent: unknown role is excluded instead of treated as an assistant command
+  ---
+  duration_ms: 8.312648
+  type: 'test'
+  ...
+# Subtest: Tencent: real native SVG Stop remains active until it becomes Send
+ok 269 - Tencent: real native SVG Stop remains active until it becomes Send
+  ---
+  duration_ms: 12.954971
+  type: 'test'
+  ...
+# Subtest: Tencent: reasoning commands are not read or decorated as executable replies
+ok 270 - Tencent: reasoning commands are not read or decorated as executable replies
+  ---
+  duration_ms: 9.850927
+  type: 'test'
+  ...
+# Subtest: Tencent: new chat address transition and model query keep the same chat key
+ok 271 - Tencent: new chat address transition and model query keep the same chat key
+  ---
+  duration_ms: 9.041849
+  type: 'test'
+  ...
+# Subtest: Tencent: real final JSON DOM excludes code header and visual line numbers
+ok 272 - Tencent: real final JSON DOM excludes code header and visual line numbers
+  ---
+  duration_ms: 16.394772
+  type: 'test'
+  ...
+# Subtest: Tencent: real multiline Luau DOM preserves whitespace and Unicode without line numbers
+ok 273 - Tencent: real multiline Luau DOM preserves whitespace and Unicode without line numbers
+  ---
+  duration_ms: 13.008741
+  type: 'test'
+  ...
+# Subtest: tool parser accepts the Motif observed command format
+ok 274 - tool parser accepts the Motif observed command format
+  ---
+  duration_ms: 10.038155
+  type: 'test'
+  ...
+# Subtest: all packaged copies register each host and preserve valid script paths and Firefox events
+ok 275 - all packaged copies register each host and preserve valid script paths and Firefox events
+  ---
+  duration_ms: 10.145285
+  type: 'test'
+  ...
+# Subtest: motif: actual bootstrap with roblox Ultra keeps every startup message within the site limit
+ok 276 - motif: actual bootstrap with roblox Ultra keeps every startup message within the site limit
+  ---
+  duration_ms: 602.0931
+  type: 'test'
+  ...
+# Subtest: motif: actual bootstrap with local Ultra keeps every startup message within the site limit
+ok 277 - motif: actual bootstrap with local Ultra keeps every startup message within the site limit
+  ---
+  duration_ms: 367.462143
+  type: 'test'
+  ...
+# Subtest: chatwave: actual bootstrap with roblox Ultra keeps every startup message within the site limit
+ok 278 - chatwave: actual bootstrap with roblox Ultra keeps every startup message within the site limit
+  ---
+  duration_ms: 747.525073
+  type: 'test'
+  ...
+# Subtest: chatwave: actual bootstrap with local Ultra keeps every startup message within the site limit
+ok 279 - chatwave: actual bootstrap with local Ultra keeps every startup message within the site limit
+  ---
+  duration_ms: 625.148599
+  type: 'test'
+  ...
+# Subtest: motif: actual Restart Agent in an existing chat uses bounded startup without deleting the conversation
+ok 280 - motif: actual Restart Agent in an existing chat uses bounded startup without deleting the conversation
+  ---
+  duration_ms: 298.799092
+  type: 'test'
+  ...
+# Subtest: motif: actual default Ultra startup reproduces the reported oversized initial prompt
+ok 281 - motif: actual default Ultra startup reproduces the reported oversized initial prompt
+  ---
+  duration_ms: 265.266937
+  type: 'test'
+  ...
+# Subtest: motif: actual bootstrap refuses readiness after an unacknowledged context part and unlocks input
+ok 282 - motif: actual bootstrap refuses readiness after an unacknowledged context part and unlocks input
+  ---
+  duration_ms: 25.736345
+  type: 'test'
+  ...
+# Subtest: motif: startup refusal quoting list_commands never executes the quote or sends a correction
+ok 283 - motif: startup refusal quoting list_commands never executes the quote or sends a correction
+  ---
+  duration_ms: 21.762392
+  type: 'test'
+  ...
+# Subtest: motif: refusing a context part cannot arm a marker-only session or request retained pages
+ok 284 - motif: refusing a context part cannot arm a marker-only session or request retained pages
+  ---
+  duration_ms: 30.031854
+  type: 'test'
+  ...
+# Subtest: motif: inline and quoted JSON examples remain readable prose, not executable commands
+ok 285 - motif: inline and quoted JSON examples remain readable prose, not executable commands
+  ---
+  duration_ms: 15.864786
+  type: 'test'
+  ...
+# Subtest: motif: confirmed readiness, not merely startup markers, is required to restore a session
+ok 286 - motif: confirmed readiness, not merely startup markers, is required to restore a session
+  ---
+  duration_ms: 14.915438
+  type: 'test'
+  ...
+# Subtest: chatwave: actual Restart Agent in an existing chat uses bounded startup without deleting the conversation
+ok 287 - chatwave: actual Restart Agent in an existing chat uses bounded startup without deleting the conversation
+  ---
+  duration_ms: 341.430721
+  type: 'test'
+  ...
+# Subtest: chatwave: actual default Ultra startup reproduces the reported oversized initial prompt
+ok 288 - chatwave: actual default Ultra startup reproduces the reported oversized initial prompt
+  ---
+  duration_ms: 283.229935
+  type: 'test'
+  ...
+# Subtest: chatwave: actual bootstrap refuses readiness after an unacknowledged context part and unlocks input
+ok 289 - chatwave: actual bootstrap refuses readiness after an unacknowledged context part and unlocks input
+  ---
+  duration_ms: 32.238988
+  type: 'test'
+  ...
+# Subtest: chatwave: startup refusal quoting list_commands never executes the quote or sends a correction
+ok 290 - chatwave: startup refusal quoting list_commands never executes the quote or sends a correction
+  ---
+  duration_ms: 18.091027
+  type: 'test'
+  ...
+# Subtest: chatwave: refusing a context part cannot arm a marker-only session or request retained pages
+ok 291 - chatwave: refusing a context part cannot arm a marker-only session or request retained pages
+  ---
+  duration_ms: 29.101274
+  type: 'test'
+  ...
+# Subtest: chatwave: inline and quoted JSON examples remain readable prose, not executable commands
+ok 292 - chatwave: inline and quoted JSON examples remain readable prose, not executable commands
+  ---
+  duration_ms: 13.209629
+  type: 'test'
+  ...
+# Subtest: chatwave: confirmed readiness, not merely startup markers, is required to restore a session
+ok 293 - chatwave: confirmed readiness, not merely startup markers, is required to restore a session
+  ---
+  duration_ms: 13.902376
+  type: 'test'
+  ...
+# Subtest: ChatWave: native Unable to reach error aborts startup once and unlocks the composer
+ok 294 - ChatWave: native Unable to reach error aborts startup once and unlocks the composer
+  ---
+  duration_ms: 18.710767
+  type: 'test'
+  ...
+# Subtest: actual response reader ignores an earlier cached command when final reply is a refusal
+ok 295 - actual response reader ignores an earlier cached command when final reply is a refusal
+  ---
+  duration_ms: 45.359204
+  type: 'test'
+  ...
+# Subtest: actual response reader recognizes native connection error before waiting for an empty model reply
+ok 296 - actual response reader recognizes native connection error before waiting for an empty model reply
+  ---
+  duration_ms: 13.699214
+  type: 'test'
+  ...
+# Subtest: actual response reader still accepts an explicit executable command block
+ok 297 - actual response reader still accepts an explicit executable command block
+  ---
+  duration_ms: 64.849917
+  type: 'test'
+  ...
+# Subtest: real Tencent JSON and Luau DOM pass through the guarded shared parser
+ok 298 - real Tencent JSON and Luau DOM pass through the guarded shared parser
+  ---
+  duration_ms: 30.881019
+  type: 'test'
+  ...
+# Subtest: command blocks keep code strings that mention inability to call tools
+ok 299 - command blocks keep code strings that mention inability to call tools
+  ---
+  duration_ms: 11.991121
+  type: 'test'
+  ...
+# Subtest: a programming code example containing a JSON command string is never executed
+ok 300 - a programming code example containing a JSON command string is never executed
+  ---
+  duration_ms: 13.256248
+  type: 'test'
+  ...
+1..300
+# tests 300
+# suites 0
+# pass 300
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 5910.663392

@@ -1,0 +1,11 @@
+PlazCode 1.24.20 for Firefox 140 or newer
+
+1. Update and open the PlazCode desktop app first.
+2. Open about:debugging#/runtime/this-firefox in Firefox.
+3. Click Load Temporary Add-on. Open PlazCode-Extension-Firefox and select manifest.json, or select the standalone PlazCode-Firefox-VERSION.zip directly. Select a file, not a folder.
+4. Allow site access for the AI chat and localhost if Firefox asks. Refresh existing AI tabs.
+5. After a PlazCode update, Reload this addon on the same page and refresh AI tabs.
+
+This package is unsigned. Temporary addons are removed when Firefox restarts. Permanent installation in standard Firefox requires a Mozilla-signed addon; Install Add-on From File cannot permanently install this unsigned ZIP.
+
+PlazCode sends the selected chat content, task inputs, current AI-page URL and interaction status to the local desktop bridge, and requested prompts, feedback and media to the selected AI service. These are needed for chat control, tools, memory and continuation. Use only trusted AI services and review tool permissions. No PlazCode telemetry service is added.

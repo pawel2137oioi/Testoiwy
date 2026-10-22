@@ -1,0 +1,22 @@
+LOCAL THREE-SITE PATCH r4 — 2026-10-21
+123/123 automated tests passed. Refusal/quoted-command cases reproduced from user screenshots. New adapters require confirmed startup; command extraction excludes inline examples, quoted blocks and refusals. The actual shared response reader no longer recovers a cached command over a refusal. Native ChatWave connection errors abort cleanly. Startup/response code tested with controlled model replies and a mocked bridge; no guarantee of model acceptance or live Windows/Studio integration. See START-TUTAJ-PL.md and TESTY-TRZY-SERWISY.md.
+
+LOCAL CLAUDE DELIVERY HOTFIX — 2026-10-18
+This archive modifies browser scripts in PlazCode 1.24.20. See HOTFIX-CLAUDE-PL.md.
+29 deterministic regression tests passed; no live Claude/Roblox Studio integration test was performed.
+Native binaries are unchanged. The release validation below applies to the original 1.24.20 release, not to this local hotfix.
+
+--- ORIGINAL RELEASE VALIDATION ---
+PlazCode 1.24.20 — exact-source platform/browser gates and packaged macOS desktop lifetime checks passed before promotion.
+Validated source: f7c89db9ef11e26ad6226f002f5d24afc4425a96
+Validation run: https://github.com/stoveez/PlazCode/actions/runs/39002372176
+Changes: Start Agent on a new ClickUp Ask Brain chat now finishes connecting. ClickUp moves a blank chat to its saved address when the first message is sent; PlazCode kept one stable chat key for the chat it sent from instead of treating the new address as a different chat and stopping the startup. ClickUp agent-thread behavior is unchanged.
+All other features, safeguards and native launch/update behavior are retained. Final native executable and macOS app bytes are reused from validated development artifacts, not rebuilt during publication. Only release notices, checksums and package metadata change.
+A browser fixture now asserts that the Ask Brain key stays the same after the saved address appears (it fails on 1.24.19). The same fix was also tried on a real signed-in ClickUp Ask Brain chat in AgentScript mode: all five startup parts were sent and PlazCode reported ready, where 1.24.19 stopped after the first reply. ClickUp agent chats, Firefox and the Edge binary were not tried live; hosted browser fixtures use a mocked bridge.
+Validation note: the first validation attempt had one failure, in the Windows launch/update-handoff step on the hosted runner, which was not diagnosed because hosted logs were not readable. A fresh full validation run of the same commit with no code change then passed all four required jobs in a single attempt, and that run is the one pinned for publication. Publication follows the user's direct request to publish after validation.
+Windows binaries are unsigned. macOS uses ad-hoc signing and is not notarized. GitHub provenance is not Authenticode or Apple notarization.
+Microsoft Defender runner availability/result for the exact native artifact before release-notice assembly:
+Scan starting...
+Scan finished.
+Scanning D:\a\PlazCode\PlazCode\build-src-1.24.20\PlazCode/defender-scan found no threats.
+Checksums, platform evidence and packaged Mac lifetime proof are recorded in release-validation-1.24.20.

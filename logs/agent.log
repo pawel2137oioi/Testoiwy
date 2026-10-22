@@ -1,0 +1,18 @@
+2026-10-22T11:25:02.942040Z  INFO PlazCode: === PlazCode Rust Agent v1.24.20 start (pid=6540) ===
+2026-10-22T11:25:03.847834Z  INFO PlazCode::workspace: workspace root: \\?\C:\Users\pawel\PlazCodeWorkspace
+2026-10-22T11:25:03.858533Z  INFO PlazCode::workspace: FULL PC ACCESS ENABLED
+2026-10-22T11:25:03.859539Z  INFO PlazCode: PlazCode bridge listening on http://127.0.0.1:3000 (WS /ws)
+2026-10-22T11:25:03.859616Z  INFO PlazCode: Legacy WS on ws://127.0.0.1:17613 (roblox) and 17615 (AgentScript FS: C:\Users\pawel\PlazCodeWorkspace)
+2026-10-22T11:25:03.859645Z  INFO PlazCode: Boot completed in 917ms
+2026-10-22T11:25:03.915186Z  INFO PlazCode: MCP helper spawned OK
+2026-10-22T11:25:04.031636Z  INFO PlazCode: legacy WS [roblox] client connected
+2026-10-22T11:25:04.069114Z  INFO PlazCode: studio_status [roblox]: OFFLINE
+2026-10-22T11:25:04.140303Z  WARN PlazCode: Studio auto-connect: No connected Roblox Studio instance was discovered. Enable Studio as MCP server in Studio's Assistant settings.
+2026-10-22T11:25:04.237873Z  INFO PlazCode: legacy WS [roblox] client connected
+2026-10-22T11:25:04.239300Z  INFO PlazCode: studio_status [roblox]: OFFLINE
+2026-10-22T11:25:05.153248Z  INFO PlazCode: MCP runtime reset — closing the owned helper process
+2026-10-22T11:25:06.603028Z  INFO PlazCode: MCP helper spawned OK
+2026-10-22T11:25:08.736332Z  INFO PlazCode: Roblox Studio MCP connected automatically
+2026-10-22T11:25:14.104711Z  INFO PlazCode: studio_status [roblox]: CONNECTED
+2026-10-22T11:25:14.271010Z  INFO PlazCode: studio_status [roblox]: CONNECTED
+2026-10-22T11:25:25.062356Z  WARN PlazCode::skills: Community skill sync unavailable: HTTP status client error (404 Not Found) for url (https://raw.githubusercontent.com/stoveez/PlazCode/main/learned-skills/index.json)

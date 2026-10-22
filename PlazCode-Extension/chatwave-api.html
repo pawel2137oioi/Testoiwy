@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="pl"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ChatWave API — PlazCode</title><link rel="stylesheet" href="overlay.css"><link rel="stylesheet" href="chatwave-api.css"></head>
+<body><header><div><h1>ChatWave API · PlazCode</h1><p>Natywne narzędzia do pracy ze Studio</p></div><button type="button" id="newChat">Nowa rozmowa</button></header>
+<main><section id="configuration" aria-label="Połączenie z ChatWave API"><h2>Połącz swoje konto ChatWave</h2><p>Użyj klucza z ChatWave → Settings → API keys. Dostępność narzędzi zależy od API i wybranego modelu.</p><p>Wiadomości, referencje i wyniki narzędzi będą wysyłane do ChatWave. Obowiązują limity i zasady Twojego konta API.</p>
+<label for="apiKey">Klucz ChatWave API</label><input id="apiKey" type="password" autocomplete="off" placeholder="cw-…"><small>Klucz pozostaje w pamięci tej karty. Zamknięcie lub odświeżenie karty usuwa go. Nie wpisuj klucza w rozmowie z modelem.</small>
+<div class="actions"><button type="button" id="checkKey">Sprawdź klucz i pobierz modele</button></div><label for="model">Model dostępny dla Twojego klucza</label><select id="model" aria-label="Model"></select><div class="actions"><button type="button" id="connect" class="primary" hidden>Otwórz rozmowę API</button></div></section>
+<p id="status" role="status">Wpisz klucz lokalnie, aby sprawdzić dostęp do API.</p><section id="chat" aria-label="Rozmowa"></section></main>
+<footer id="composer" hidden><form id="chatForm"><textarea id="chat-input" aria-label="Wiadomość" placeholder="Najpierw uruchom Start Agent na pasku PlazCode" rows="2"></textarea><button type="submit" id="sendBtn" class="primary" aria-label="Send">Wyślij</button></form><small>Start Agent sprawdza rzeczywisty odczyt listy narzędzi. Zatrzymaj zadanie paskiem PlazCode lub przyciskiem Stop.</small></footer>
+<script src="core/debug-capture.js"></script>
+<script src="core/input-isolation.js"></script>
+<script src="core/i18n-catalog.js"></script>
+<script src="core/i18n.js"></script>
+<script src="core/motion-interchange.js"></script>
+<script src="core/motion-preview.js"></script>
+<script src="core/motion-tools.js"></script>
+<script src="core/headless-builder.js"></script>
+<script src="core/creator.js"></script>
+<script src="core/chat-creators.js"></script>
+<script src="core/luau-knowledge.js"></script>
+<script src="core/ultracode-deepseek.js"></script>
+<script src="core/ultracode.js"></script>
+<script src="core/config.js"></script>
+<script src="core/prompt-enhancer.js"></script>
+<script src="core/parser.js"></script>
+<script src="core/tool-guard.js"></script>
+<script src="core/task-center.js"></script>
+<script src="core/templates.js"></script>
+<script src="core/animlib.js"></script>
+<script src="core/studio_skills.js"></script>
+<script src="core/studio_daily.js"></script>
+<script src="core/studio_gui.js"></script>
+<script src="core/studio_plus.js"></script>
+<script src="core/agent_skills.js"></script>
+<script src="core/chatwave-api.js"></script>
+<script src="providers/chatwave-api.js"></script>
+<script src="core/activity.js"></script>
+<script src="core/checklist.js"></script>
+<script src="core/memory.js"></script>
+<script src="core/version.js"></script>
+<script src="core/cowork.js"></script>
+<script src="core/clarification.js"></script>
+<script src="core/media.js"></script>
+<script src="core/reliability.js"></script>
+<script src="providers/media.js"></script>
+<script src="core/main.js"></script>
+</body></html>
