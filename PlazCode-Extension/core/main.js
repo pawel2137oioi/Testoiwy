@@ -1694,7 +1694,7 @@
   // result, so the model can never claim the local engine is gone.
   function transportDiagnostics() {
     return {
-      transport_build: {core:"r16",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
+      transport_build: {core:"r17",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
       provider: P.id,
       last_parse_failure: A.lastParseFailure || null,
     };
@@ -4073,7 +4073,7 @@ return result`;
         if (res.kind === "parse_error") {
           A.lastParseFailure = {
             reason: res.reason, provider: P.id,
-            core_build: "r16", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
+            core_build: "r17", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
             ...(typeof RSParse.transportInfo === "function" ? RSParse.transportInfo(res.raw) : {chars:String(res.raw || "").length}),
           };
           diag("tool.parseFailure", A.lastParseFailure);
@@ -9162,6 +9162,9 @@ function renderCards(panel) {
         let r = anchorEl.getBoundingClientRect();
         if (!r.width) { bar.style.display = "none"; clearAnchorPad(); if (menuEl) menuEl.hidden = true; return; }
         bar.style.display = "flex";
+        // Measure wrapping at the actual width BEFORE computing the gap. A
+        // narrow composer can make a formerly one-line bar much taller.
+        if(P.barOutside)bar.style.width=Math.min(r.width,Math.max(0,window.innerWidth-24))+"px";
         const bh = bar.offsetHeight || 34;
         if (barCollapsed) {
           // Hidden bar (1.19.39): release the reserved strip, top padding and
@@ -9210,7 +9213,7 @@ function renderCards(panel) {
         }
         bar.style.left = Math.round(r.left) + "px";
         bar.style.top = Math.round(outside ? Math.max(4, r.top - bh - BAR_GAP) : r.top) + "px";
-        bar.style.width = Math.round(r.width) + "px";
+        bar.style.width = Math.round(P.barOutside ? Math.min(r.width,Math.max(0,window.innerWidth-24)) : r.width) + "px";
         bar.style.borderRadius = "";
         if (menuEl && !menuEl.hidden) {
           bar.classList.remove("rs-bar-inline"); // ensure fixed geometry for menu math
@@ -9235,14 +9238,15 @@ function renderCards(panel) {
       bar.style.display = "flex";
       bar.classList.add("rs-bar-float");
       // No composer yet (or 0-width during layout): keep the bar on screen so
-      // the agent is never "gone". Dock it to the bottom of the viewport.
+      // the agent is never "gone". Unrecognized experimental composers must
+      // never be covered by a bottom dock: leave their native input accessible.
       const r = f && f.isConnected ? f.getBoundingClientRect() : null;
       if (!f || !r || !r.width) {
         const w = Math.min(window.innerWidth - 24, BAR_MAX_W);
-        const bh = bar.offsetHeight || 40;
         bar.style.width = w + "px";
+        const bh = bar.offsetHeight || 40;
         bar.style.left = Math.round((window.innerWidth - w) / 2) + "px";
-        bar.style.top = Math.max(8, Math.round(window.innerHeight - bh - 16)) + "px";
+        bar.style.top = (P.missingComposerDock==='top' ? 12 : Math.max(8, Math.round(window.innerHeight - bh - 16))) + "px";
         return;
       }
       const w = Math.min(r.width, BAR_MAX_W);

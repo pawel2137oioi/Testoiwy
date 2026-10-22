@@ -1,5 +1,16 @@
-# Raport weryfikacji — 2026-10-22
+# Raport weryfikacji — 2026-10-23
 
+## r17 — dostępny czat i rozpoznawanie kompozytora
+
+**625/625 testów Node**, bez błędów i pominięć. Dodano 15 testów: kompozytor Arcee z publicznego bundle, odczyt końcowej odpowiedzi i echa użytkownika bez metadanych, limit 50000, lokalne pola bez formularza/roli textbox, plaintext-only, odtworzenie pola po SPA, inne formularze/transkrypt/PlazCode oraz niejednoznaczne edytory. Wcześniejsze testy r16 zachowano, zmieniając przypadek odrzucenia na faktyczny brak lokalnych kontrolek zamiast samego braku formularza.
+
+**6/6 prób Chromium wysyłki** (`tests/browser/webchats-smoke.cjs`) i **12/12 prób pełnego interfejsu** (`tests/browser/webchats-layout.cjs`). Zestaw interfejsu ładuje całą grupę content scripts manifestu i overlay.css, z kontrolowaną stroną i odłączonym mostem. Sprawdza natywne wpisywanie, kliknięcie Send i Enter przy nieuruchomionym agencie, brak przecięcia paska z polem, widoczność w oknie oraz niewykryty edytor. Widoki: 980×596, 953×240, 390×596. Wykrył także minimalną szerokość 520 px wychodzącą poza ekran; po poprawce przechodzą wszystkie widoki.
+
+Publiczne źródła Arcee odczytano 23 października według Europe/Warsaw. Fixture jest odtworzone z bundle, bez konta i danych użytkownika. Copilot bez logowania zwraca stronę Sign in. Nie potwierdzono zalogowanego przepływu model–most–Studio ani rzeczywistej instalacji w Firefox. Obie integracje nadal są eksperymentalne. Wersja 1.24.25, core/provider r17, parser r13. Sumy: `COMPOSER-R17-SHA256SUMS.txt`.
+
+---
+
+# Raport weryfikacji — 2026-10-22
 ## r16 — eksperymentalne Arcee i dokładnie copilot.com
 
 **610 testów, 610 zaliczonych, 0 nieudanych i 0 pominiętych.** Polecenie: `cd tests && npm test`. Dodano 58 przypadków dla nowych adapterów: wspólny kontrakt wysyłki, rzeczywiste funkcje startu i parsera, kontekst Ultra dla Roblox/AgentScript, potwierdzanie części, odmowy, nieznane role, brak granicy kompozytora i niejednoznaczne edytory, contenteditable, natywny limit i kompletny długi kod Luau. Poprzednie 552 testy pozostają zaliczone.

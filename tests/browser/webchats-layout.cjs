@@ -1,0 +1,66 @@
+// SPDX-License-Identifier: GPL-3.0-or-later
+// Actual content-script bundle + overlay CSS in Chromium, controlled native
+// chats and disconnected bridge. No authenticated site/model/Studio claim.
+const {chromium}=require('playwright');
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const root=path.resolve(__dirname,'../..'),manifest=JSON.parse(fs.readFileSync(path.join(root,'manifest.json')));
+const scripts=manifest.content_scripts.find(g=>g.js.includes('providers/webchats.js')).js.map(name=>({name,content:fs.readFileSync(path.join(root,name),'utf8')}));
+const css=fs.readFileSync(path.join(root,'overlay.css'),'utf8');
+const arcee=fs.readFileSync(path.join(root,'tests/fixtures/arcee-composer.html'),'utf8');
+async function install(page){
+  await page.evaluate(version=>{
+    const storage={rsSetupSeen:true};window.chrome={
+      runtime:{id:'plazcode-layout-test',getManifest:()=>({version}),getURL:p=>location.origin+'/__extension/'+p,onMessage:{addListener(){}},
+        sendMessage:(message,callback)=>{const reply={ok:false,error:'Test bridge disconnected'};if(callback){callback(reply);return;}return Promise.resolve(reply);}},
+      storage:{local:{get:(key,callback)=>{if(callback)callback({...storage});else return Promise.resolve({...storage});},set:(value,callback)=>{Object.assign(storage,value);callback?.();return Promise.resolve();}},onChanged:{addListener(){}}},i18n:{getMessage:()=>''}
+    };
+  },manifest.version);
+  for(const script of scripts)await page.addScriptTag({content:script.content});
+  await page.addStyleTag({content:css});await page.waitForSelector('#rs-bar');
+  // Wait for continuously scheduled placement after content/CSS sizing.
+  await page.waitForTimeout(450);
+}
+(async()=>{
+  const browser=await chromium.launch({headless:true,executablePath:process.env.PLAZCODE_CHROMIUM||'/usr/bin/chromium',args:['--no-sandbox']});
+  let passed=0;
+  try{
+    for(const [host,kind] of [['platform.arcee.ai','bundle'],['copilot.com','bare-rich'],['platform.arcee.ai','unknown'],['copilot.com','unknown']]){
+      for(const viewport of [{width:980,height:596},{width:953,height:240},{width:390,height:596}]){
+        const page=await browser.newPage({viewport});const errors=[];page.on('pageerror',error=>errors.push(error.message));
+        page.setDefaultTimeout(6000);
+        try{
+          const native=kind==='bundle'?arcee:kind==='bare-rich'?'<main><section class="composerDock"><div class="fixture-row"><div contenteditable="true" id="native-editor" style="white-space:pre-wrap"></div><div><button id="native-send" aria-label="Submit prompt" disabled>↑</button></div></div></section></main>':'<main><section class="composerDock"><textarea id="native-editor"></textarea></section></main><button id="native-send" style="position:fixed;bottom:24px;right:12%">Send</button>';
+          await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><html><body>'+native+'</body></html>'}));
+          await page.goto('https://'+host+'/');
+          await page.addStyleTag({content:'body{margin:0;background:#111;color:white}.composerDock,[data-chat-composer]{position:fixed;bottom:24px;left:12%;width:76%}textarea,#native-editor{box-sizing:border-box;width:100%;height:52px;min-width:0;color:white;background:#333}.fixture-row{display:flex;align-items:end;gap:8px}.fixture-row>div:has(textarea){flex:1;min-width:0}.fixture-row button{width:40px;height:40px}#native-editor[contenteditable]{flex:1}'});
+          await page.evaluate(()=>{
+            const ed=document.querySelector('textarea,[contenteditable]'),send=document.querySelector('#native-send,[aria-label="Send"]');
+            if(ed.id==='chat-input-textarea')ed.parentElement.parentElement.classList.add('fixture-row');
+            window.nativeSent=[];
+            const value=()=>ed.tagName==='TEXTAREA'?ed.value:ed.innerText;
+            const submit=()=>{if(!value().trim())return;window.nativeSent.push(value());if(ed.tagName==='TEXTAREA')ed.value='';else ed.textContent='';send.disabled=true;};
+            ed.addEventListener('input',()=>{send.disabled=!value().trim();});
+            ed.addEventListener('keydown',event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();submit();}});
+            send.onclick=submit;
+          });
+          await install(page);
+          const ed=page.locator('textarea,[contenteditable]').filter({visible:true}).first();
+          const layout=await page.evaluate(()=>{
+            const ed=document.querySelector('textarea,[contenteditable]'),bar=document.querySelector('#rs-bar');
+            return {editor:ed.getBoundingClientRect().toJSON(),bar:bar.getBoundingClientRect().toJSON(),detected:!!RSProvider.getEditor(),nativeStyle:ed.parentElement.getAttribute('style'),locked:ed.readOnly||ed.getAttribute('contenteditable')==='false'};
+          });
+          assert.equal(layout.detected,kind!=='unknown');assert.equal(layout.locked,false);
+          assert.ok(layout.bar.bottom<=layout.editor.top-4,JSON.stringify({host,kind,viewport,...layout}));
+          assert.ok(layout.bar.left>=0&&layout.bar.right<=viewport.width+1,JSON.stringify(layout.bar));
+          await ed.click();await ed.fill('Native click send — Zażółć 🦊');
+          await page.locator('#native-send,[aria-label="Send"]').click();
+          await ed.click();await ed.fill('Native Enter send');await ed.press('Enter');
+          assert.deepEqual(await page.evaluate(()=>window.nativeSent),['Native click send — Zażółć 🦊','Native Enter send']);
+          assert.deepEqual(errors,[]);
+          passed++;console.log(host+' '+kind+' '+viewport.width+'x'+viewport.height+': visible input, native click/Enter passed');
+        }finally{await page.close();}
+      }
+    }
+    console.log(passed+' full UI layout checks passed');
+  }finally{await browser.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});

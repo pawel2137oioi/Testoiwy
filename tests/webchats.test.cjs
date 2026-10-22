@@ -2,8 +2,8 @@
 // DOM integration fixtures based on live public pages observed 2026-10-21.
 // Tencent markup includes the signed-in final and reasoning containers. These
 // fixtures do not claim live extension/bridge or native Studio coverage.
-// Arcee and copilot.com fixtures are synthetic semantic contracts; their
-// authenticated DOM could not be inspected from the restricted environment.
+// Legacy Arcee/copilot fixtures are semantic contracts. The Arcee bundle
+// markup recovered 2026-10-23 is covered in webchats-composer.test.cjs.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -130,9 +130,9 @@ for(const id of ['arcee','copilot']) {
     assert.equal(await f.P.typeAndSend('Only the chat composer'),true);assert.equal(unrelated,0);assert.equal(f.clicks(),1);
     assert.match(f.P.displayName,/experimental/i);assert.equal(f.P.modeWarning(),'','a supported composer must not disable Start');assert.equal(f.P.requireFreshResponse,true);
   });
-  test(id+': missing composer boundary and ambiguous editors cannot send',async()=>{
+  test(id+': missing composer controls and ambiguous editors cannot send',async()=>{
     const f=fixture(id);f.ed.parentElement.removeAttribute('data-testid');
-    const wrapper=f.d.createElement('div');f.ed.parentElement.replaceWith(wrapper);wrapper.append(f.ed,f.send);
+    const wrapper=f.d.createElement('div');f.ed.parentElement.replaceWith(wrapper);wrapper.append(f.ed);f.d.body.append(f.send);
     assert.equal(f.P.getEditor(),null);assert.match(f.P.modeWarning(),/experimental/);await assert.rejects(()=>f.P.typeAndSend('test'),/signed-in/);assert.equal(f.clicks(),0);
     const g=fixture(id);g.ed.parentElement.append(g.ed.cloneNode());
     assert.equal(g.P.getEditor(),null);await assert.rejects(()=>g.P.typeAndSend('test'),/signed-in/);assert.equal(g.clicks(),0);

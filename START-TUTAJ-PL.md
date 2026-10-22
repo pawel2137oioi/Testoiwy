@@ -1,3 +1,17 @@
+# PlazCode — rozszerzenie 1.24.25, lokalna poprawka r17
+
+## r17 — pasek zasłaniający pole i brak wykrywania Arcee/Copilot
+
+Po zrzutach poprawiono wykrywanie rzeczywistego pola Arcee poza formularzem oraz lokalnych edytorów bez formularza i roli textbox. Pasek znajduje się nad rozpoznanym polem. Gdy pola nie rozpoznano, pasek przechodzi na górę okna, zamiast zakrywać dolny czat. Dopasowuje szerokość do wąskiego okna. Pisanie, kliknięcie Send i Enter bez uruchamiania agenta pozostają dostępne.
+
+**Aktualizacja:** podmień cały folder rozszerzenia, przeładuj je i odśwież kartę serwisu. Wersja **1.24.25**; raport Motif/Arcee/Copilot: **core:r17/parser:r13/provider:r17**. Używaj jednej instalacji dodatku. EXE bez zmian. Poprawki Luau i Motif są zachowane.
+
+**Weryfikacja:** 625/625 testów Node, 6/6 prób edytora i 12/12 prób pełnego interfejsu PlazCode w Chromium, w tym przycisk i Enter przy wyłączonym agencie, niewykryte pole oraz widoki odpowiadające zrzutom. Odczytano publiczny kod Arcee; Copilot publicznie pokazuje stronę logowania. Nie testowano zalogowanych rozmów z prawdziwym modelem i mostem. Integracje nadal są eksperymentalne. Szczegóły: [ARCEE-COPILOT.md](ARCEE-COPILOT.md), sumy: `COMPOSER-R17-SHA256SUMS.txt`.
+
+Poniżej historia wcześniejszych wersji; do aktualizacji obowiązuje r17 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.24, lokalna poprawka r16
 
 ## r16 — eksperymentalne Arcee i copilot.com

@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Tencent, Motif and ChatWave hooks observed 2026-10-21. Arcee and copilot.com
-// use experimental semantic contracts, pending signed-in live verification.
+// Tencent, Motif and ChatWave hooks observed 2026-10-21. Arcee hooks recovered
+// from its public app bundle 2026-10-23; copilot.com remains a semantic contract.
 // Unknown message roles are never executable.
 const RSProvider = (() => {
   'use strict';
@@ -9,19 +9,20 @@ const RSProvider = (() => {
     // signed-in page. Never infer assistant roles from arbitrary page text.
     'platform.arcee.ai': {
       id:'arcee',name:'Arcee',experimental:true,strictComposer:true,compact:true,
-      editor:'textarea[data-testid="chat-input"], textarea[placeholder*="message" i], textarea[placeholder*="prompt" i], textarea[placeholder*="chat" i], [contenteditable="true"][role="textbox"]',
-      frame:'[data-testid="chat-composer"], [data-testid="composer"], form',
+      editor:'textarea#chat-input-textarea, textarea[data-testid="chat-input"], textarea, [contenteditable="true"], [contenteditable="plaintext-only"]',
+      frame:'[data-chat-composer], [data-testid="chat-composer"], [data-testid="composer"], form',
       send:'button[data-testid="send-button"], button[aria-label*="send" i], button[aria-label*="submit" i], button[type="submit"]',
       stop:'button[data-testid="stop-button"], button[aria-label*="stop" i]',
-      user:'[data-message-author-role="user"], [data-message-role="user"], [data-role="user"]',
+      user:'.chat-user-message, [data-message-author-role="user"], [data-message-role="user"], [data-role="user"]',
       assistant:'[data-message-author-role="assistant"], [data-message-role="assistant"], [data-role="assistant"]',
-      body:'.markdown, .prose, [data-testid="message-content"]',
-      max:0,page:8000,startupPage:7000,feedbackBudget:9000,
+      body:'.chat-response-content .markdown-content, .markdown, .prose, [data-testid="message-content"]',
+      userBody:'.select-text',
+      max:50000,page:8000,startupPage:7000,feedbackBudget:9000,
     },
     'copilot.com': {
       id:'copilot',name:'Copilot',experimental:true,strictComposer:true,compact:true,
-      editor:'textarea#userInput, textarea[data-testid="composer-input"], textarea[placeholder*="message" i], textarea[placeholder*="copilot" i], [contenteditable="true"][role="textbox"]',
-      frame:'[data-testid="composer"], [data-testid="chat-composer"], form',
+      editor:'textarea, [contenteditable="true"], [contenteditable="plaintext-only"]',
+      frame:'[data-testid="composer"], [data-testid="composer-content"], [data-testid="chat-composer"], form',
       send:'button[data-testid="send-button"], button[aria-label*="send" i], button[aria-label*="submit" i], button[type="submit"]',
       stop:'button[data-testid="stop-button"], button[aria-label*="stop" i]',
       user:'[data-message-author-role="user"], [data-message-role="user"], [data-role="user"], [data-content="user-message"]',
@@ -73,18 +74,35 @@ const RSProvider = (() => {
   let lockedEditor=null;
   const editorLocks=new WeakMap();
   const richEditor=ed=>!!ed && !/^(?:TEXTAREA|INPUT)$/.test(ed.tagName);
+  const transcriptSelector='pre,code,[role="dialog"],'+site.user+','+site.assistant;
+  function strictFrame(ed) {
+    // Many React composers have neither a form nor a textbox role. Resolve
+    // their nearest local send/stop row instead of requiring invented test IDs.
+    // Never search across the page, another form or a transcript/settings pane.
+    const boundary=ed.closest(site.frame);
+    const controls=site.send+','+site.stop;
+    for(let n=ed.parentElement,depth=0;n && depth<6;n=n.parentElement,depth++){
+      if(n===document.body || n===document.documentElement || n.matches('main,[role="main"],'+transcriptSelector))break;
+      const buttons=all(n,controls).filter(b=>visible(b) && !b.closest(OWN+','+transcriptSelector) && (!b.closest('form') || b.closest('form')===ed.closest('form')));
+      const editors=all(n,site.editor).filter(e=>visible(e) && !e.closest(OWN+','+transcriptSelector));
+      if(ed===lockedEditor && n.contains(ed) && !editors.includes(ed))editors.push(ed);
+      if(buttons.length && editors.length===1 && editors[0]===ed)return n;
+      if(n===boundary)break;
+    }
+    return boundary && boundary!==ed && !boundary.matches('main,[role="main"]') ? boundary : null;
+  }
   const getEditor = () => {
     if(lockedEditor?.isConnected && visible(lockedEditor))return lockedEditor;
     if(!site.strictComposer)return firstVisible(site.editor) || (site.editorFallback && firstVisible(site.editorFallback));
     const editors=all(document,site.editor+(site.editorFallback?', '+site.editorFallback:''));
-    const candidates=editors.filter(ed=>visible(ed) && ed.closest(site.frame) && !ed.closest('pre,code,[role="dialog"],'+site.user+','+site.assistant));
+    const candidates=editors.filter(ed=>visible(ed) && !ed.disabled && !ed.closest(OWN+','+transcriptSelector) && strictFrame(ed));
     return candidates.length===1 ? candidates[0] : null;
   };
   const editorText = () => read(() => {const ed=getEditor();return richEditor(ed) ? ed.innerText ?? ed.textContent ?? '' : ed.value;}, '');
   function composerFrame() {
     const ed = getEditor();
     if (!ed) return null;
-    if(site.strictComposer)return ed.closest(site.frame);
+    if(site.strictComposer)return strictFrame(ed);
     if (site.id === 'motif') {
       // Motif has no form. Find the nearest wrapper containing its submit button.
       for (let n = ed.parentElement, i = 0; n && n!==document.body && i < 9; n = n.parentElement, i++)
@@ -119,7 +137,7 @@ const RSProvider = (() => {
     return nodes.filter(el => !nodes.some(parent => parent !== el && parent.contains(el) &&
       isUserItem(parent) === isUserItem(el)));
   }
-  const TEXT_UI_SKIP = '.rs-chip, .rs-chat-activity, button, [role="button"], .msg-actions, .msg-err, .reasoning, [data-testid*="reasoning"], .hy-think, .code-block-header, .md-code-block-banner-wrap, .markdown-viewer-code-block-header, .hyc-common-markdown__code__hd-container, .linenumber, .line-number, .react-syntax-highlighter-line-number';
+  const TEXT_UI_SKIP = '.rs-chip, .rs-chat-activity, button, [role="button"], .msg-actions, .msg-err, .reasoning, [data-testid*="reasoning"], [data-variant="Thoughts"], .hy-think, .code-block-header, .md-code-block-banner-wrap, .markdown-viewer-code-block-header, .hyc-common-markdown__code__hd-container, .linenumber, .line-number, .react-syntax-highlighter-line-number';
   const codeSource = pre => {
     const sources = all(pre,'code').filter(node => !node.closest(TEXT_UI_SKIP));
     return sources.length === 1 ? sources[0] : pre;
@@ -150,10 +168,10 @@ const RSProvider = (() => {
   }
   function replyRoots(item) {
     if (!item) return [];
-    if (!isAssistantItem(item)) return [item];
+    if (!isAssistantItem(item)) return site.userBody && item.matches('.chat-user-message') ? all(item,site.userBody).slice(0,1) : [item];
     const roots=all(item,site.body).filter(node=>!node.closest(TEXT_UI_SKIP));
     const top=roots.filter(node=>!roots.some(parent=>parent!==node && parent.contains(node)));
-    return top.length ? top : site.id==='tencent' ? [] : [item];
+    return top.length ? top : site.id==='tencent' || (site.id==='arcee' && item.matches('.chat-message')) ? [] : [item];
   }
   function classifyText(item, exclude, preserveEdges = false) {
     // Tencent renders command-shaped text inside its visible reasoning panel.
@@ -473,7 +491,8 @@ const RSProvider = (() => {
   }
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
-    build:'r16',
+    barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
+    build:'r17',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the
