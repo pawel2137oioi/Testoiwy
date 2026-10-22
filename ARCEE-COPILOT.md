@@ -1,4 +1,14 @@
-# Arcee i copilot.com — r18, rozszerzenie 1.24.26
+# Arcee i copilot.com — r19, rozszerzenie 1.24.27
+
+## R19 — przygotowanie wiadomości Copilot i rzeczywiste bloki Arcee
+
+Copilot: stary komunikat łączył zmianę edytora, tekstu i rozmowy. Teraz błędy je rozróżniają, a diagnostyka zapisuje długości bez treści wiadomości. Fokus jest rozstrzygany przed wpisaniem; zastąpienie pola jest dopuszczone wyłącznie wewnątrz przechwyconego lokalnego kontenera. Zmiana rozmowy, inny kontener lub inny szkic zatrzymują próbę bez kliknięcia. Zamiast zmieniać contenteditable/readOnly, blokada przechwytuje ręczne zdarzenia edycji. Programowa operacja może zaktualizować model strony przez handler wklejania tekstu. Nie czyta ani nie zmienia schowka systemowego.
+
+W testach na prawdziwym Lexical zwykłe insertHTML nie aktualizowało dokumentu, a natywna selekcja i techniczny końcowy BR powodowały dodatkowe różnice. Obsługa wklejania, powiadomienie o selekcji i odczyt struktury akapitów zachowują pełny tekst, również puste linie i końcowe newline. Udokumentowano to jako test biblioteki, bez twierdzenia, że obejrzano prywatny kod Copilot.
+
+Arcee: publiczny TracePreviewHost-CPZPiGAC.js renderuje pre jako komponent CodeInput, a funkcja Zt rozdziela json na js + linię on. Wspólny MAIN-world odczyt CodeMirror obsługuje standardowe cmView.rootView.view, a manifesty ładują go również na platform.arcee.ai. Czytnik używa pełnego dokumentu z długością, nie tekstu widocznego viewportu. Bez pełnego źródła nie wykonuje częściowego bloku. Usunięcie dokładnej linii on jest dopuszczone wyłącznie wokół jednego kompletnego obiektu JSON z command w rzeczywistym bloku; nie zmienia parametrów ani surowego Luau. Pierwsza prośba i korekta żądają zwykłego JSON bez znaczników markdown.
+
+Łącznie przechodzi 651 testów Node i 32 próby Chromium. Nowy zestaw controlled-editors.cjs używa React 19.2.0, Lexical 0.38.2 i CodeMirror 6. Sprawdza wymianę pola po fokusie i input, zgodność z wewnętrznym modelem, pojedynczy Send, tekst wielowierszowy/Unicode/newline, blokadę ręcznego pisania, czyszczenie szkicu i pełne źródło wirtualizowanego CodeMirror. Testy rzeczywistej funkcji startSession odtwarzają blok on/list_commands ze zrzutu i pomyślny protokół z kontekstem, również po korekcie. Nie są próbą na zalogowanych kontach z rzeczywistym modelem lub Studio.
 
 ## R18 — puste pole Copilot bez przycisku Send
 
@@ -20,7 +30,7 @@ Pasek obu nowych adapterów znajduje się nad wykrytym kompozytorem, bez dopisyw
 
 1. Podmień cały folder rozszerzenia i przeładuj go. Zachowaj jedną aktywną instalację. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`.
 2. Odśwież kartę Arcee lub dokładnie `https://copilot.com/`. Nie dodano domeny copilot.microsoft.com. EXE pozostaje bez zmian.
-3. Sprawdź wersję **1.24.26**. Raport transportu nowych adapterów: **core:r18/parser:r13/provider:r18**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
+3. Sprawdź wersję **1.24.27**. Raport transportu nowych adapterów: **core:r19/parser:r13/provider:r19**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
 4. Jeżeli aktualny interfejs serwisu nadal nie zostanie rozpoznany, zwykły czat pozostaje dostępny, a agent nie powinien klikać przypadkowych przycisków. Dla innej domeny po przekierowaniu ta rejestracja nie obowiązuje.
 
 Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przeglądarce. Wysyłanie obrazów pozostaje niezweryfikowane. Brak potwierdzenia wiadomości przez nowy wpis użytkownika zatrzymuje wysyłkę bez ponownego kliknięcia; przed ręczną próbą sprawdź historię, ponieważ wiadomość mogła dotrzeć.
@@ -48,4 +58,16 @@ PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-smoke.cjs
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-layout.cjs
 ```
 
-Sumy bieżącej paczki: `COPILOT-R18-SHA256SUMS.txt`.
+Sumy bieżącej paczki: `WEBCHATS-R19-SHA256SUMS.txt`.
+
+
+### Dodatkowe testy kontrolowanych bibliotek
+
+To zależności wyłącznie testów przeglądarki; rozszerzenie ich nie potrzebuje. Przykład instalacji w osobnym katalogu:
+
+```sh
+npm install --prefix /tmp/plazcode-ui-r19 --cache /tmp/plazcode-npm-cache --no-audit --no-fund --package-lock=false react@19.2.0 react-dom@19.2.0 lexical@0.38.2 @lexical/plain-text@0.38.2 @codemirror/view@6.38.8 @codemirror/state@6.5.2 esbuild@0.25.11
+PLAZCODE_BROWSER_DEPS=/tmp/plazcode-ui-r19 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/controlled-editors.cjs
+```
+
+Pakiet playwright musi być dostępny dla Node jak w pozostałych próbach przeglądarki. Zestaw buduje fixture w pamięci przez esbuild; nie zmienia plików runtime ani zależności tests/package-lock.json.

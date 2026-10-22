@@ -1,3 +1,19 @@
+# PlazCode — rozszerzenie 1.24.27, lokalna poprawka r19
+
+## r19 — start Copilot i odczyt bloku kodu Arcee
+
+Po kolejnych zrzutach poprawiono dwa odrębne przepływy. Copilot nie zmienia już atrybutów edytora podczas blokady; blokuje ręczne edycje zdarzeniami. Wysyłka czeka na efekt fokusu i akceptuje zastąpienie edytora wyłącznie w tym samym lokalnym kontenerze, przy niezmienionej rozmowie i dokładnej treści. Kontrolowane edytory mogą przyjąć tekst przez własny handler wklejania, bez korzystania ze schowka systemowego. Dla Lexical uwzględniono wewnętrzną selekcję i techniczny końcowy BR; nie usuwa się znaków źródła.
+
+Arcee renderuje bloki w CodeInput/CodeMirror, zamiast zwykłego pre. Odczyt korzysta teraz z pełnego dokumentu CodeMirror, również gdy DOM pokazuje tylko wycinek. Publiczny formatter Arcee dzieli znacznik json na js i linię on. Adapter rozpoznaje wyłącznie ten dokładny artefakt wokół kompletnego obiektu komendy w bloku kodu. Parametry i kod Luau pozostają dosłowne. Pierwsze żądanie i jedna korekta proszą Arcee o JSON bez markdown. Rozumowanie i cytaty pozostają wyłączone z wykonywania komend.
+
+**Aktualizacja:** podmień cały folder rozszerzenia, przeładuj je i odśwież obie strony. Numer **1.24.27**; raport Motif/Arcee/Copilot: **core:r19/parser:r13/provider:r19**. EXE bez zmian. Używaj jednej aktywnej instalacji dodatku.
+
+**Sprawdzono:** 651/651 testów Node i 32/32 próby Chromium: 15 pełnego interfejsu, 6 prostych edytorów i 11 na rzeczywistych bibliotekach React, Lexical i CodeMirror. Testy startu Arcee obejmują list_commands, jego wynik, kontekst oraz potwierdzenia, także po jednej korekcie. Nie przeprowadzono próby na zalogowanych kontach z rzeczywistym modelem/mostem/Studio. Szczegóły: [ARCEE-COPILOT.md](ARCEE-COPILOT.md), sumy: `WEBCHATS-R19-SHA256SUMS.txt`.
+
+Poniżej historia; do aktualizacji obowiązuje r19 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.26, lokalna poprawka r18
 
 ## r18 — Copilot rozpoznawany dopiero po ręcznym wpisaniu tekstu

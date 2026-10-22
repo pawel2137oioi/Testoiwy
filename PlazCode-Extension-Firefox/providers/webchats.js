@@ -72,6 +72,7 @@ const RSProvider = (() => {
   }, false);
   const firstVisible = selector => all(document, selector).find(visible) || null;
   let lockedEditor=null;
+  let copilotInputLocked=false, writingEditor=false;
   const editorLocks=new WeakMap();
   const richEditor=ed=>!!ed && !/^(?:TEXTAREA|INPUT)$/.test(ed.tagName);
   const transcriptSelector='pre,code,[role="dialog"],'+site.user+','+site.assistant;
@@ -111,7 +112,26 @@ const RSProvider = (() => {
     const candidates=editors.filter(ed=>visible(ed) && !ed.disabled && !ed.closest(OWN+','+transcriptSelector) && strictFrame(ed));
     return candidates.length===1 ? candidates[0] : null;
   };
-  const editorText = () => read(() => {const ed=getEditor();return richEditor(ed) ? ed.innerText ?? ed.textContent ?? '' : ed.value;}, '');
+  function richEditorText(ed){
+    // Lexical adds a DOM-only trailing BR to empty paragraphs and paragraphs
+    // ending in a line break. It is not part of the editor's text document.
+    if(ed.matches('[data-lexical-editor="true"]') && [...ed.children].every(node=>node.tagName==='P')){
+      const inline=node=>node.nodeType===3?node.nodeValue:node.nodeType!==1?'':node.tagName==='BR'?(node===node.parentNode.lastChild?'':'\n'):[...node.childNodes].map(inline).join('');
+      return [...ed.children].map(inline).join('\n\n');
+    }
+    return ed.innerText ?? ed.textContent ?? '';
+  }
+  const editorText = () => read(() => {const ed=getEditor();return richEditor(ed) ? richEditorText(ed) : ed.value;}, '');
+  // Keep Copilot's framework-owned editable/readOnly attributes intact. Native
+  // edits from the user are blocked during injection, while our synchronous
+  // editing command is allowed to update the site's actual editor model.
+  for(const eventName of ['beforeinput','paste','cut','drop','keydown'])document.addEventListener(eventName,event=>{
+    if(site.id!=='copilot' || !copilotInputLocked || writingEditor || !event.isTrusted)return;
+    const ed=getEditor();if(!ed || !ed.contains(event.target))return;
+    if(eventName==='keydown' && (event.key.length!==1 && !['Backspace','Delete','Enter'].includes(event.key)))return;
+    if(eventName==='keydown' && (event.ctrlKey||event.metaKey) && /^c$/i.test(event.key))return;
+    event.preventDefault();event.stopImmediatePropagation();
+  },true);
   function composerFrame() {
     const ed = getEditor();
     if (!ed) return null;
@@ -155,12 +175,24 @@ const RSProvider = (() => {
     const sources = all(pre,'code').filter(node => !node.closest(TEXT_UI_SKIP));
     return sources.length === 1 ? sources[0] : pre;
   };
+  function codeMirrorSource(content){
+    // Virtualized code cannot be reconstructed safely from the visible lines.
+    // The MAIN-world tap publishes CodeMirror's full immutable document.
+    document.dispatchEvent(new CustomEvent('rs-cm-sync'));
+    const value=content.getAttribute('data-rs-cm'),length=content.getAttribute('data-rs-cm-len');
+    return value!==null && length!==null && Number(length)===value.length ? value : null;
+  }
   function textWithout(root, exclude = '', preserveEdges = false) {
     let text = '';
     const skip = TEXT_UI_SKIP + (exclude ? ', ' + exclude : '');
     function walk(node) {
       if (node.nodeType === 3) { text += node.nodeValue; return; }
       if (node.nodeType !== 1 || matches(node, skip)) return;
+      if(site.id==='arcee' && node.matches('.cm-content')){
+        const source=codeMirrorSource(node);
+        if(source!==null){if(text && !text.endsWith('\n'))text+='\n';text+=source;}
+        return;
+      }
       if (node.tagName === 'BR') { text += '\n'; return; }
       if (node.tagName === 'PRE') {
         const source = codeSource(node);
@@ -248,6 +280,9 @@ const RSProvider = (() => {
     return '';
   }
   function setInputLock(on) {
+    if(site.id==='copilot'){
+      copilotInputLocked=!!on;lockedEditor=on?getEditor():null;return;
+    }
     const ed=getEditor();if(!ed)return;
     if(on){
       if(!editorLocks.has(ed))editorLocks.set(ed,richEditor(ed)?ed.getAttribute('contenteditable'):ed.readOnly);
@@ -260,14 +295,36 @@ const RSProvider = (() => {
       editorLocks.delete(ed);lockedEditor=null;
     }
   }
-  function setValue(ed, value) {
+  function setValue(ed,value){
+    writingEditor=true;try{return writeValue(ed,value);}finally{writingEditor=false;}
+  }
+  function writeValue(ed, value) {
     if(richEditor(ed)){
       const editable=ed.getAttribute('contenteditable');
       try{
         if(editable==='false')ed.setAttribute('contenteditable','true');
         ed.focus();
         const range=document.createRange();range.selectNodeContents(ed);
+        if(ed.matches('[data-lexical-editor="true"]') && ed.firstElementChild?.tagName==='P' && [...ed.children].every(node=>node.tagName==='P')){
+          // Keep the range inside Lexical's paragraphs. Selecting the root
+          // block boundaries can paste an extra empty paragraph into its model.
+          const first=ed.firstElementChild,last=ed.lastElementChild;
+          range.setStart(first,0);range.setEnd(last,last.childNodes.length-(last.lastChild?.nodeName==='BR'?1:0));
+        }
         const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);
+        if(site.id==='copilot')document.dispatchEvent(new Event('selectionchange'));
+        if(site.id==='copilot' && !value && typeof InputEvent==='function'){
+          const event=new InputEvent('beforeinput',{inputType:'deleteContentBackward',bubbles:true,cancelable:true,composed:true});
+          ed.dispatchEvent(event);if(event.defaultPrevented)return;
+        }
+        if(site.id==='copilot' && value && typeof DataTransfer==='function' && typeof ClipboardEvent==='function'){
+          // Controlled editors (e.g. Lexical) discard bare DOM insertHTML.
+          // Offer plain text to their paste handler so their model owns the
+          // update. This does not read or alter the OS clipboard.
+          const data=new DataTransfer();data.setData('text/plain',value);
+          const event=new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true,composed:true});
+          ed.dispatchEvent(event);if(event.defaultPrevented)return;
+        }
         // insertText turns blank lines into DIV+BR in Chromium, which can
         // change innerText in pre-wrap editors. Insert escaped plain text in
         // a pre-wrap span through the native editing command instead. No
@@ -332,10 +389,17 @@ const RSProvider = (() => {
   }
   function commandText(value, item) {
     const text = String(value || '').trim();
-    const prose = item ? classifyText(item,'pre,code') : text;
+    const prose = item ? classifyText(item,site.id==='arcee'?'pre,code,.cm-editor':'pre,code') : text;
     if (!text || isPolicyRefusal(prose)) return '';
-    const candidate = value => {
+    const candidate = (value,renderedBlock=false) => {
       const source=String(value || '').trim();
+      // Arcee's Zt formatter splits ```json into ```js + a literal "on"
+      // source line. Only unwrap that exact artifact around one complete JSON
+      // command in a rendered code block; never alter its parameter strings.
+      if(site.id==='arcee' && renderedBlock && /^on\r?\n/.test(source)){
+        const rest=source.replace(/^on\r?\n/,'');
+        try{const object=JSON.parse(rest);if(object && !Array.isArray(object) && typeof object.command==='string')return rest;}catch{}
+      }
       try {
         const object=JSON.parse(source);
         return object && typeof object==='object' && !Array.isArray(object) && typeof object.command==='string' ? source : '';
@@ -348,12 +412,13 @@ const RSProvider = (() => {
       if (lua && lua.index === 0 && (/^[ \t]*(?:\r?\n|$)/.test(source.slice(lua[0].length)) || /###\s*end[_\- ]?lua\s*###\s*$/i.test(source))) return source;
       return '';
     };
-    const blocks = item ? all(item, 'pre').filter(pre => !pre.closest('.rs-chip,.hy-think,.reasoning,blockquote,[data-testid*="reasoning"]')) : [];
+    const scopes=site.id==='arcee'?replyRoots(item):[item];
+    const blocks = item ? scopes.flatMap(root=>all(root,site.id==='arcee'?'pre,.cm-content':'pre')).filter(pre => !pre.closest(TEXT_UI_SKIP+',blockquote')) : [];
     // Tencent nests pre elements. Read one innermost code body per block.
     const leaves = blocks.filter(pre => !blocks.some(other => other !== pre && pre.contains(other)));
-    const code = leaves.map(pre => candidate(textWithout(codeSource(pre)))).filter(Boolean);
+    const code = leaves.map(pre => candidate(pre.matches('.cm-content')?codeMirrorSource(pre):textWithout(codeSource(pre)),true)).filter(Boolean);
     if (code.length) return code.join('\n\n');
-    if (item && (all(item,'pre').length || query(item,'blockquote,code'))) return '';
+    if (item && (all(item,'pre,.cm-content').length || query(item,'blockquote,code'))) return '';
     const fenced = text.match(/^```(?:json|text|txt|lua|luau)?\s*\n([\s\S]*?)\n```\s*$/i);
     if (fenced) return candidate(fenced[1]);
     // Plain JSON is accepted only as an entire response, never as an inline
@@ -382,7 +447,7 @@ const RSProvider = (() => {
   function startupRequest(engine) {
     return 'I clicked Start Agent in my installed PlazCode browser extension to connect this chat to my own '+
       (engine === 'local' ? 'local AgentScript workspace' : 'Roblox Studio project')+
-      '. The extension reads structured command blocks from normal replies and returns their actual results as chat messages. This does not use your native tools or override your safety rules. Please reply with only one fenced json block containing {"command":"list_commands","params":{}}. This lists capabilities only; do not change the project. Wait for the actual result before acknowledging readiness. If you cannot participate, say so plainly.';
+      '. The extension reads structured commands from normal replies and returns their actual results as chat messages. This does not use your native tools or override your safety rules. Please reply with '+(site.id==='arcee'?'only the plain JSON object {"command":"list_commands","params":{}}, without markdown backticks or a language label':'only one fenced json block containing {"command":"list_commands","params":{}}')+'. This lists capabilities only; do not change the project. Wait for the actual result before acknowledging readiness. If you cannot participate, say so plainly.';
   }
   let epoch = 0, chat = null, firstUser = null, lastRoute = null, hadTurns = false;
   function conversationKey() {
@@ -407,7 +472,7 @@ const RSProvider = (() => {
     failure = ''; ambiguous = false;
     const owner = ++sendEpoch;
     const checkCancelled = () => { if (owner !== sendEpoch) throw Error(site.name + ': send stopped.'); };
-    const ed = getEditor();
+    let ed = getEditor();
     if (!ed || loginGatePresent()) throw Error(site.name + ': open a signed-in chat first.');
     if (images?.length) throw Error(site.name + ': image delivery is not verified. Use text inspection tools. Nothing was sent.');
     const text = typeof window.__rsLimitOutgoing === 'function' ? window.__rsLimitOutgoing(String(value)) : String(value);
@@ -418,16 +483,35 @@ const RSProvider = (() => {
     if (stopButton()) throw Error(site.name + ': wait for the current response before sending.');
     const origin = conversationKey();
     const before = new Set(allItems().filter(isUserItem).map(itemKey));
-    ed.focus(); setValue(ed, text);
+    // A focus/input handler may replace the editor while keeping the same
+    // local composer. Adopt only one visible replacement inside that captured
+    // boundary, with an unchanged chat and the exact expected draft.
+    const originalFrame=composerFrame(),originalParent=ed.parentElement;
+    const replacementBoundary=originalFrame?.parentElement;
+    const verifyEditor=(expected,stage)=>{
+      if(origin!==conversationKey())throw Error(site.name+': chat changed '+stage+'. Nothing was sent.');
+      const current=getEditor();
+      if(!current || current!==ed && (site.id!=='copilot' || ed.isConnected && visible(ed) ||
+          ![originalParent,originalFrame,replacementBoundary].some(node=>node?.isConnected && node!==document.body && node!==document.documentElement && !node.matches('main,[role="main"]') && node.contains(current))))
+        throw Error(site.name+': composer changed '+stage+'. Nothing was sent.');
+      if(editorText()!==expected){
+        diag(site.id+'.draft_changed',{stage,expectedChars:expected.length,actualChars:editorText().length,editorReplaced:current!==ed});
+        throw Error(site.name+': prepared text changed '+stage+'. Nothing was sent.');
+      }
+      ed=current;if(site.id==='copilot' && copilotInputLocked)lockedEditor=ed;
+    };
+    ed.focus();
+    if(site.id==='copilot'){await sleep(100);checkCancelled();verifyEditor('','after focusing');}
+    setValue(ed, text);
     await sleep(100);
     checkCancelled();
-    if (getEditor() !== ed || editorText() !== text || origin !== conversationKey()) throw Error(site.name + ': composer or chat changed before sending.');
+    verifyEditor(text,'before sending');
     if (!await waitFor(() => owner !== sendEpoch || enabled(sendButton()) || loginGatePresent(), 3000) || loginGatePresent()) {
       failure = site.name + ': send is unavailable. Check the chat and sign in if needed.';
       throw Error(failure);
     }
     checkCancelled();
-    if (getEditor() !== ed || editorText() !== text || origin !== conversationKey()) throw Error(site.name + ': draft changed before sending.');
+    verifyEditor(text,'before clicking Send');
     const b = sendButton();
     if (!enabled(b)) throw Error(site.name + ': send is unavailable.');
     // Commit exactly once. Never fall back to Enter or re-click on a timeout.
@@ -473,8 +557,9 @@ const RSProvider = (() => {
   function findToolBlockSpot(item) {
     if (!isAssistantItem(item)) return null;
     let ref = null;
-    for (const pre of all(item, 'pre')) {
-      if (pre.closest('.rs-chip,.hy-think,.reasoning,blockquote,[data-testid*="reasoning"]') || !/"(?:command|tool)"\s*:|###\s*LUA|###mcp_tool###/i.test(pre.textContent || '')) continue;
+    const scopes=site.id==='arcee'?replyRoots(item):[item];
+    for (const pre of scopes.flatMap(root=>all(root,site.id==='arcee'?'pre,.cm-editor':'pre'))) {
+      if (pre.closest(TEXT_UI_SKIP+',blockquote') || !/"(?:command|tool)"\s*:|###\s*LUA|###mcp_tool###/i.test(query(pre,'.cm-content')?codeMirrorSource(query(pre,'.cm-content'))||'':pre.textContent || '')) continue;
       pre.classList.add('rs-tool-hide'); item.classList.add('rs-cmd-mask'); ref ||= pre;
     }
     return ref?.parentElement ? {parent:ref.parentElement,ref} : null;
@@ -505,13 +590,14 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r18',
+    build:'r19',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the
     // COMPLETE context to acknowledged parts, never to the first handshake.
     compactStartup:!!site.compact || site.max > 0,
     startupReplyAsCode:true, startupRequest:site.compact || site.max > 0 ? startupRequest : undefined, startupFeedbackMessages,
+    startupCorrection:site.id==='arcee'?'PlazCode startup check: reply with only the plain JSON object {"command":"list_commands","params":{}}, without markdown backticks or any language label. The extension runs it against the connected bridge. Wait for the actual result.':undefined,
     requireConfirmedStartup:true,
     requireFreshResponse:site.id==='motif' || !!site.strictComposer,
     // Legacy marker-only sessions may have been armed by an unsuccessful

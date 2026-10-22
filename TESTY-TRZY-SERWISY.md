@@ -1,5 +1,17 @@
 # Raport weryfikacji — 2026-10-23
 
+## r19 — Copilot composer changed oraz Arcee js/on/CodeMirror
+
+**651/651 testów Node**, bez błędów i pominięć. Nowy plik webchats-r19.test.cjs ma 18 przypadków: wymiana edytora po fokusie/input, inny szkic/kontener/rozmowa, Stop, odczyt CodeMirror ze zrzutu Arcee, pełne długie źródło, niezmienione parametry, aktualizacja dokumentu o tej samej długości, brak tapu, niepełny/niepoprawny artefakt on, cytaty i rozumowanie, format startu oraz MAIN-world rejestracja wszystkich kopii. Dodano też 2 testy rzeczywistego startSession Arcee: list_commands z CodeMirror, wynik, potwierdzane części kontekstu i stan gotowości, także po jednej korekcie formatu. Suma: wcześniejsze 631 + 18 + 2.
+
+**32/32 próby Chromium**: 15 pełnego interfejsu, 6 podstawowej wysyłki i 11 controlled-editors.cjs. Nowy zestaw uruchamia prawdziwe React/Lexical/CodeMirror na kontrolowanych stronach. Weryfikuje wewnętrzny model edytora, nie tylko tekst DOM. Wymiana pola po fokusie i input, pierwsza wiadomość w istniejącym czacie aa, źródło wielowierszowe z Unicode/HTML/newline, czyszczenie, blokada klawisza użytkownika i przywrócenie edycji przechodzą. Prawdziwy CodeMirror przekazuje cały długi dokument mimo wirtualizacji; adapter rozpoznaje js/on/list_commands. Zależności i polecenia: ARCEE-COPILOT.md.
+
+Nie testowano zalogowanych stron z rzeczywistym modelem i mostem. Rozpoznanie artefaktu Arcee opiera się na publicznym bundle z poprzedniej sesji i nowym zrzucie. Mechanizm kontrolowanego edytora Copilot sprawdzono na bibliotekach, bez potwierdzenia wersji/frameworka prywatnego interfejsu Microsoft. Nie usunięto kontroli zmiany rozmowy ani zgodności treści i nie dodano ponowienia wysyłki.
+
+Wersja 1.24.27, core/provider r19, parser r13. Zsynchronizowane trzy kopie rozszerzenia. Sumy: WEBCHATS-R19-SHA256SUMS.txt.
+
+---
+
 ## r18 — wykrycie Copilot przed pojawieniem się Send
 
 **631/631 testów Node**, bez błędów i pominięć; **6/6 prób edytowania/wysyłki** i **15/15 prób pełnego interfejsu Chromium**. Nowe 6 testów sprawdza puste pole z polską i angielską etykietą, domontowanie polskiego Send po input i jego usunięcie po wysłaniu, /chat z query string ze zrzutu, brak przycisku po wpisaniu bez przypadkowych kliknięć, niejednoznaczne edytory i polski Stop. Te same 21 testów kompozytora uruchomione na kodzie r17: 16 zaliczonych, 5 nieudanych. Na r18 wszystkie przechodzą.

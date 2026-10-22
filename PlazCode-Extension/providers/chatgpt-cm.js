@@ -80,8 +80,10 @@
   // The view can hang off the content node directly, or off its own dom's tile.
   function viewOf(content) {
     const t = content && content.cmTile;
-    if (!t) return null;
-    return t.view || (t.dom && t.dom.cmTile && t.dom.cmTile.view) || null;
+    if(t)return t.view || (t.dom && t.dom.cmTile && t.dom.cmTile.view) || null;
+    // Standard CodeMirror 6 (also used by Arcee's read-only CodeInput).
+    const cm=content && content.cmView;
+    return cm && cm.rootView && cm.rootView.view || null;
   }
 
   function docOf(content) {

@@ -103,7 +103,7 @@ for(const id of Object.keys(hosts)) {
   });
   test(id+': Co-work draft compare-and-swap and input lock',async()=>{
     const f=fixture(id);assert.equal((await f.P.writeDraft('followup','')).ok,true);assert.equal((await f.P.writeDraft('lost','wrong')).ok,false);assert.equal(f.ed.value,'followup');
-    f.P.setInputLock(true);assert.equal(f.ed.readOnly,true);f.P.setInputLock(false);assert.equal(f.ed.readOnly,false);
+    f.P.setInputLock(true);assert.equal(f.ed.readOnly,id!=='copilot');f.P.setInputLock(false);assert.equal(f.ed.readOnly,false);
   });
   test(id+': chat key survives first turn, decoration and saved route',()=>{
     const f=fixture(id);const key=f.P.conversationKey();const row=f.add('user','startup');assert.equal(f.P.conversationKey(),key);
@@ -149,10 +149,10 @@ for(const id of ['arcee','copilot']) {
     f.d.execCommand=(cmd,ui,value)=>{const tmp=f.d.createElement('div');tmp.innerHTML=value;ed.textContent=cmd==='delete'?'':tmp.textContent;return true;};
     f.send.replaceWith(f.send.cloneNode(true));const send=f.d.querySelector('[data-testid="send-button"],[aria-label="Send message"]');let clicks=0;
     send.onclick=()=>{clicks++;f.add('user',f.P.editorText());ed.textContent='';};
-    f.P.setInputLock(true);assert.equal(ed.getAttribute('contenteditable'),'false');assert.equal(f.P.getEditor(),ed);
+    f.P.setInputLock(true);assert.equal(ed.getAttribute('contenteditable'),id==='copilot'?'true':'false');assert.equal(f.P.getEditor(),ed);
     const text='local p = Instance.new("Part")\n\nlocal label = "Zażółć 🦊 <script> &lt;"\nreturn p\n';
     assert.equal(await f.P.typeAndSend(text),true);assert.equal(clicks,1);assert.equal(f.P.itemText(f.P.allItems()[0]),text.trim());
-    assert.equal(ed.getAttribute('contenteditable'),'false');f.P.setInputLock(false);assert.equal(ed.getAttribute('contenteditable'),'true');
+    assert.equal(ed.getAttribute('contenteditable'),id==='copilot'?'true':'false');f.P.setInputLock(false);assert.equal(ed.getAttribute('contenteditable'),'true');
   });
   test(id+': rich editor failure is explicit and never submits',async()=>{
     const f=fixture(id),ed=f.d.createElement('div');ed.setAttribute('contenteditable','true');ed.setAttribute('role','textbox');f.ed.replaceWith(ed);
@@ -278,7 +278,7 @@ test('all packaged copies register each host and preserve valid script paths and
 
 // Run the actual shared startup function and its actual prompt builder. The
 // bridge and model replies are controlled; DOM delivery uses the real adapter.
-function bootstrapFixture(id, {engine='roblox', effort='ultracode', custom='', wrongAck=false, initialReply, contextReply, nativeError}={}) {
+function bootstrapFixture(id, {engine='roblox', effort='ultracode', custom='', wrongAck=false, initialReply, contextReply, nativeError, arceeCodeMirror=false, handshakeReplies}={}) {
   const sent=[],commands=[],banners=[],covers=[]; let f;
   const cap=id==='motif'?49999:16000;
   f=fixture(id,{onSend({d,ed,send,add}) {
@@ -287,10 +287,14 @@ function bootstrapFixture(id, {engine='roblox', effort='ultracode', custom='', w
     add('user',text);ed.value='';if(id==='chatwave')send.setAttribute('aria-label','Voice input');
     if(nativeError){const alert=d.createElement('div');alert.setAttribute('role','alert');alert.textContent=nativeError;d.body.append(alert);return;}
     const part=text.match(/^⟦RS-SYS⟧ PlazCode startup context part (\d+)\/(\d+)\./);
-    const response=sent.length===1?(initialReply??'```json\n{"command":"list_commands","params":{}}\n```'):contextReply??(part&&Number(part[1])<Number(part[2])?(wrongAck?'Wrong acknowledgement':`PlazCode startup part ${part[1]}/${part[2]} received.`):'PlazCode is ready.');
-    add('assistant',response);
+    const response=handshakeReplies?.[sent.length-1] ?? (sent.length===1?(initialReply??'```json\n{"command":"list_commands","params":{}}\n```'):contextReply??(part&&Number(part[1])<Number(part[2])?(wrongAck?'Wrong acknowledgement':`PlazCode startup part ${part[1]}/${part[2]} received.`):'PlazCode is ready.'));
+    if(arceeCodeMirror && response.includes('"command"')){
+      const row=add('assistant','<div class="chat-response-content"><div class="markdown-content"><div>js</div><div class="cm-editor"><div class="cm-content"><div class="cm-line">partial DOM</div></div></div></div></div>',true);
+      const text=response.replace(/^```json\n/,'').replace(/\n```$/,'');row.querySelector('.cm-content').cmView={rootView:{view:{state:{doc:{length:text.length,toString:()=>text}}}}};
+    }else add('assistant',response);
   }});
   const c=f.dom.getInternalVMContext(),w=f.w;
+  if(arceeCodeMirror){w.setInterval=()=>1;vm.runInContext(fs.readFileSync(path.join(root,'providers/chatgpt-cm.js'),'utf8'),c);}
   w.__rsThinkingLevel=()=>effort;w.__rsShowApproach=()=>true;w.__rsEngine=()=>engine;
   for(const name of ['luau-knowledge','ultracode-deepseek','ultracode','chat-creators','config','clarification','parser'])
     vm.runInContext(fs.readFileSync(path.join(root,'core',name+'.js'),'utf8'),c);
@@ -321,6 +325,12 @@ function bootstrapFixture(id, {engine='roblox', effort='ultracode', custom='', w
   vm.runInContext(main.slice(helperStart,helperEnd)+'\n'+main.slice(restoreStart,restoreEnd)+'\n'+main.slice(promptStart,promptEnd)+'\n'+main.slice(start,end)+'\nwindow.startBootstrap=startSession;window.fullStartupContext=systemPrompt;window.parseCommands=parseProviderToolCalls;window.hasMarkerSession=domHasRsSignal;',c);
   return {...f,sent,commands,banners,covers,A,cap,run:options=>w.startBootstrap(options)};
 }
+for(const correction of [false,true])test('Arcee actual bootstrap accepts screenshot CodeMirror artifact, correction='+correction,async()=>{
+ const command='on\n{\n"command":"list_commands",\n"params":{}\n}';
+ const f=bootstrapFixture('arcee',{arceeCodeMirror:true,handshakeReplies:correction?['Protocol request received.',command]:[command]});
+ const result=await f.run();assert.equal(result?.ready,true,JSON.stringify(f.banners));assert.equal(f.A._confirmedStartup,true);assert.deepEqual(f.commands,['list_commands']);
+ assert.match(f.sent[0],/plain JSON/);if(correction)assert.equal(f.sent[1],f.P.startupCorrection);assert.deepEqual(f.banners,[]);
+});
 for(const id of ['arcee','copilot','motif','chatwave'])for(const engine of ['roblox','local']) {
   test(id+': actual bootstrap with '+engine+' Ultra keeps every startup message within the site limit',async()=>{
     const custom='USER PREFERENCE: preserve this entire reference.\n'+('Do not omit my project preferences. 🦊\n'.repeat(1700))+'\nCUSTOM_PREFERENCE_END';

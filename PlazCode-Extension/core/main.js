@@ -1694,7 +1694,7 @@
   // result, so the model can never claim the local engine is gone.
   function transportDiagnostics() {
     return {
-      transport_build: {core:"r18",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
+      transport_build: {core:"r19",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
       provider: P.id,
       last_parse_failure: A.lastParseFailure || null,
     };
@@ -4073,7 +4073,7 @@ return result`;
         if (res.kind === "parse_error") {
           A.lastParseFailure = {
             reason: res.reason, provider: P.id,
-            core_build: "r18", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
+            core_build: "r19", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
             ...(typeof RSParse.transportInfo === "function" ? RSParse.transportInfo(res.raw) : {chars:String(res.raw || "").length}),
           };
           diag("tool.parseFailure", A.lastParseFailure);
@@ -4894,9 +4894,9 @@ return result`;
       if (listRes.kind === "text" && !isProviderPolicyRefusal(listRes.text) &&
           (!P.startupReplySettled || P.startupReplySettled())) {
         diag("start.protocolCorrection", { provider: P.id });
-        const correctionBase = await submitAndGetBase(P.id === "notion"
+        const correctionBase = await submitAndGetBase(P.startupCorrection || (P.id === "notion"
           ? 'Please use one fenced json code block containing {"command":"list_commands"} for my PlazCode connection request. This requests the command list; it does not edit a Notion page. If you cannot participate, explain briefly.'
-          : 'PlazCode startup check: reply with exactly one fenced json code block containing {"command":"list_commands"} and nothing else. The PlazCode extension reads that reply and runs the command against the connected bridge; this is a protocol handshake, not a project task.');
+          : 'PlazCode startup check: reply with exactly one fenced json code block containing {"command":"list_commands"} and nothing else. The PlazCode extension reads that reply and runs the command against the connected bridge; this is a protocol handshake, not a project task.'));
         if (!alive() || A.stop) return;
         listRes = validateProviderResponse(await waitForResponse(correctionBase));
         if (!alive() || A.stop || listRes.kind === "stopped") return;
