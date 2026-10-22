@@ -94,7 +94,7 @@ for(const missingParser of [false,true])test('actual status reports loaded trans
  const f=fixture(''),c=vm.createContext({P:f.P,RSParse:missingParser?{}:f.w.parser,A:{bridge:{},toolList:[]},window:{},activeEngine:()=> 'roblox'});
  vm.runInContext(section('  function transportDiagnostics()','  function asStateTag()')+'globalThis.status=async function(name,args){\n'+section('    if (name === "plazcode_status") {','    if (name === "list_commands" || name === "list_tools") {')+'\n};',c);
  const info=JSON.parse((await c.status('plazcode_status',{})).split('\n').slice(1).join('\n'));
- assert.equal(info.transport_build.core,'r17');assert.equal(info.transport_build.provider,'r13');assert.equal(info.transport_build.parser,missingParser?'unknown':'r13');assert.equal(info.last_parse_failure,null);
+ assert.equal(info.transport_build.core,'r18');assert.equal(info.transport_build.provider,'r13');assert.equal(info.transport_build.parser,missingParser?'unknown':'r13');assert.equal(info.last_parse_failure,null);
 });
 
 const internal='UIBlox LUMBERYAK INTERNAL: Too many arguments given for format string';

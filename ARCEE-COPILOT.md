@@ -1,6 +1,14 @@
-# Arcee i copilot.com — r17, rozszerzenie 1.24.25
+# Arcee i copilot.com — r18, rozszerzenie 1.24.26
 
-## Co poprawiono po zrzutach
+## R18 — puste pole Copilot bez przycisku Send
+
+Po aktualizacji r17 użytkownik potwierdził, że wpisanie dowolnego tekstu uruchamia wykrywanie. Rozpoznanie kompozytora było zależne od przycisku pojawiającego się dopiero po wpisaniu. Teraz Copilot może zostać rozpoznany przed montażem Send: po etykiecie pola wiadomości/Copilot albo jako jedyny widoczny edytor w głównej części adresu /chat. Dotyczy również parametrów prompt=login i hasLW=false ze zrzutu, które same nie oznaczają strony logowania.
+
+Najpierw sprawdzane jest pole i przygotowywana wiadomość, a dopiero potem agent czeka na aktywny przycisk w lokalnym kontenerze. Wspierane są polskie etykiety Wyślij/Prześlij oraz Zatrzymaj/Przerwij. Gdy przycisk się nie pojawi, nie ma kliknięcia innej kontrolki ani zastępczego Enter. Kilka kandydatów nadal oznacza brak automatycznego wyboru. Pisanie przed Start Agent nie jest już wymagane.
+
+Dodano 6 testów Node i 3 widoki pełnego interfejsu z pustym edytorem, brakiem Send, jego pojawieniem się po zdarzeniu input i usunięciem po wysłaniu. Sprawdzono pierwszą wiadomość bez ręcznego znaku oraz zwykłe kliknięcie/Enter. Na r17 5 z 21 testów kompozytora nie przechodziło; r18 zalicza wszystkie. Łącznie: 631 testów Node, 6 prób wysyłki i 15 prób pełnego interfejsu Chromium. To fixture i kontrolowany most; nie test prawdziwego modelu na koncie użytkownika. Odczyt /chat w tej sesji blokował CONNECT 403.
+
+## Co poprawiono po zrzutach w r17
 
 W r16 adapter wymagał formularza lub wymyślonego znacznika kontenera, a contenteditable musiał mieć rolę textbox. Arcee używa textarea `#chat-input-textarea` poza formularzem. Gdy pole nie zostało rozpoznane, wspólny interfejs dokował pasek na dole ekranu, zakrywając natywny czat.
 
@@ -12,7 +20,7 @@ Pasek obu nowych adapterów znajduje się nad wykrytym kompozytorem, bez dopisyw
 
 1. Podmień cały folder rozszerzenia i przeładuj go. Zachowaj jedną aktywną instalację. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`.
 2. Odśwież kartę Arcee lub dokładnie `https://copilot.com/`. Nie dodano domeny copilot.microsoft.com. EXE pozostaje bez zmian.
-3. Sprawdź wersję **1.24.25**. Raport transportu nowych adapterów: **core:r17/parser:r13/provider:r17**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
+3. Sprawdź wersję **1.24.26**. Raport transportu nowych adapterów: **core:r18/parser:r13/provider:r18**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
 4. Jeżeli aktualny interfejs serwisu nadal nie zostanie rozpoznany, zwykły czat pozostaje dostępny, a agent nie powinien klikać przypadkowych przycisków. Dla innej domeny po przekierowaniu ta rejestracja nie obowiązuje.
 
 Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przeglądarce. Wysyłanie obrazów pozostaje niezweryfikowane. Brak potwierdzenia wiadomości przez nowy wpis użytkownika zatrzymuje wysyłkę bez ponownego kliknięcia; przed ręczną próbą sprawdź historię, ponieważ wiadomość mogła dotrzeć.
@@ -23,7 +31,7 @@ Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przegl�
 
 Publiczny GET copilot.com zwraca stronę Microsoft Copilot Sign in, bez edytora rozmowy. Dostosowanie kompozytora Copilot nadal opiera się na kontrolowanych strukturach DOM. **Nie przeprowadzono testu zalogowanej rozmowy Arcee ani Copilot z rzeczywistym modelem, mostem lub Studio. Integracje pozostają eksperymentalne.**
 
-Przeszło 625 testów Node, 6 prób natywnego edytowania/wysyłki w Chromium i 12 prób pełnego interfejsu PlazCode. Te ostatnie ładują wszystkie skrypty grupy manifestu i overlay.css przy kontrolowanej stronie i odłączonym moście. Dla obu domen sprawdzają geometrię paska, odblokowane pole, kliknięcie Send i Enter bez Start Agent, z wykrytym i niewykrytym edytorem. Widoki: 980×596, 953×240 i 390×596. To sprawdzenie interfejsu na fixture, nie rozszerzenia zainstalowanego w prawdziwym koncie serwisu ani przeglądarki Firefox.
+W r17 przeszło 625 testów Node, 6 prób natywnego edytowania/wysyłki w Chromium i 12 prób pełnego interfejsu PlazCode. Te ostatnie ładują wszystkie skrypty grupy manifestu i overlay.css przy kontrolowanej stronie i odłączonym moście. Dla obu domen sprawdzają geometrię paska, odblokowane pole, kliknięcie Send i Enter bez Start Agent, z wykrytym i niewykrytym edytorem. Widoki: 980×596, 953×240 i 390×596. To sprawdzenie interfejsu na fixture, nie rozszerzenia zainstalowanego w prawdziwym koncie serwisu ani przeglądarki Firefox.
 
 ## Powtórzenie testów
 
@@ -40,4 +48,4 @@ PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-smoke.cjs
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-layout.cjs
 ```
 
-Sumy bieżącej paczki: `COMPOSER-R17-SHA256SUMS.txt`.
+Sumy bieżącej paczki: `COPILOT-R18-SHA256SUMS.txt`.

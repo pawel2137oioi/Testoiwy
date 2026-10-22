@@ -1,5 +1,13 @@
 # Raport weryfikacji — 2026-10-23
 
+## r18 — wykrycie Copilot przed pojawieniem się Send
+
+**631/631 testów Node**, bez błędów i pominięć; **6/6 prób edytowania/wysyłki** i **15/15 prób pełnego interfejsu Chromium**. Nowe 6 testów sprawdza puste pole z polską i angielską etykietą, domontowanie polskiego Send po input i jego usunięcie po wysłaniu, /chat z query string ze zrzutu, brak przycisku po wpisaniu bez przypadkowych kliknięć, niejednoznaczne edytory i polski Stop. Te same 21 testów kompozytora uruchomione na kodzie r17: 16 zaliczonych, 5 nieudanych. Na r18 wszystkie przechodzą.
+
+Dodano 3 próby pełnego interfejsu w widokach 980×596, 953×240 i 390×596: contenteditable z etykietą Wyślij wiadomość do funkcji Copilot, brak Send przed wpisaniem, pierwsza wysyłka przez adapter bez ręcznej litery, ponowne wykrywanie po usunięciu Send oraz natywne kliknięcie/Enter przy nieuruchomionym agencie. Scenariusz odpowiada zachowaniu potwierdzonemu przez użytkownika; fixture pozostaje kontrolowane. Bieżący odczyt /chat blokował CONNECT 403. Nie testowano zalogowanego modelu ani Studio. Wersja 1.24.26, core/provider r18, parser r13. Sumy: `COPILOT-R18-SHA256SUMS.txt`.
+
+---
+
 ## r17 — dostępny czat i rozpoznawanie kompozytora
 
 **625/625 testów Node**, bez błędów i pominięć. Dodano 15 testów: kompozytor Arcee z publicznego bundle, odczyt końcowej odpowiedzi i echa użytkownika bez metadanych, limit 50000, lokalne pola bez formularza/roli textbox, plaintext-only, odtworzenie pola po SPA, inne formularze/transkrypt/PlazCode oraz niejednoznaczne edytory. Wcześniejsze testy r16 zachowano, zmieniając przypadek odrzucenia na faktyczny brak lokalnych kontrolek zamiast samego braku formularza.

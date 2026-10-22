@@ -23,8 +23,8 @@ const RSProvider = (() => {
       id:'copilot',name:'Copilot',experimental:true,strictComposer:true,compact:true,
       editor:'textarea, [contenteditable="true"], [contenteditable="plaintext-only"]',
       frame:'[data-testid="composer"], [data-testid="composer-content"], [data-testid="chat-composer"], form',
-      send:'button[data-testid="send-button"], button[aria-label*="send" i], button[aria-label*="submit" i], button[type="submit"]',
-      stop:'button[data-testid="stop-button"], button[aria-label*="stop" i]',
+      send:'button[data-testid="send-button"], button[data-testid="submit-button"], button[aria-label*="send" i], button[aria-label*="submit" i], button[aria-label*="wyślij" i], button[aria-label*="prześlij" i], button[title*="wyślij" i], button[type="submit"]',
+      stop:'button[data-testid="stop-button"], button[aria-label*="stop" i], button[aria-label*="zatrzymaj" i], button[aria-label*="przerwij" i]',
       user:'[data-message-author-role="user"], [data-message-role="user"], [data-role="user"], [data-content="user-message"]',
       assistant:'[data-message-author-role="assistant"], [data-message-role="assistant"], [data-role="assistant"], [data-content="ai-message"]',
       body:'.markdown, .prose, .markdown-body, [data-testid="message-content"]',
@@ -75,6 +75,19 @@ const RSProvider = (() => {
   const editorLocks=new WeakMap();
   const richEditor=ed=>!!ed && !/^(?:TEXTAREA|INPUT)$/.test(ed.tagName);
   const transcriptSelector='pre,code,[role="dialog"],'+site.user+','+site.assistant;
+  function emptyCopilotFrame(ed) {
+    if(site.id!=='copilot')return null;
+    const labels=['placeholder','aria-label','data-placeholder'].map(name=>ed.getAttribute(name)||'').join(' ');
+    // Copilot hides Send until input arrives. A labeled chat editor, or the
+    // sole editor in /chat's main pane, must be found before that button exists.
+    // The actual send still waits for an enabled local button after typing.
+    const chatLabel=/copilot|send (?:a )?message|wyślij wiadomość|prześlij wiadomość/i.test(labels);
+    const chatPane=/^\/chat(?:\/|$)/i.test(location.pathname) && ed.closest('main,[role="main"]');
+    if(!chatLabel && !chatPane)return null;
+    const parent=ed.parentElement;
+    if(!parent || parent===document.body || parent===document.documentElement || parent.matches('main,[role="main"],'+transcriptSelector))return null;
+    return parent;
+  }
   function strictFrame(ed) {
     // Many React composers have neither a form nor a textbox role. Resolve
     // their nearest local send/stop row instead of requiring invented test IDs.
@@ -89,7 +102,7 @@ const RSProvider = (() => {
       if(buttons.length && editors.length===1 && editors[0]===ed)return n;
       if(n===boundary)break;
     }
-    return boundary && boundary!==ed && !boundary.matches('main,[role="main"]') ? boundary : null;
+    return boundary && boundary!==ed && !boundary.matches('main,[role="main"]') ? boundary : emptyCopilotFrame(ed);
   }
   const getEditor = () => {
     if(lockedEditor?.isConnected && visible(lockedEditor))return lockedEditor;
@@ -492,7 +505,7 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r17',
+    build:'r18',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the

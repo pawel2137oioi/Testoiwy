@@ -28,6 +28,38 @@ test('Arcee frontend 50000-character limit is enforced before editing',async()=>
   const f=fixture('platform.arcee.ai',arcee),ed=f.P.getEditor();
   await assert.rejects(()=>f.P.typeAndSend('x'.repeat(50001)),/50000 characters/);assert.equal(ed.value,'');
 });
+for(const label of ['Wyślij wiadomość do funkcji Copilot','Message Copilot']) {
+  test('Copilot finds an empty labeled editor before Send is mounted: '+label,async()=>{
+    const f=fixture('copilot.com','<main><section><div><textarea placeholder="'+label+'"></textarea></div><div id="actions"></div></section><div id="thread"></div></main>');
+    const ed=f.d.querySelector('textarea');assert.equal(f.d.querySelector('button'),null);assert.equal(f.P.getEditor(),ed);assert.equal(f.P.modeWarning(),'');
+    let clicks=0;
+    ed.oninput=()=>{
+      const send=f.d.createElement('button');send.type='button';send.setAttribute('aria-label','Wyślij wiadomość');send.textContent='↑';
+      send.onclick=()=>{clicks++;const row=f.d.createElement('div');row.dataset.role='user';row.textContent=ed.value;f.d.querySelector('#thread').append(row);ed.value='';send.remove();};
+      f.d.querySelector('#actions').replaceChildren(send);
+    };
+    assert.equal(await f.P.typeAndSend('Start without a manually typed character'),true);assert.equal(clicks,1);assert.equal(ed.value,'');
+    assert.equal(f.d.querySelector('button'),null);assert.equal(f.P.getEditor(),ed);assert.equal(f.P.modeWarning(),'');
+  });
+}
+test('Copilot /chat main editor without a label is discoverable while Send is hidden',()=>{
+  const f=fixture('copilot.com','<main><section><div contenteditable="true"></div></section></main>');
+  f.w.history.pushState({},'', '/chat?fromcode=example&prompt=login&hasLW=false');assert.equal(f.P.getEditor(),f.d.querySelector('[contenteditable]'));assert.equal(f.P.modeWarning(),'');
+});
+test('Copilot missing Send after typing fails without clicking another control',async()=>{
+  const f=fixture('copilot.com','<main><section><textarea placeholder="Message Copilot"></textarea><button type="button" aria-label="Upload file">+</button></section></main>');
+  let clicks=0;f.d.querySelector('button').onclick=()=>clicks++;
+  await assert.rejects(()=>f.P.typeAndSend('Full pending message'),/send is unavailable/);assert.equal(clicks,0);assert.equal(f.P.sendFailureAmbiguous(),false);assert.equal(f.P.editorText(),'Full pending message');
+});
+test('Copilot empty editors remain ambiguous and a transcript cannot become the composer',()=>{
+  const f=fixture('copilot.com','<main><section><textarea placeholder="Message Copilot"></textarea><textarea placeholder="Message Copilot"></textarea></section><div data-role="assistant"><textarea placeholder="Message Copilot"></textarea></div></main>');
+  assert.equal(f.P.getEditor(),null);
+});
+test('Copilot Polish Stop remains generation and Stop clicks the local control once',()=>{
+  const f=fixture('copilot.com','<main><section><textarea placeholder="Wyślij wiadomość do funkcji Copilot"></textarea><button type="button" aria-label="Zatrzymaj generowanie">■</button></section></main>');
+  let clicks=0;f.d.querySelector('button').onclick=()=>clicks++;
+  assert.equal(f.P.isHardGenerating(),true);f.P.stopGeneration();assert.equal(clicks,1);
+});
 for(const host of ['platform.arcee.ai','copilot.com']) {
   for(const editor of ['<textarea placeholder="Ask anything"></textarea>','<div contenteditable="true"></div>','<div contenteditable="plaintext-only" data-lexical-editor="true"></div>']) {
     test(host+': local composer without form/test IDs/textbox role: '+editor,()=>{

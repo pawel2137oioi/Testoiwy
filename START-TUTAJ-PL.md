@@ -1,3 +1,17 @@
+# PlazCode — rozszerzenie 1.24.26, lokalna poprawka r18
+
+## r18 — Copilot rozpoznawany dopiero po ręcznym wpisaniu tekstu
+
+Użytkownik potwierdził, że na copilot.com/chat rozpoznanie działa dopiero po wpisaniu dowolnego tekstu. R17 uzależniało znalezienie pola poza formularzem od przycisku Send, który Copilot może montować dopiero dla niepustej wiadomości. R18 rozpoznaje puste pole po etykiecie wiadomości/Copilot lub jako jedyny edytor w głównej części /chat. Agent wpisuje wiadomość i dopiero potem czeka na aktywny, lokalny przycisk. Dodano polskie etykiety Wyślij/Prześlij i Zatrzymaj/Przerwij. Brak przycisku po wpisaniu nadal kończy próbę bez kliknięcia innych kontrolek i bez ponowienia.
+
+**Aktualizacja:** podmień cały folder rozszerzenia, przeładuj je i odśwież Copilot. Wersja **1.24.26**; raport nowych adapterów i Motif: **core:r18/parser:r13/provider:r18**. Nie trzeba wpisywać znaku przed Start Agent. EXE bez zmian; wcześniejsze poprawki Luau, Motif i położenia paska są zachowane.
+
+**Weryfikacja:** 631/631 testów Node, 6/6 prób edytora i 15/15 prób pełnego interfejsu Chromium. Nowe testy odtwarzają puste pole, domontowanie polskiego Send po wpisaniu i jego zniknięcie po wysłaniu. Na r17 nie przechodziło 5 z 21 testów kompozytora; r18 przechodzi wszystkie. Testy są kontrolowane, bez zalogowanej rozmowy z prawdziwym modelem/mostem. W tej sesji odczyt /chat ponownie blokował CONNECT 403. Szczegóły: [ARCEE-COPILOT.md](ARCEE-COPILOT.md); sumy: `COPILOT-R18-SHA256SUMS.txt`.
+
+Poniżej historia; do aktualizacji obowiązuje r18 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.25, lokalna poprawka r17
 
 ## r17 — pasek zasłaniający pole i brak wykrywania Arcee/Copilot
