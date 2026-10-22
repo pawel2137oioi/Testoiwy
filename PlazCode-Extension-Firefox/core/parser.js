@@ -296,11 +296,11 @@ const RSParse = (() => {
     const from = s.pos + s.len;
     const multiline = /^[ \t]*\r?\n/.test(text.slice(from));
     const end = literalLuaEnd(text, from, multiline);
-    if (end === -1) return {call:null};
+    if (end === -1) return {start:s.pos,call:null};
     const code = text.slice(from, end).replace(/^[ \t]*\r?\n/, "").replace(/\r?\n$/, "");
     // Canonical multiline blocks are literal source, including leading spaces
     // and identifiers such as json/Copy. Chrome-label repair is legacy inline only.
-    return {end,call:{tool:"execute_luau",arguments:{code:multiline ? code : stripCodeChrome(code.trim()),datamodel_type:s.dm}}};
+    return {start:s.pos,end,call:{tool:"execute_luau",arguments:{code:multiline ? code : stripCodeChrome(code.trim()),datamodel_type:s.dm}}};
   }
 
   function extractToolAnywhere(text) {
@@ -324,6 +324,12 @@ const RSParse = (() => {
   }
 
   function parseToolCalls(r) {
+    // Once a raw Luau payload begins, protocol-looking strings/comments in it
+    // are source data. Do not parse nested MCP examples before the owning block,
+    // including when that block is still incomplete. A real enclosing MCP frame
+    // starts before the raw payload and is handled by the normal loop below.
+    const raw = rawLuaBlock(r), firstMcp = r.indexOf(START_M);
+    if (raw && (firstMcp < 0 || raw.start < firstMcp)) return raw.call ? [raw.call] : [];
     // Lowercase for case-insensitive end-marker search. Models write
     // ###end_mcp_tool### (underscore) or ###end-mcp_tool### (dash).
     const rLow = r.toLowerCase();
@@ -340,8 +346,17 @@ const RSParse = (() => {
     while (true) {
       const sm = r.indexOf(START_M, from);
       if (sm === -1) break;
-      const em = findEndM(sm);
+      let em = findEndM(sm);
       if (em === -1) break;
+      // An enclosing MCP frame can itself carry raw Luau. Its delimiter must
+      // follow the literal Luau closer, never a marker stored in a code string.
+      const bodyFrom = sm + START_M.length;
+      const payload = rawLuaBlock(r.slice(bodyFrom));
+      if (payload && bodyFrom + payload.start < em) {
+        if (!payload.call) break;
+        em = findEndM(bodyFrom + payload.end);
+        if (em === -1) break;
+      }
       const body = r.slice(sm + START_M.length, em);
       const raw = rawLuaBlock(body);
       if (raw) {
@@ -489,7 +504,7 @@ const RSParse = (() => {
   }
 
   return {
-    build: "r11",
+    build: "r13",
     START_M, END_M, LUA_START_RE, LUA_END_RE, CMD_KEY_RE,
     findLuaStart, findLuaEnd, matchBrace, extractJson, normalizeCall,
     hasToolSignature, hasOpenToolBlock, parseToolCalls, salvageCutOff, toolNameFromText,

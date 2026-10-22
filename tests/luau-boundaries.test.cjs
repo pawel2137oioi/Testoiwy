@@ -60,7 +60,8 @@ for(const id of Object.keys(sites))for(const format of ['raw','json'])for(const 
  const f=watcher(format,complete,true,id),result=await f.w.read(0);assert.equal(result.kind,'tool');assert.equal(result.calls[0].arguments.code,f.expected());assert.ok(f.elapsed()>=22000);
 });
 test('a genuinely unfinished command still stops after the exact source becomes idle',async()=>{
- const f=watcher('json',false,false),result=await f.w.read(0);assert.equal(result.kind,'parse_error');assert.ok(f.elapsed()>=22000+15000&&f.elapsed()<41000);
+ const f=watcher('json',false,false),result=await f.w.read(0);assert.equal(result.kind,'parse_error');
+ const idle=f.w.P.timings.OPEN_TOOL_IDLE_MS;assert.ok(f.elapsed()>=22000+idle&&f.elapsed()<25000+idle);
 });
 for(const id of ['motif','chatwave','tencent']){
  for(const marker of ['###LUA:Edit###','### LUA : Server ###'])test(id+' accepts the parser-supported raw marker '+marker,async()=>{

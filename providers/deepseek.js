@@ -123,6 +123,9 @@ const RSProvider = (() => {
     REASON_NOREPLY_MS: 90000, // reasoning written but no answer yet: keep waiting
     STABLE_MS: 9000,         // generating-flag stuck ON but text frozen → done
     RESPONSE_TIMEOUT_MS: 300000,
+    // The footer can lose its Stop signal during a long answer. An unfinished
+    // command needs a separate inactivity window, not the 800ms growth signal.
+    OPEN_TOOL_IDLE_MS: 60000,
   };
 
   // ── Turn classification (multi-signal, virtualization-safe) ──────────────
@@ -175,7 +178,10 @@ const RSProvider = (() => {
       if (!literal && tag === 'PRE') {
         boundary();
         // <code> is the literal payload; the surrounding pre may hold Copy UI.
-        const source = safeQueryAll(node, 'code').find(n => !safeClosest(n, skip));
+        const sources = safeQueryAll(node, 'code').filter(n => !safeClosest(n, skip));
+        // Streaming/highlighting may split one payload into sibling code nodes.
+        // Selecting only the first silently discards the rest of the command.
+        const source = sources.length === 1 ? sources[0] : null;
         const structured = 'br,div,p,.code-line,.ds-code-line,.cm-line,.view-line,.token-line,'+skip;
         if (source && !safeQuery(source, structured)) text += safeRead(() => source.textContent, '') || '';
         else walk(source || node, true);
@@ -1131,7 +1137,7 @@ const RSProvider = (() => {
 
   return {
     id: "deepseek",
-    build: "r11",
+    build: "r13",
     compactStartup: true,
     startupReplyAsCode: true,
     settleStartupReply: true,
@@ -1157,7 +1163,7 @@ const RSProvider = (() => {
       // Version beacon: stamp the loaded build onto <html> so a reload can be
       // confirmed from the page (read document.documentElement.dataset.rsDsVer).
       // BUMP DS_VER on meaningful deepseek.js changes worth verifying live.
-      try { document.documentElement.setAttribute("data-rs-ds-ver", "2026-10-22_r11-source"); } catch {}
+      try { document.documentElement.setAttribute("data-rs-ds-ver", "2026-10-22_r13-source"); } catch {}
     },
     // turns
     allItems, isUserItem, isAssistantItem, itemText, classifyText,

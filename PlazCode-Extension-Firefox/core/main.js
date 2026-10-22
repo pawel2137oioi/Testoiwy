@@ -1213,7 +1213,11 @@
       // zResume then blocked any retry (validated live via empty.why, 2026-07).
       // Fall back to the count test instead, exactly as for a provider with no
       // lastAssistantId at all.
-      const newReply = (curTok !== undefined && curTok !== null)
+      // A newly assigned ID on an old node is not evidence of a new answer
+      // when this send captured no stable ID. Strict providers then need the
+      // fresh turn count, including while old responses are being remounted.
+      const newReply = (curTok !== undefined && curTok !== null &&
+          !(P.requireFreshResponse && sendOwner.sendToken == null))
         ? (curTok !== sendOwner.sendToken)
         : P.assistantCount() > base;
 
@@ -1225,7 +1229,10 @@
       // last assistant turn. submitAndGetBase clears this cache before every send,
       // and classify() only fills it for P.lastAssistant(), so history cannot fire.
       const detected = A.detectedTool;
-      if (!P.commandText && detected && typeof detected.text === "string" && detected.text &&
+      // A cache can bridge a missing DOM subtree, but must never replace a
+      // currently readable command (complete or still streaming) with old code.
+      const currentCommand = RSParse.hasToolSignature(d.reply || "") || RSParse.LUA_END_RE.test(d.reply || "");
+      if (!P.commandText && !currentCommand && detected && typeof detected.text === "string" && detected.text &&
           detected.chat === chat && detected.session === sendOwner.session &&
           detected.sendToken === sendOwner.sendToken &&
           detected.calls && detected.calls.length && Date.now() - detected.at < 20000) {
@@ -1379,6 +1386,10 @@
             base, gen, started, replyLen: (d.reply || "").length });
         }
         if (Date.now() - noTurnSince < NO_TURN_GRACE_MS) { await sleep(200); continue; }
+        if (P.requireFreshResponse) {
+          diag('empty.why',{branch:'noFreshTurn'});
+          return {kind:'empty'};
+        }
       } else {
         noTurnSince = 0;
         A._noTurnLoggedAt = 0;
@@ -1681,7 +1692,7 @@
   // result, so the model can never claim the local engine is gone.
   function transportDiagnostics() {
     return {
-      transport_build: {core:"r12",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
+      transport_build: {core:"r14",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
       provider: P.id,
       last_parse_failure: A.lastParseFailure || null,
     };
@@ -1895,11 +1906,14 @@
   // so JSONDecode(JSON.stringify(s)) used to blow up on quotes/newlines/] =] and
   // show "Failed to parse command code". A long-string needs no escaping.
   function luauLongStr(s) {
+    const source = String(s);
     let n = 0;
-    while (String(s).includes("]" + "=".repeat(n) + "]")) n++;
+    // Also reject an unfinished closing delimiter at the payload's end. With
+    // `source]` + `]]`, Lua closes at the source's own ] and loses that byte.
+    while (source.includes("]" + "=".repeat(n) + "]") || source.endsWith("]" + "=".repeat(n))) n++;
     const eq = "=".repeat(n);
     // A newline right after [[ is ignored by Lua, so the payload is byte-exact.
-    return "[" + eq + "[\n" + s + "]" + eq + "]";
+    return "[" + eq + "[\n" + source + "]" + eq + "]";
   }
   function wrapLuauChunk(piece,i,n,token="legacy") {
     const bufferName="_PlazCodeLuau_"+String(token).replace(/[^A-Za-z0-9_-]/g,"");
@@ -3882,7 +3896,7 @@ return result`;
     // 1.24.10: Plan Mode / deep thinking levels ask for a written plan first.
     // Some sites end the turn after the plan, which used to finish the run with
     // nothing built. Continue such a plan-only reply once per loop.
-    let planContinues = 0, toolsThisLoop = 0;
+    let planContinues = 0, toolsThisLoop = 0, toolContinues = 0;
     let refuseRetries = recoveryAttempt;
     let pasteReminders = 0;
     let recoverSession = null;
@@ -4049,7 +4063,7 @@ return result`;
         if (res.kind === "parse_error") {
           A.lastParseFailure = {
             reason: res.reason, provider: P.id,
-            core_build: "r12", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
+            core_build: "r14", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
             ...(typeof RSParse.transportInfo === "function" ? RSParse.transportInfo(res.raw) : {chars:String(res.raw || "").length}),
           };
           diag("tool.parseFailure", A.lastParseFailure);
@@ -4111,6 +4125,22 @@ return result`;
             planContinues++;
             diag("loop.planContinue", { chars: body.length });
             base = await submitAndGetBase(PLAN_CONTINUE_FEEDBACK);
+            continue;
+          }
+          // Motif can finish a reply by announcing its next action after a
+          // successful tool result, without emitting the next command. This is
+          // not task completion. Continue only an existing project task, with a
+          // finite budget; questions, refusals and explicit final answers stop.
+          if (A.started && !A.stop && !A.userStopped && toolsThisLoop > 0 && failedToolAttempts === 0 &&
+              !['quick','conversation'].includes(A.requestKind) &&
+              P.needsToolContinuation && P.needsToolContinuation(body,res.item)) {
+            if (toolContinues >= 2) {
+              ui.banner('warn','AI stopped before the next command','The AI kept announcing a next step without sending a command. The task paused after two continuation requests. Completed commands were not replayed.');
+              break;
+            }
+            toolContinues++;
+            diag('loop.toolContinue',{attempt:toolContinues});
+            base = await submitAndGetBase('(PlazCode: your last reply announced a next step but contained no command. Continue the current user task with one command from the available schemas, or explain that it is complete or what information is missing. Use the results already returned; do not repeat completed commands or retry a command whose outcome is uncertain.)');
             continue;
           }
           completed = true;

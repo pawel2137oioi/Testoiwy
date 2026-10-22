@@ -118,7 +118,8 @@ test('actual response watcher waits through a nine-second mid-command generation
  const f=responseFixture(9000),result=await f.w.read(0);assert.equal(result.kind,'tool');assert.equal(result.calls[0].arguments.code,code);assert.ok(f.elapsed()>=9000);
 });
 test('a genuinely incomplete command eventually returns an error and never a partial call',async()=>{
- const f=responseFixture(null),result=await f.w.read(0);assert.equal(result.kind,'parse_error');assert.ok(!result.calls);assert.ok(f.elapsed()>=15000&&f.elapsed()<20000);
+ const f=responseFixture(null),result=await f.w.read(0);assert.equal(result.kind,'parse_error');assert.ok(!result.calls);
+ const idle=f.P.timings.OPEN_TOOL_IDLE_MS;assert.ok(f.elapsed()>=idle&&f.elapsed()<idle+3000);
 });
 
 function debugFixture(entries=[]){

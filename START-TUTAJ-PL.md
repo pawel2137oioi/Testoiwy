@@ -1,6 +1,35 @@
-# PlazCode 1.24.20 — poprawki integracji
+# PlazCode — rozszerzenie 1.24.22, lokalna poprawka r14
 
-Lokalna poprawka r12 z 22 października 2026, na bazie przesłanej paczki z poprawkami Claude i ChatGPT. To wersja do dalszej weryfikacji, nie oficjalne wydanie PlazCode.
+Lokalna poprawka r14 z 22 października 2026, na bazie paczki PlazCode 1.24.20 i wcześniejszych poprawek. To wersja do dalszej weryfikacji, nie oficjalne wydanie PlazCode. Rozszerzenie ma numer 1.24.22; aplikacja desktopowa pozostaje w wersji 1.24.20.
+
+## r14 — Motif kontynuuje po wyniku narzędzia
+
+Na zrzucie `search_game_tree` zwraca wynik, ale dalszy krok nie następuje. Analiza i testy odtworzyły kilka sposobów przerwania pętli:
+
+- Tekst ze zrzutu „To ja błędnie stwierdziłem, że nie mam dostępu. Wysłałem polecenie…” był rozpoznawany jako bieżąca odmowa. Adapter rozróżnia teraz wycofaną wcześniejszą wypowiedź od aktualnej odmowy. Rzeczywista odmowa, także po takim sprostowaniu, nadal zatrzymuje wykonywanie.
+- Motif może rozdzielić odpowiedź na kilka sekcji `.prose`. PlazCode odczytuje wszystkie główne sekcje w kolejności, z pominięciem własnego interfejsu i obszarów rozumowania. Komenda w drugiej sekcji nie znika z odpowiedzi czytanej przez pętlę.
+- Przebudowanie starej odpowiedzi podczas oczekiwania na nową mogło spowodować zatrzymanie lub odczyt starej komendy jako nowej. Motif używa teraz natywnego identyfikatora wiadomości, a gdy go brakuje — potwierdzenia pojawienia się nowej odpowiedzi przez licznik. Sam nowy węzeł DOM lub późno nadany identyfikator nie wystarcza. Przy braku nowej odpowiedzi stara komenda nie jest wykonywana ponownie.
+- Po udanym wyniku narzędzia model czasem kończy na zapowiedzi typu „Zacznę od odnalezienia pojazdu…”, bez kolejnej komendy. W aktywnym zadaniu projektowym Motif dostaje wtedy prośbę o następny krok. Limit wynosi dwie prośby na zadanie; powtarzane zapowiedzi kończą się widocznym komunikatem i pauzą, zamiast oznaczenia zadania jako ukończonego. Końcowa odpowiedź, pytanie do użytkownika, odmowa, Stop i szybkie pytania nie uruchamiają tej kontynuacji.
+
+**Aktualizacja z r13:** zastąp `core/main.js`, `providers/webchats.js` i `manifest.json` w używanym folderze rozszerzenia odpowiadającymi im plikami z tej paczki. Paczka zbiorcza r14 zawiera także wszystkie pliki poprawki Luau r13 i kopie w trzech katalogach. Rozpakuj ją do głównego folderu istniejącej instalacji PlazCode. Przeładuj dodatek i odśwież kartę Motif. Nie trzeba wymieniać EXE. Dla Motif oczekiwany raport transportu to **`core:r14/parser:r13/provider:r14`**, a numer rozszerzenia to **1.24.22**.
+
+**Weryfikacja:** 535/535 testów, bez błędów i pominięć. Nowy zestaw `tests/motif-continuation.test.cjs` ma 25 przypadków; na kodzie r13 przechodziło 14, a 11 nie przechodziło. Testy rzeczywistej pętli sprawdzają wysłanie wyniku, odpowiedź modelu, ograniczoną kontynuację i następną komendę oraz brak powtórzenia już wykonanego polecenia. Model i most są kontrolowane; nie wykonano testu na zalogowanym Motif ani w aktywnym Roblox Studio. Szczegóły: `TESTY-TRZY-SERWISY.md`.
+
+Poniżej zachowano historię starszych poprawek. Dla bieżącej paczki obowiązuje instrukcja r14 powyżej.
+
+## r13 — zachowanie całego kodu Luau i aktualnej komendy
+
+Analiza kodu i nowe testy odtworzyły pięć problemów:
+
+- Gdy jeden blok `<pre>` zawierał kilka elementów `<code>`, czytnik brał tylko pierwszy. Fragment kończący się w środku `Instance.new` gubił dalszy kod i zamknięcie komendy. Poprawiono odczyt DeepSeek, ChatGPT, Claude oraz wspólnego adaptera Motif/ChatWave/Tencent.
+- Znaczniki `###MCP_TOOL###` zapisane w napisie lub komentarzu surowego Luau mogły zastąpić właściwą komendę albo zgubić ją w serii ramek MCP. Parser respektuje teraz granice otaczającego bloku Luau, również nieukończonego.
+- Starsza, poprawnie odczytana komenda z pamięci mogła zastąpić aktualną odpowiedź z innym albo jeszcze nieukończonym kodem. Pamięć nie zastępuje teraz widocznej komendy.
+- Przy zaniku sygnału generowania DeepSeek otwarta komenda mogła zostać uznana za uciętą już po 15 sekundach ciszy. Ten osobny limit bezczynności wynosi teraz 60 sekund. Postęp źródła resetuje licznik, a Stop nadal przerywa oczekiwanie. Prawdziwie niepełny kod nadal jest odrzucany; poprawka nie dopisuje brakującego źródła ani cudzysłowów.
+- Kod powyżej 18 000 znaków jest przesyłany fragmentami. Jeśli fragment kończył się na `]`, `]=` lub podobnym początku znacznika, opakowanie napisu Luau mogło zamknąć się za wcześnie. Dobór znacznika uwzględnia teraz także tę granicę, zachowując końcowe znaki fragmentu.
+
+**Aktualizacja:** zatrzymaj zadanie PlazCode. Z tej wersji repozytorium skopiuj `manifest.json`, `core/main.js`, `core/parser.js` oraz `providers/deepseek.js`, `providers/chatgpt.js`, `providers/claude.js`, `providers/webchats.js` do odpowiadających im ścieżek w używanej instalacji. Repozytorium zawiera zsynchronizowane kopie w katalogu głównym, `PlazCode-Extension` i `PlazCode-Extension-Firefox`. Zachowaj jedną aktywną instalację dodatku. Przeładuj dodatek w panelu rozszerzeń, a następnie odśwież kartę DeepSeek lub innego serwisu. Nie trzeba podmieniać pliku EXE. W Settings → raport transportu oczekuj **`core:r13/parser:r13/provider:r13`** dla wymienionych adapterów i wersji rozszerzenia **1.24.21**.
+
+**Weryfikacja:** 510/510 testów, bez błędów i pominięć. Nowy zestaw `tests/luau-source-integrity.test.cjs` ma 26 przypadków; na niezmienionym kodzie r12 przechodził 1, a 25 nie przechodziło. Są to testy rzeczywistych czytników, parsera, watchera, walidatora i dispatchera na kontrolowanym DOM oraz symulowanym moście. Nie są potwierdzeniem uruchomienia tej wersji na zalogowanym koncie DeepSeek ani w aktywnym Roblox Studio. Szczegóły: `TESTY-TRZY-SERWISY.md`.
 
 ## r12 — status bez pytania AI i kopiowanie odrzuconego źródła
 

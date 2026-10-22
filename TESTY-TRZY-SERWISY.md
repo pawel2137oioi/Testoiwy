@@ -1,5 +1,46 @@
 # Raport weryfikacji — 2026-10-22
 
+## r14 — przerwana kontynuacja Motif po `search_game_tree`
+
+**535 testów, 535 zaliczonych, 0 nieudanych i 0 pominiętych.** Uruchomiono `npm test` w `tests/`, Node.js 24.19.0 na Linux x86_64. Składnia sześciu zmienionych plików runtime przechodzi kontrolę; kopie są zgodne w katalogu głównym, `PlazCode-Extension` i `PlazCode-Extension-Firefox`. Manifesty mają wersję 1.24.22. Parser i pozostałe poprawki Luau z r13 pozostają zachowane.
+
+Nowy zestaw `tests/motif-continuation.test.cjs` ma **25 przypadków**. Na zachowanym kodzie r13: **14 zaliczonych, 11 nieudanych**. Po poprawce: **25 zaliczonych**. Liczba przypadków nie oznacza liczby niezależnych usterek. Zestaw wykorzystuje rzeczywisty adapter, parser, watcher, walidator i `agentLoop`; podstawione są odpowiedzi modelu, wynik mostu, zegar i niezwiązane z transportem elementy interfejsu/checkpointów.
+
+| Zakres | Przypadki |
+| --- | ---: |
+| Sprostowanie wcześniejszego braku dostępu, w tym tekst ze zrzutu, po polsku i angielsku | 3 |
+| Rzeczywista odmowa, również po sprostowaniu | 4 |
+| Komenda i odmowa w kolejnych sekcjach `.prose` | 2 |
+| Wynik `search_game_tree` → zapowiedź bez komendy → kontynuacja → `get_studio_state` → końcowa odpowiedź | 2 |
+| Końcowa odpowiedź, pytanie, oczekiwanie na potwierdzenie i odmowa po wyniku | 5 |
+| Limit dwóch kontynuacji, szybkie pytanie, zapowiedź przed pierwszym narzędziem, niepewne wysłanie i Stop | 5 |
+| Przebudowanie starej odpowiedzi przy opóźnieniu nowej: z ID, bez ID i z późno nadanym ID; brak nowej odpowiedzi | 4 |
+
+Test niepewnego wysłania wymaga jednego kliknięcia Send i jednego wykonania narzędzia. Test braku odpowiedzi dopuszcza jedną tekstową prośbę o wznowienie, ale nie ponowne wywołanie narzędzia. Testy przebudowy DOM sprawdzają, że stara komenda nie jest powtarzana, a nowa odpowiedź może zakończyć zadanie. Powtarzane zapowiedzi kończą się pauzą i nieukończonym checkpointem. Odmowy i pytania nie powodują automatycznych próśb o kolejne polecenie.
+
+**Ograniczenia:** tekst sprostowania i zapowiedzi odtworzono ze zrzutu, ale sam obraz nie dostarcza DOM ani dziennika wysyłki. Pozostałe warianty to odtworzenia błędów znalezionych w kodzie, bez potwierdzenia ich wystąpienia w tej konkretnej rozmowie. Nie testowano zalogowanego Motif, jego rzeczywistego modelu, limitów konta ani aktywnego Studio. Kontynuacja jest ograniczoną heurystyką dla polskich i angielskich zapowiedzi; nie wymusza odpowiedzi niedostępnego serwisu i nie odtwarza brakującego wyniku. Bieżący transport Motif: `core:r14/parser:r13/provider:r14`. Instrukcja aktualizacji: `START-TUTAJ-PL.md`.
+
+## r13 — źródło Luau, granice fragmentów i aktualność odpowiedzi
+
+**510 testów, 510 zaliczonych, 0 nieudanych i 0 pominiętych.** Polecenie: `cd tests && npm test`, Node.js 24.19.0 na Linux x86_64. Osobno sprawdzono składnię 18 zmienionych plików runtime, zgodność ich trzech kopii oraz poprawność trzech manifestów rozszerzenia 1.24.21. Nie zmieniano natywnego EXE ani oficjalnych metadanych wydań i historycznych sum kontrolnych.
+
+Nowy zestaw `tests/luau-source-integrity.test.cjs` zawiera 26 przypadków. Uruchomiony na plikach odczytanych z HEAD sprzed poprawki: **1 zaliczony, 25 nieudanych**; po poprawce: **26 zaliczonych**. Poszczególne warianty badają te same mechanizmy, więc liczba testów nie oznacza liczby niezależnych usterek.
+
+| Zakres | Przypadki |
+| --- | ---: |
+| Fragmenty jednego bloku `<pre>` w kilku elementach `<code>`, dwa formaty × sześć serwisów, następnie odtworzenie jednego elementu | 12 |
+| Znaczniki MCP jako dane Luau, blok kompletny i niekompletny, prawdziwe kolejne ramki MCP | 4 |
+| Przerwa 22 sekund podczas komendy DeepSeek, format surowy i JSON | 2 |
+| Starsza komenda w pamięci wobec aktualnego kompletnego lub niekompletnego źródła | 2 |
+| Stop podczas oczekiwania i odrzucenie rzeczywiście uciętego JSON po limicie | 2 |
+| Trzy warianty nakładającego się znacznika napisu oraz pełny transfer przez dispatcher przy granicy 18 000 znaków | 4 |
+
+Test transferu długiego kodu używa rzeczywistych funkcji dzielenia i opakowania, walidatora oraz `runTool`. Na starym kodzie otrzymuje `arguments.code: Mismatched code delimiter; the command may be truncated`. Po poprawce oba fragmenty dochodzą do kontrolowanego mostu, a odczyt ich napisów Luau odtwarza źródło znak w znak. Nie wykonuje to programu w Roblox.
+
+Dotychczasowe testy `get_studio_state`, `multi_edit`, niedomkniętych napisów, znaczników w danych, strumieniowania białych znaków, limitów DeepSeek i odmów nadal przechodzą. Dwa wcześniejsze testy czasu oczekiwania uwzględniają nowy limit 60 sekund dla otwartej komendy DeepSeek; nadal wymagają błędu i braku wykonania niepełnego kodu. Testy raportu odzwierciedlają nowe wersje transportu.
+
+**Ograniczenia:** są to odtworzenia usterek znalezionych podczas analizy kodu, bez źródła odrzuconej komendy użytkownika. Nie ustalają, która z nich wystąpiła w jego rozmowie. Nie przeprowadzono testu na zalogowanym DeepSeek, w rzeczywistej przeglądarce z zainstalowanym dodatkiem ani w Roblox Studio. Nowy limit zmniejsza ryzyko przedwczesnego błędu przy przerwie w generowaniu, ale nie usuwa limitów odpowiedzi modelu ani zmian strony. Prawdziwie niepełne źródło nie jest wykonywane. Instrukcja aktualizacji i oczekiwane wersje: `START-TUTAJ-PL.md`.
+
 ## r12 — fakty z przesłanej informacji zwrotnej i dostęp do źródła
 
 **484 testy, 484 zaliczone, 0 nieudanych i 0 pominiętych.** Zapis: `tests/regression-results-r12.txt`. Nowy zestaw `tests/transport-report.test.cjs` zawiera 17 przypadków. Pozostałe 467 testów nadal przechodzi; wcześniejszy test lokalnego statusu korzysta teraz z rzeczywistej wspólnej funkcji diagnostycznej i oczekuje rdzenia r12.

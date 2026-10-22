@@ -180,7 +180,8 @@ const RSProvider = (() => {
       if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
       if (safeRead(() => n.tagName, "") === "BR") { t += "\n"; return; }
       if (safeRead(() => n.tagName, '') === 'PRE' && !safeQuery(n, '.cm-content')) {
-        const source = safeQueryAll(n, 'code').find(node => !safeClosest(node, skip));
+        const sources = safeQueryAll(n, 'code').filter(node => !safeClosest(node, skip));
+        const source = sources.length === 1 ? sources[0] : null;
         if (source) {
           if (t && !t.endsWith('\n')) t += '\n';walk(source);
           if (t && !t.endsWith('\n')) t += '\n';return;
@@ -746,7 +747,7 @@ const RSProvider = (() => {
 
   return {
     id: "claude",
-    build: "r11",
+    build: "r13",
     displayName: "Claude",
     supportsVision: true,
     timings,

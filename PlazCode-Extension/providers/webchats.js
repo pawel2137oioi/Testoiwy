@@ -84,7 +84,10 @@ const RSProvider = (() => {
       isUserItem(parent) === isUserItem(el)));
   }
   const TEXT_UI_SKIP = '.rs-chip, .rs-chat-activity, button, [role="button"], .msg-actions, .msg-err, .reasoning, [data-testid*="reasoning"], .hy-think, .code-block-header, .md-code-block-banner-wrap, .markdown-viewer-code-block-header, .hyc-common-markdown__code__hd-container, .linenumber, .line-number, .react-syntax-highlighter-line-number';
-  const codeSource = pre => all(pre,'code').find(node => !node.closest(TEXT_UI_SKIP)) || pre;
+  const codeSource = pre => {
+    const sources = all(pre,'code').filter(node => !node.closest(TEXT_UI_SKIP));
+    return sources.length === 1 ? sources[0] : pre;
+  };
   function textWithout(root, exclude = '', preserveEdges = false) {
     let text = '';
     const skip = TEXT_UI_SKIP + (exclude ? ', ' + exclude : '');
@@ -109,12 +112,19 @@ const RSProvider = (() => {
     if (root) walk(root);
     return preserveEdges ? text : text.trim();
   }
+  function replyRoots(item) {
+    if (!item) return [];
+    if (!isAssistantItem(item)) return [item];
+    const roots=all(item,site.body).filter(node=>!node.closest(TEXT_UI_SKIP));
+    const top=roots.filter(node=>!roots.some(parent=>parent!==node && parent.contains(node)));
+    return top.length ? top : site.id==='tencent' ? [] : [item];
+  }
   function classifyText(item, exclude, preserveEdges = false) {
-    if (!item) return '';
     // Tencent renders command-shaped text inside its visible reasoning panel.
     // Until the final-answer container exists, there is no executable reply.
-    const body = isAssistantItem(item) ? query(item, site.body) || (site.id === 'tencent' ? null : item) : item;
-    return textWithout(body, exclude, preserveEdges);
+    // Motif may use separate prose roots for narration, code and final text.
+    // Reading only the first makes a complete command disappear from the watcher.
+    return replyRoots(item).map(body=>textWithout(body,exclude,preserveEdges)).join('\n');
   }
   const itemText = item => classifyText(item);
   const assistants = () => allItems().filter(isAssistantItem);
@@ -126,6 +136,10 @@ const RSProvider = (() => {
     if (!item) return null;
     if (!ids.has(item)) ids.set(item, ++seq);
     return item.getAttribute('data-mid') || item.getAttribute('data-message-id') || ids.get(item);
+  }
+  function lastAssistantId() {
+    const item=lastAssistant();
+    return site.id==='motif' ? item?.getAttribute('data-mid') || item?.getAttribute('data-message-id') || null : itemKey(item);
   }
   const streamLen = (item = lastAssistant()) => classifyText(item).length;
   const chatIsEmpty = () => allItems().length === 0;
@@ -210,12 +224,18 @@ const RSProvider = (() => {
     });
   }
   function isPolicyRefusal(value) {
-    const text = String(value || '').replace(/[’‘]/g,"'");
+    // A retracted claim ("I incorrectly said I cannot access Studio") is not a
+    // current refusal. Remove only that reported clause; a following "but ..."
+    // or a separate refusal remains authoritative. Never infer acceptance from
+    // the mere presence of a command block.
+    const text = String(value || '').replace(/[’‘]/g,"'")
+      .replace(/\b(?:błędnie|blednie|niesłusznie|nieslusznie|omyłkowo|omylkowo)\s+(?:stwierdziłem|stwierdzilem|napisałem|napisalem|powiedziałem|powiedzialem|uznałem|uznalem)\s*,?\s*(?:że|ze)\s+[^.!?;\n]{0,400}?(?=[.!?;\n]|,?\s+(?:ale|jednak|but|however)\b|$)/gi,' ')
+      .replace(/\bI\s+(?:(?:incorrectly|wrongly|mistakenly)\s+(?:said|stated|claimed|wrote)|was\s+wrong\s+(?:when\s+I\s+(?:said|stated|claimed|wrote)|to\s+(?:say|state|claim|write)))\s+[^.!?;\n]{0,400}?(?=[.!?;\n]|,?\s+(?:ale|jednak|but|however)\b|$)/gi,' ');
     return /\b(?:i (?:cannot|can't|won't|will not|do not|don't)|i have no|no (?:actual|real|direct) (?:access|connection))[^\n]{0,180}(?:call|run|execute|tool|command|bridge|extension|studio|plazcode)|(?:nie (?:wyślę|wysle|uruchomię|uruchomie|wykonam)|nie mogę|nie moge|nie mam (?:żadnego|zadnego|dostępu|dostepu|narzędzi|narzedzi))[^\n]{0,180}(?:komend|poleceń|polecen|narzędzi|narzedzi|połączenia|polaczenia|studia|studio|bridge|wtyczk|plazcode|list_commands)|prompt[ -]injection|jailbreak/i.test(text);
   }
   function commandText(value, item) {
     const text = String(value || '').trim();
-    const prose = item ? textWithout(query(item,site.body) || item,'pre,code') : text;
+    const prose = item ? classifyText(item,'pre,code') : text;
     if (!text || isPolicyRefusal(prose)) return '';
     const candidate = value => {
       const source=String(value || '').trim();
@@ -242,6 +262,13 @@ const RSProvider = (() => {
     // Plain JSON is accepted only as an entire response, never as an inline
     // quotation embedded in an explanation, refusal, example or code sample.
     return candidate(text);
+  }
+  function needsToolContinuation(value,item) {
+    const text=String(item ? classifyText(item,'pre,code,blockquote') : value || '').trim().replace(/[’‘]/g,"'");
+    if(!text || text.length>2000 || isPolicyRefusal(text) || /\?/.test(text))return false;
+    if(/\b(?:gotowe|ukończone|zakończone|done|completed|finished)\b|czekam|poczekaj|potrzebuję|potrzebuje|daj znać|proszę (?:podaj|wybierz|potwierdź)|let me know|waiting for|need your/i.test(text))return false;
+    return /(?:^|[.!;:\n])\s*(?:teraz\s+)?(?:zacznę|zaczne|sprawdzę|sprawdze|odczytam|wyszukam|poszukam|przejrzę|przejrze|zlokalizuję|zlokalizuje|usunę|usune|poprawię|poprawie|naprawię|naprawie|dodam|zmienię|zmienie)(?=\s|[,.!?;:]|$)/i.test(text) ||
+      /(?:^|[.!;:\n])\s*I(?:'ll| will)\s+(?:now\s+)?(?:inspect|check|read|search|find|locate|remove|fix|update|create|add|change|start|begin)\b/i.test(text);
   }
   function canRestoreSession() {
     const rows=allItems();
@@ -373,7 +400,7 @@ const RSProvider = (() => {
   }
   return {
     id:site.id, displayName:site.name, supportsVision:false, timings,
-    build:'r11',
+    build:'r14',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the
@@ -381,10 +408,12 @@ const RSProvider = (() => {
     compactStartup:site.max > 0,
     startupReplyAsCode:true, startupRequest:site.max > 0 ? startupRequest : undefined, startupFeedbackMessages,
     requireConfirmedStartup:true,
+    requireFreshResponse:site.id==='motif',
     // Legacy marker-only sessions may have been armed by an unsuccessful
     // handshake. Restore only when this chat visibly confirms readiness.
     canRestoreSession,
     commandText,isPolicyRefusal,
+    needsToolContinuation:site.id==='motif' ? needsToolContinuation : undefined,
     mountActivitySummary:site.id==='motif' ? mountMotifActivity : undefined,
     toolFeedbackMaxChars:site.max > 0 ? site.max - 1000 : 0,
     toolResultPageChars:site.page, authoritativeSendResult:true,
@@ -392,7 +421,10 @@ const RSProvider = (() => {
     sendFailureDetail:() => failure, thinkingSel:'.reasoning,[data-testid*="reasoning"],.msg-thinking,.hy-think',
     init(options={}) { diag=options.diag || diag; diag(site.id+'.init',{editor:!!getEditor(),experimental:!!site.experimental}); },
     allItems,isUserItem,isAssistantItem,itemText,classifyText,assistantCount,userCount,lastAssistant,itemKey,
-    lastAssistantId:() => itemKey(lastAssistant()),
+    // WeakMap IDs identify DOM nodes, not server messages. A Motif rerender of
+    // an old answer must not look like a new reply after result delivery. With
+    // no native message ID, let the watcher use the fresh assistant count.
+    lastAssistantId,
     readAssistant() { const item=lastAssistant(),source=classifyText(item,undefined,true); return {present:!!item,reply:source.trim(),source,thinking:'',item}; },
     streamLen,snapshot:() => ({th:0,rp:streamLen()}),getEditor,editorText,chatIsEmpty,isFreshChat,
     composerFrame,barAnchor:composerFrame,setInputLock,writeDraft,clearEditor,typeAndSend,

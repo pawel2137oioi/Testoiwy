@@ -232,7 +232,8 @@ const RSProvider = (() => {
       if (safeRead(() => n.matches, null) && safeRead(() => n.matches(skip), false)) return;
       if (safeRead(() => n.tagName, "") === "BR") { t += "\n"; return; }
       if (safeRead(() => n.tagName, "") === "PRE" && !safeQuery(n, '.cm-content')) {
-        const source = safeQueryAll(n, 'code').find(node => !safeClosest(node, skip));
+        const sources = safeQueryAll(n, 'code').filter(node => !safeClosest(node, skip));
+        const source = sources.length === 1 ? sources[0] : null;
         if (source) { breakLine();walk(source);breakLine();return; }
       }
       // The editor's TRUE document, published by the MAIN-world tap. This is the
@@ -1325,7 +1326,7 @@ const RSProvider = (() => {
 
   return {
     id: "chatgpt",
-    build: "r11",
+    build: "r13",
     displayName: "ChatGPT",
     timings,
     // Exported for test-chatgpt.js (the Node smoke test drives it against a stub
@@ -1361,7 +1362,7 @@ const RSProvider = (() => {
       if (d) diag = d;
       // Version beacon: stamp the loaded build onto <html> so a reload can be
       // confirmed from the page (read document.documentElement.dataset.rsGptVer).
-      try { document.documentElement.setAttribute("data-rs-gpt-ver", "2026-10-22_r11-source"); } catch {}
+      try { document.documentElement.setAttribute("data-rs-gpt-ver", "2026-10-22_r13-source"); } catch {}
     },
     // turns
     allItems, isUserItem, isAssistantItem, itemText, classifyText, setActivityFolded,
