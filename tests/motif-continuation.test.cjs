@@ -10,8 +10,10 @@ const promise='Zacznę od odnalezienia pojazdu w drzewie projektu; zanim usunę 
 const search={command:'search_game_tree',params:{datamodel_type:'Edit',keywords:'Solaris II GOTOWY 111111',max_depth:6}};
 const next={command:'get_studio_state',params:{}};
 const done='Gotowe. Sprawdziłem stan projektu i zakończyłem zadanie.';
+const waiting='Czekam na wynik odczytu BuildSolarisHud, żeby potwierdzić, czy trzeba wyłączyć coś jeszcze poza skryptem HUD-u autobusu.';
+const scriptRead={command:'script_read',params:{path:'Workspace.Solaris.BuildSolarisHud'}};
 function section(start,end){const a=main.indexOf(start),b=main.indexOf(end,a);assert.ok(a>=0&&b>a,start);return main.slice(a,b);}
-function fixture({initial={command:search},replies=[{text:done}],requestKind='task',ambiguous=false,replyDelay=0,remountPrevious=false,nativeIds=true,lateId=false}={}){
+function fixture({initial={command:search},replies=[{text:done}],requestKind='task',ambiguous=false,replyDelay=0,remountPrevious=false,nativeIds=true,lateId=false,toolResults={}}={}){
   const dom=new JSDOM('<!doctype html><body><main id="thread" data-testid="document-message-list-wrapper"></main><div class="composer"><textarea id="chat-textarea"></textarea><button data-testid="document-send-button">Send</button></div>',{url:'https://chat.motiftech.io/chat/test',runScripts:'outside-only'});
   const w=dom.window,d=w.document,c=dom.getInternalVMContext();let clock=10000,seq=0,replyIndex=0,clicks=0,toolBudget=0;
   const sent=[],commands=[],banners=[],events=[],checkpoints=[],scheduled=[];
@@ -37,7 +39,7 @@ function fixture({initial={command:search},replies=[{text:done}],requestKind='ta
     d.querySelector('#thread').append(item);return item;
   }
   user('Usuń HUD z pojazdu Solaris w moim projekcie.');assistant(initial);
-  const A={sessionGen:1,sendToken:'previous',stop:false,starting:false,running:false,started:true,imageTools:new Set(),toolList:[],toolNames:new Set(['search_game_tree','get_studio_state']),taskRequest:'Usuń HUD z pojazdu Solaris w moim projekcie.',requestKind};
+  const A={sessionGen:1,sendToken:'previous',stop:false,starting:false,running:false,started:true,imageTools:new Set(),toolList:[],toolNames:new Set(['search_game_tree','get_studio_state','script_read','inspect_instance']),taskRequest:'Usuń HUD z pojazdu Solaris w moim projekcie.',requestKind};
   const noop=()=>{};
   Object.assign(w,{A,T:P.timings,bgMode:true,diag:(...args)=>events.push(args),log:noop,sleep:async ms=>{advance(ms);},
     ui:{banner:(...args)=>banners.push(args),showStop:noop,inputCover:noop,trackCard:noop,captureHandoff:noop,toast:noop,setStatus:noop},
@@ -48,7 +50,7 @@ function fixture({initial={command:search},replies=[{text:done}],requestKind='ta
     enhanceCreationBeforeTools:async()=>null,checkProviderRateLimit:noop,bareToolName:n=>n,activeEngine:()=> 'roblox',
     decorate:{toolBox:noop},asStateTag:()=>'',attachAutoDebug:async(_name,text)=>text,automaticVisualCheck:async(_call,text)=>text,
     compressToolFeedback:text=>text,prepareToolFeedback:text=>text,withSysResend:text=>text,
-    runTool:async call=>{commands.push(JSON.parse(JSON.stringify(call)));return "Output of '"+call.tool+"':\n"+JSON.stringify({fullPath:'Workspace.Solaris',result:'actual fixture result'});},
+    runTool:async call=>{commands.push(JSON.parse(JSON.stringify(call)));return toolResults[call.tool]??("Output of '"+call.tool+"':\n"+JSON.stringify({fullPath:'Workspace.Solaris',result:'actual fixture result'}));},
     SendAbortedError:class SendAbortedError extends Error{},
     submitAndGetBase:async text=>{
       const base=P.assistantCount();A.sendToken=P.lastAssistantId();A.detectedTool=null;
@@ -140,4 +142,62 @@ test('a dropped next answer is retried once as text, never by replaying the comp
   const f=fixture({replies:[],remountPrevious:true,nativeIds:false});t.after(()=>f.dom.window.close());
   await f.run();clean(f);assert.equal(f.commands.length,1);assert.equal(f.clicks(),2);assert.equal(f.checkpoints.at(-1),false);
   assert.ok(f.banners.some(row=>row[1]==='Could not read Motif’s reply'));
+});
+for(const text of [waiting,"I'm waiting for the tool result before continuing.",'Waiting for the result of reading BuildSolarisHud before making another change.']){
+  test('waiting for an already returned result resumes with the actual feedback: '+text.slice(0,45),async t=>{
+    const result="Output of 'script_read':\nlocal HUD_NAME = 'BuildSolarisHud'\nreturn HUD_NAME";
+    const f=fixture({initial:{command:scriptRead},toolResults:{script_read:result},replies:[{text},{command:next},{text:done}]});t.after(()=>f.dom.window.close());
+    await f.run();clean(f);assert.deepEqual(f.commands.map(c=>c.tool),['script_read','get_studio_state']);assert.equal(f.clicks(),3);
+    assert.ok(f.sent[1].includes(result),'resend the real result, not a fabricated success');
+    assert.match(f.sent[1],/no new tool command|no command.*pending/i);assert.equal(f.checkpoints.at(-1),true);
+  });
+}
+test('screenshot sequence can recover an earlier read result after inspect_instance and get_studio_state',async t=>{
+  const result="Output of 'script_read':\n-- BuildSolarisHud: source returned before the state check\nreturn 'verified source'";
+  const inspect={command:'inspect_instance',params:{path:'Workspace.Solaris'}};
+  const f=fixture({initial:{command:scriptRead},toolResults:{script_read:result},replies:[{command:inspect},{command:next},{text:waiting},{command:search},{text:done}]});t.after(()=>f.dom.window.close());
+  await f.run();clean(f);assert.deepEqual(f.commands.map(c=>c.tool),['script_read','inspect_instance','get_studio_state','search_game_tree']);
+  assert.equal(f.clicks(),5);assert.ok(f.sent[3].includes(result));assert.match(f.sent[3],/Output of 'inspect_instance'/);assert.match(f.sent[3],/Output of 'get_studio_state'/);
+});
+test('the waiting-recovery budget resets after real tool progress',async t=>{
+  const f=fixture({replies:[{text:waiting},{command:scriptRead},{text:waiting},{command:next},{text:waiting},{command:search},{text:done}]});t.after(()=>f.dom.window.close());
+  await f.run();clean(f);assert.equal(f.commands.length,4);assert.equal(f.clicks(),7);assert.equal(f.checkpoints.at(-1),true);assert.deepEqual(f.banners,[]);
+});
+test('repeated waiting without a new command pauses after two attempts without replay',async t=>{
+  const f=fixture({replies:[{text:waiting},{text:waiting},{text:waiting}]});t.after(()=>f.dom.window.close());
+  await f.run();clean(f);assert.equal(f.commands.length,1);assert.equal(f.clicks(),3);assert.equal(f.checkpoints.at(-1),false);
+  assert.ok(f.banners.some(row=>row[1]==='AI stopped before the next command'));
+});
+for(const text of ['Czekam na wynik odczytu, który musisz mi przesłać.','Czekam na wynik odczytu od Ciebie.','Waiting for your tool result before continuing.','I am waiting for the read result from you.','Zadanie ukończone. Czekam na wynik kolejnego testu.']){
+  test('waiting for user input or an explicit final answer is not tool-result recovery: '+text.slice(0,55),async t=>{
+    const f=fixture({replies:[{text}]});t.after(()=>f.dom.window.close());await f.run();clean(f);assert.equal(f.commands.length,1);assert.equal(f.clicks(),1);
+  });
+}
+test('waiting before any tool result does not invent a returned result',async t=>{
+  const f=fixture({initial:{text:waiting}});t.after(()=>f.dom.window.close());await f.run();clean(f);assert.equal(f.commands.length,0);assert.equal(f.clicks(),0);
+});
+test('an uncertain tool failure is not automatically recovered as a successful result',async t=>{
+  const f=fixture({toolResults:{search_game_tree:"ERROR: command timed out; it may already have run."},replies:[{text:waiting}]});t.after(()=>f.dom.window.close());
+  await f.run();clean(f);assert.equal(f.commands.length,1);assert.equal(f.clicks(),1);
+});
+test('Stop prevents waiting-for-result recovery',async t=>{
+  const f=fixture({replies:[{text:waiting}]});t.after(()=>f.dom.window.close());
+  const read=f.w.waitForResponse;f.w.waitForResponse=async base=>{const result=await read(base);if(result.kind==='text')f.A.stop=true;return result;};
+  await f.run();clean(f);assert.equal(f.commands.length,1);assert.equal(f.clicks(),1);
+});
+test('waiting-recovery includes only the last three confirmed tool results',async t=>{
+  const inspect={command:'inspect_instance',params:{path:'Workspace.Solaris'}};
+  const f=fixture({toolResults:{search_game_tree:"Output of 'search_game_tree':\nOLD_RESULT_OUTSIDE_RECOVERY_WINDOW"},replies:[{command:scriptRead},{command:inspect},{command:next},{text:waiting},{command:scriptRead},{text:done}]});t.after(()=>f.dom.window.close());
+  await f.run();clean(f);assert.equal(f.commands.length,5);assert.equal(f.clicks(),6);
+  assert.doesNotMatch(f.sent[4],/OLD_RESULT_OUTSIDE_RECOVERY_WINDOW/);assert.match(f.sent[4],/Output of 'script_read'/);assert.match(f.sent[4],/Output of 'inspect_instance'/);assert.match(f.sent[4],/Output of 'get_studio_state'/);
+});
+test('a queued new task cannot receive recovery results or tool progress from the completed task',async t=>{
+  const f=fixture();t.after(()=>f.dom.window.close());let queued=false;
+  f.w.cowork.take=async()=>{if(queued)return null;queued=true;f.A.taskRequest='Sprawdź inny pojazd.';const base=f.P.assistantCount();f.assistant({text:waiting});return {base};};
+  await f.run();clean(f);assert.equal(f.commands.length,1);assert.equal(f.clicks(),1);
+});
+test('an inline code tool name survives waiting-result classification',t=>{
+  const f=fixture();t.after(()=>f.dom.window.close());const item=f.assistant({text:'Czekam na wynik '});
+  const p=item.querySelector('p'),code=f.d.createElement('code');code.textContent='script_read';p.append(code,'.');
+  assert.equal(f.P.needsToolContinuation(f.P.itemText(item),item),true);
 });

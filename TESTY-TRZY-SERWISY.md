@@ -1,5 +1,15 @@
 # Raport weryfikacji — 2026-10-22
 
+## r15 — oczekiwanie Motif na zwrócony wynik odczytu
+
+**552 testy, 552 zaliczone, 0 nieudanych i 0 pominiętych.** Polecenie: `cd tests && npm test`, Node.js 24.19.0 na Linux x86_64. Zestaw Motif rozszerzono z 25 do 42 przypadków. Na zachowanym kodzie r14 przechodziły 34, a 8 nie przechodziło; po poprawce przechodzą wszystkie 42.
+
+Dodano 17 przypadków: czekanie na wynik po polsku i angielsku (3); sekwencja ze zrzutu z przypomnieniem wcześniejszego `script_read` po `inspect_instance` i `get_studio_state` (1); odnawianie limitu po rzeczywistej komendzie (1); pauza po dwóch kolejnych odpowiedziach bez komendy (1); oczekiwanie na użytkownika i końcowe odpowiedzi (5); brak wcześniejszego wyniku (1); niepewny błąd narzędzia (1); Stop (1); ograniczenie przypomnienia do trzech wyników (1); oddzielenie nowego zadania w kolejce (1); nazwa narzędzia w inline `<code>` (1).
+
+Test sekwencji ze zrzutu wymaga jednego wykonania każdego zaplanowanego odczytu. Przypomnienie zawiera dokładny tekst wcześniejszego wyniku `script_read`, a nie nową odpowiedź mostu lub deklarację sukcesu. Wyniki są zapamiętywane po potwierdzonym wysłaniu. Test dłuższej kontynuacji przechodzi przez trzy momenty oczekiwania rozdzielone poprawnymi komendami; test braku postępu wymaga pauzy po dwóch próbach i nieukończonego checkpointu. Przy zmianie zadania stare wyniki i licznik wykonanych narzędzi nie uprawniają do automatycznej kontynuacji nowego zadania.
+
+Mechanizm pozostaje ograniczoną heurystyką polskich i angielskich wypowiedzi. Zrzut nie dowodzi, że odczyt `BuildSolarisHud` rzeczywiście został wywołany. Poprawka nie dopisuje jego wyniku: przypomina wyniki posiadane przez PlazCode i pozwala modelowi zlecić brakujący odczyt. Nie przeprowadzono testu zalogowanego Motif ani rzeczywistego Studio. Nowe wersje: rozszerzenie 1.24.23, `core:r15/parser:r13/provider:r15` dla Motif. Wcześniejsze poprawki Luau pozostają zachowane.
+
 ## r14 — przerwana kontynuacja Motif po `search_game_tree`
 
 **535 testów, 535 zaliczonych, 0 nieudanych i 0 pominiętych.** Uruchomiono `npm test` w `tests/`, Node.js 24.19.0 na Linux x86_64. Składnia sześciu zmienionych plików runtime przechodzi kontrolę; kopie są zgodne w katalogu głównym, `PlazCode-Extension` i `PlazCode-Extension-Firefox`. Manifesty mają wersję 1.24.22. Parser i pozostałe poprawki Luau z r13 pozostają zachowane.

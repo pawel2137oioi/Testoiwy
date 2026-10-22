@@ -263,13 +263,20 @@ const RSProvider = (() => {
     // quotation embedded in an explanation, refusal, example or code sample.
     return candidate(text);
   }
-  function needsToolContinuation(value,item) {
+  function toolContinuationKind(value,item) {
     const text=String(item ? classifyText(item,'pre,code,blockquote') : value || '').trim().replace(/[’‘]/g,"'");
-    if(!text || text.length>2000 || isPolicyRefusal(text) || /\?/.test(text))return false;
-    if(/\b(?:gotowe|ukończone|zakończone|done|completed|finished)\b|czekam|poczekaj|potrzebuję|potrzebuje|daj znać|proszę (?:podaj|wybierz|potwierdź)|let me know|waiting for|need your/i.test(text))return false;
+    if(!text || text.length>2000 || isPolicyRefusal(text) || /\?/.test(text))return '';
+    if(/\b(?:gotowe|ukończone|zakończone|done|completed|finished)\b|poczekaj|potrzebuję|potrzebuje|daj znać|proszę (?:podaj|wybierz|potwierdź)|let me know|need your|musisz mi|od (?:ciebie|użytkownika|uzytkownika)|from you|(?:waiting|awaiting) (?:for )?your|czekam na (?:twoj|twój|twoją|twoja|twoje|potwierdzenie|zgodę|zgode)/i.test(text))return '';
+    // A model waiting for an already returned read result is different from
+    // waiting for the user. Inline code may contain the script/tool name.
+    const waiting=String(item ? classifyText(item,'pre,blockquote') : value || '').trim().replace(/[’‘]/g,"'");
+    if(/(?:^|[.!;:\n])\s*(?:jeszcze\s+)?(?:czekam|oczekuję|oczekuje|poczekam)\s+(?:jeszcze\s+)?na\s+(?:wynik|rezultat|odpowiedź|odpowiedz)\s+(?:odczytu|narzędzia|narzedzia|komendy|polecenia|wywołania|wywolania|script_read|inspect_instance|get_studio_state)/i.test(waiting) ||
+        /(?:^|[.!;:\n])\s*(?:I(?:'m| am)\s+)?(?:waiting|awaiting)\s+(?:for\s+)?(?:the\s+)?(?:(?:tool|command|script_read)\s+(?:result|output|response)|(?:result|output|response)\s+(?:of|from)\s+(?:the\s+)?(?:tool|command|read|reading|script_read))\b/i.test(waiting))return 'waiting_for_tool_result';
+    if(/czekam|waiting for/i.test(text))return '';
     return /(?:^|[.!;:\n])\s*(?:teraz\s+)?(?:zacznę|zaczne|sprawdzę|sprawdze|odczytam|wyszukam|poszukam|przejrzę|przejrze|zlokalizuję|zlokalizuje|usunę|usune|poprawię|poprawie|naprawię|naprawie|dodam|zmienię|zmienie)(?=\s|[,.!?;:]|$)/i.test(text) ||
-      /(?:^|[.!;:\n])\s*I(?:'ll| will)\s+(?:now\s+)?(?:inspect|check|read|search|find|locate|remove|fix|update|create|add|change|start|begin)\b/i.test(text);
+      /(?:^|[.!;:\n])\s*I(?:'ll| will)\s+(?:now\s+)?(?:inspect|check|read|search|find|locate|remove|fix|update|create|add|change|start|begin)\b/i.test(text) ? 'next_step' : '';
   }
+  const needsToolContinuation=(value,item)=>!!toolContinuationKind(value,item);
   function canRestoreSession() {
     const rows=allItems();
     return rows.some((item,index)=>isAssistantItem(item) && /^(?:PlazCode is ready|PLAZCODE_READY)[.!]?$/i.test(itemText(item)) &&
@@ -400,7 +407,7 @@ const RSProvider = (() => {
   }
   return {
     id:site.id, displayName:site.name, supportsVision:false, timings,
-    build:'r14',
+    build:'r15',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the
@@ -414,6 +421,7 @@ const RSProvider = (() => {
     canRestoreSession,
     commandText,isPolicyRefusal,
     needsToolContinuation:site.id==='motif' ? needsToolContinuation : undefined,
+    toolContinuationKind:site.id==='motif' ? toolContinuationKind : undefined,
     mountActivitySummary:site.id==='motif' ? mountMotifActivity : undefined,
     toolFeedbackMaxChars:site.max > 0 ? site.max - 1000 : 0,
     toolResultPageChars:site.page, authoritativeSendResult:true,

@@ -1,6 +1,18 @@
-# PlazCode — rozszerzenie 1.24.22, lokalna poprawka r14
+# PlazCode — rozszerzenie 1.24.23, lokalna poprawka r15
 
-Lokalna poprawka r14 z 22 października 2026, na bazie paczki PlazCode 1.24.20 i wcześniejszych poprawek. To wersja do dalszej weryfikacji, nie oficjalne wydanie PlazCode. Rozszerzenie ma numer 1.24.22; aplikacja desktopowa pozostaje w wersji 1.24.20.
+Lokalna poprawka r15 z 22 października 2026, na bazie paczki PlazCode 1.24.20 i wcześniejszych poprawek. To wersja do dalszej weryfikacji, nie oficjalne wydanie PlazCode. Rozszerzenie ma numer 1.24.23; aplikacja desktopowa pozostaje w wersji 1.24.20.
+
+## r15 — Motif czekający na wynik, który już wrócił
+
+Nowy zrzut kończy się tekstem „Czekam na wynik odczytu BuildSolarisHud…” po kilku zakończonych komendach i zwróconym wyniku `get_studio_state`. R14 wykluczało każdą odpowiedź zawierającą „czekam” z kontynuacji, także gdy model czekał na wynik narzędzia zamiast na użytkownika. W r15 te dwa przypadki są rozróżniane.
+
+Jeśli w aktywnym zadaniu Motif czeka na wynik narzędzia, PlazCode przypomina maksymalnie trzy ostatnie rzeczywiste wyniki z tej pętli. Zapisuje je dopiero po potwierdzonym wysłaniu. Nie wykonuje ponownie komend ani nie wymyśla brakującego odczytu. Model może użyć otrzymanych danych albo wysłać nową komendę, jeśli potrzebuje odczytu innego skryptu. Limit dwóch prób dotyczy teraz kolejnych odpowiedzi bez postępu; poprawna komenda i potwierdzone dostarczenie jej wyniku odnawiają limit. Zmiana zadania przez kolejkę czyści kontekst przypominanych wyników.
+
+Pytania, oczekiwanie na dane lub zgodę użytkownika, odmowy, Stop i niepewny błąd narzędzia nadal nie uruchamiają tej kontynuacji. Dwie kolejne nieskuteczne próby kończą się pauzą z komunikatem. Rzeczywiste asynchroniczne zadanie zwracające identyfikator wymaga sprawdzenia jego udokumentowanego statusu; przypomnienie nie oznacza, że takie zadanie zakończyło się sukcesem.
+
+**Aktualizacja z r14:** podmień `core/main.js`, `providers/webchats.js` i `manifest.json` w używanym folderze rozszerzenia plikami z bieżącej wersji repozytorium. Kopie w katalogu głównym, `PlazCode-Extension` i `PlazCode-Extension-Firefox` są zgodne. Przeładuj rozszerzenie, odśwież Motif i uruchom ponownie zadanie z paska PlazCode. Numer rozszerzenia: **1.24.23**. Raport Motif: **`core:r15/parser:r13/provider:r15`**. EXE nie wymaga wymiany.
+
+**Weryfikacja:** 552/552 testy, bez błędów i pominięć. Zestaw Motif ma 42 przypadki; na r14 przechodziły 34, a 8 nie przechodziło. Odtworzono tekst ze zrzutu, przypomnienie wcześniejszego odczytu po sprawdzeniu obiektu i stanu Studio, odnawianie limitu po postępie oraz ograniczenie kontekstu do trzech wyników i bieżącego zadania. Są to testy kontrolowanego DOM, modelu i mostu, nie test zalogowanego Motif ani rzeczywistego Studio. Bieżące sumy kontrolne: `MOTIF-R15-SHA256SUMS.txt`.
 
 ## r14 — Motif kontynuuje po wyniku narzędzia
 
@@ -15,7 +27,7 @@ Na zrzucie `search_game_tree` zwraca wynik, ale dalszy krok nie następuje. Anal
 
 **Weryfikacja:** 535/535 testów, bez błędów i pominięć. Nowy zestaw `tests/motif-continuation.test.cjs` ma 25 przypadków; na kodzie r13 przechodziło 14, a 11 nie przechodziło. Testy rzeczywistej pętli sprawdzają wysłanie wyniku, odpowiedź modelu, ograniczoną kontynuację i następną komendę oraz brak powtórzenia już wykonanego polecenia. Model i most są kontrolowane; nie wykonano testu na zalogowanym Motif ani w aktywnym Roblox Studio. Szczegóły: `TESTY-TRZY-SERWISY.md`.
 
-Poniżej zachowano historię starszych poprawek. Dla bieżącej paczki obowiązuje instrukcja r14 powyżej.
+Poniżej zachowano historię starszych poprawek. Dla bieżącej paczki obowiązuje instrukcja r15 powyżej.
 
 ## r13 — zachowanie całego kodu Luau i aktualnej komendy
 

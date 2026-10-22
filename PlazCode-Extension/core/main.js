@@ -1692,7 +1692,7 @@
   // result, so the model can never claim the local engine is gone.
   function transportDiagnostics() {
     return {
-      transport_build: {core:"r14",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
+      transport_build: {core:"r15",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
       provider: P.id,
       last_parse_failure: A.lastParseFailure || null,
     };
@@ -3599,6 +3599,11 @@ return result`;
     });
   }
   const PLAN_CONTINUE_FEEDBACK = "(PlazCode: plan received. Do not stop or wait for approval; Plan Mode means plan, then implement. Start step 1 now: send exactly ONE command using the exact list_commands schemas. Do not repeat the plan.)";
+  function toolContinuationFeedback(kind,results) {
+    if(kind !== 'waiting_for_tool_result')return '(PlazCode: your last reply announced a next step but contained no command. Continue the current user task with one command from the available schemas, or explain that it is complete or what information is missing. Use the results already returned; do not repeat completed commands or retry a command whose outcome is uncertain.)';
+    const recent=results.slice(-3).map(result=>'--- Previously returned result: '+result.tool+' ---\n'+result.feedback).join('\n\n');
+    return '(PlazCode: no new tool command was submitted in your last reply. The actual results below have already returned. Use them to continue the current user task. If a different read is still needed, send that command instead of waiting for an unissued call. Do not repeat completed changes or retry an operation whose outcome is uncertain. If a result describes a pending asynchronous job, use its documented status tool.)\n\n'+recent;
+  }
   function planWantsImplementation() {
     let plan = false, lvl = "default";
     try { plan = !!(window.__rsPlanMode && window.__rsPlanMode()); } catch {}
@@ -3897,6 +3902,9 @@ return result`;
     // Some sites end the turn after the plan, which used to finish the run with
     // nothing built. Continue such a plan-only reply once per loop.
     let planContinues = 0, toolsThisLoop = 0, toolContinues = 0;
+    // Only confirmed deliveries in this task are eligible for a result reminder.
+    // Results are already bounded/paged by compressToolFeedback; keep three.
+    const recentToolFeedback = [];
     let refuseRetries = recoveryAttempt;
     let pasteReminders = 0;
     let recoverSession = null;
@@ -4063,7 +4071,7 @@ return result`;
         if (res.kind === "parse_error") {
           A.lastParseFailure = {
             reason: res.reason, provider: P.id,
-            core_build: "r14", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
+            core_build: "r15", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
             ...(typeof RSParse.transportInfo === "function" ? RSParse.transportInfo(res.raw) : {chars:String(res.raw || "").length}),
           };
           diag("tool.parseFailure", A.lastParseFailure);
@@ -4131,16 +4139,18 @@ return result`;
           // successful tool result, without emitting the next command. This is
           // not task completion. Continue only an existing project task, with a
           // finite budget; questions, refusals and explicit final answers stop.
+          const continuationKind=P.toolContinuationKind ? P.toolContinuationKind(body,res.item)
+            : P.needsToolContinuation && P.needsToolContinuation(body,res.item) ? 'next_step' : '';
           if (A.started && !A.stop && !A.userStopped && toolsThisLoop > 0 && failedToolAttempts === 0 &&
               !['quick','conversation'].includes(A.requestKind) &&
-              P.needsToolContinuation && P.needsToolContinuation(body,res.item)) {
+              continuationKind) {
             if (toolContinues >= 2) {
-              ui.banner('warn','AI stopped before the next command','The AI kept announcing a next step without sending a command. The task paused after two continuation requests. Completed commands were not replayed.');
+              ui.banner('warn','AI stopped before the next command','The AI kept announcing or waiting for a next step without sending a command. The task paused after two consecutive continuation requests without tool progress. Completed commands were not replayed.');
               break;
             }
             toolContinues++;
-            diag('loop.toolContinue',{attempt:toolContinues});
-            base = await submitAndGetBase('(PlazCode: your last reply announced a next step but contained no command. Continue the current user task with one command from the available schemas, or explain that it is complete or what information is missing. Use the results already returned; do not repeat completed commands or retry a command whose outcome is uncertain.)');
+            diag('loop.toolContinue',{attempt:toolContinues,kind:continuationKind});
+            base = await submitAndGetBase(prepareToolFeedback(toolContinuationFeedback(continuationKind,recentToolFeedback)));
             continue;
           }
           completed = true;
@@ -4149,7 +4159,7 @@ return result`;
           void finishTaskCheckpoint(true);
           activity.sync(false, P.conversationKey(), undefined, {collapse:true});
           const next = await cowork.take();
-          if (next && !A.stop) { completed = false; await beginTaskCheckpoint(); base = next.base; continue; }
+          if (next && !A.stop) { completed = false; recentToolFeedback.length=0;toolContinues=0;toolsThisLoop=0;await beginTaskCheckpoint(); base = next.base; continue; }
           if (cowork.snapshot().pending.length && !cowork.snapshot().paused && !cowork.snapshot().sending) {
             // The idle pump waits out a late native busy signal or an existing draft.
             setTimeout(pumpCowork, 450);
@@ -4307,6 +4317,10 @@ return result`;
           const toSendFinal = failedToolAttempts>=3 ? toSend + "\n\n(System note: " + failedToolAttempts + " commands in a row failed. Do not repeat the same command. Re-read the error, inspect the current state, then try a different approach.)" : toSend;
           if(failedToolAttempts===3) diag("loop.failStreak",{n:failedToolAttempts});
           base = await submitAndGetBase(prepareToolFeedback(toSendFinal), images);
+          recentToolFeedback.push({tool:call.tool,feedback});
+          if(recentToolFeedback.length>3)recentToolFeedback.shift();
+          // Real successful tool progress renews the consecutive-stall budget.
+          if(!isErr)toolContinues=0;
           markActivity(P.allItems().filter(P.isUserItem).at(-1));
         }
       }
