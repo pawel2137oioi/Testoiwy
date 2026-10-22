@@ -1,9 +1,34 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
-// Composer/reply selectors observed on live pages 2026-10-21, including a
-// signed-in Tencent chat. Unknown message roles are never executable.
+// Tencent, Motif and ChatWave hooks observed 2026-10-21. Arcee and copilot.com
+// use experimental semantic contracts, pending signed-in live verification.
+// Unknown message roles are never executable.
 const RSProvider = (() => {
   'use strict';
   const sites = {
+    // Contract-based adapters: these semantic hooks must be confirmed on a
+    // signed-in page. Never infer assistant roles from arbitrary page text.
+    'platform.arcee.ai': {
+      id:'arcee',name:'Arcee',experimental:true,strictComposer:true,compact:true,
+      editor:'textarea[data-testid="chat-input"], textarea[placeholder*="message" i], textarea[placeholder*="prompt" i], textarea[placeholder*="chat" i], [contenteditable="true"][role="textbox"]',
+      frame:'[data-testid="chat-composer"], [data-testid="composer"], form',
+      send:'button[data-testid="send-button"], button[aria-label*="send" i], button[aria-label*="submit" i], button[type="submit"]',
+      stop:'button[data-testid="stop-button"], button[aria-label*="stop" i]',
+      user:'[data-message-author-role="user"], [data-message-role="user"], [data-role="user"]',
+      assistant:'[data-message-author-role="assistant"], [data-message-role="assistant"], [data-role="assistant"]',
+      body:'.markdown, .prose, [data-testid="message-content"]',
+      max:0,page:8000,startupPage:7000,feedbackBudget:9000,
+    },
+    'copilot.com': {
+      id:'copilot',name:'Copilot',experimental:true,strictComposer:true,compact:true,
+      editor:'textarea#userInput, textarea[data-testid="composer-input"], textarea[placeholder*="message" i], textarea[placeholder*="copilot" i], [contenteditable="true"][role="textbox"]',
+      frame:'[data-testid="composer"], [data-testid="chat-composer"], form',
+      send:'button[data-testid="send-button"], button[aria-label*="send" i], button[aria-label*="submit" i], button[type="submit"]',
+      stop:'button[data-testid="stop-button"], button[aria-label*="stop" i]',
+      user:'[data-message-author-role="user"], [data-message-role="user"], [data-role="user"], [data-content="user-message"]',
+      assistant:'[data-message-author-role="assistant"], [data-message-role="assistant"], [data-role="assistant"], [data-content="ai-message"]',
+      body:'.markdown, .prose, .markdown-body, [data-testid="message-content"]',
+      max:0,page:8000,startupPage:7000,feedbackBudget:9000,
+    },
     'aistudio.tencent.ai': {
       id: 'tencent', name: 'Tencent Hy', editor: '.hy-chat-input textarea',
       editorFallback: '.t-textarea__inner', frame: '.hy-chat-input',
@@ -45,14 +70,24 @@ const RSProvider = (() => {
       s.opacity !== '0' && r.width > 0 && r.height > 0;
   }, false);
   const firstVisible = selector => all(document, selector).find(visible) || null;
-  const getEditor = () => firstVisible(site.editor) || (site.editorFallback ? firstVisible(site.editorFallback) : null);
-  const editorText = () => read(() => getEditor().value, '');
+  let lockedEditor=null;
+  const editorLocks=new WeakMap();
+  const richEditor=ed=>!!ed && !/^(?:TEXTAREA|INPUT)$/.test(ed.tagName);
+  const getEditor = () => {
+    if(lockedEditor?.isConnected && visible(lockedEditor))return lockedEditor;
+    if(!site.strictComposer)return firstVisible(site.editor) || (site.editorFallback && firstVisible(site.editorFallback));
+    const editors=all(document,site.editor+(site.editorFallback?', '+site.editorFallback:''));
+    const candidates=editors.filter(ed=>visible(ed) && ed.closest(site.frame) && !ed.closest('pre,code,[role="dialog"],'+site.user+','+site.assistant));
+    return candidates.length===1 ? candidates[0] : null;
+  };
+  const editorText = () => read(() => {const ed=getEditor();return richEditor(ed) ? ed.innerText ?? ed.textContent ?? '' : ed.value;}, '');
   function composerFrame() {
     const ed = getEditor();
     if (!ed) return null;
+    if(site.strictComposer)return ed.closest(site.frame);
     if (site.id === 'motif') {
       // Motif has no form. Find the nearest wrapper containing its submit button.
-      for (let n = ed.parentElement, i = 0; n && i < 9; n = n.parentElement, i++)
+      for (let n = ed.parentElement, i = 0; n && n!==document.body && i < 9; n = n.parentElement, i++)
         if (query(n, site.send)) return n;
     }
     return ed.closest(site.frame) || ed.parentElement;
@@ -63,11 +98,12 @@ const RSProvider = (() => {
       const b = firstVisible(site.send);
       if (b && query(b, 'g[id="Stop generating"]')) return b;
     }
-    return firstVisible(site.stop) ||
-      all(document, 'button,[role="button"]').find(el => visible(el) && /^(stop|stop response|stop generating|停止生成|停止回答)$/i.test(buttonLabel(el))) || null;
+    const scope=site.strictComposer ? composerFrame() : document;
+    return all(scope,site.stop).find(visible) ||
+      all(scope, 'button,[role="button"]').find(el => visible(el) && /^(stop|stop response|stop generating|停止生成|停止回答)$/i.test(buttonLabel(el))) || null;
   }
   function sendButton() {
-    const b = firstVisible(site.send);
+    const b = site.strictComposer ? all(composerFrame(),site.send).find(visible) : firstVisible(site.send);
     if (!b || b === stopButton()) return null;
     if (site.id === 'chatwave' && !/^Send message$/i.test(buttonLabel(b))) return null;
     return b;
@@ -139,7 +175,7 @@ const RSProvider = (() => {
   }
   function lastAssistantId() {
     const item=lastAssistant();
-    return site.id==='motif' ? item?.getAttribute('data-mid') || item?.getAttribute('data-message-id') || null : itemKey(item);
+    return site.id==='motif' || site.strictComposer ? item?.getAttribute('data-mid') || item?.getAttribute('data-message-id') || null : itemKey(item);
   }
   const streamLen = (item = lastAssistant()) => classifyText(item).length;
   const chatIsEmpty = () => allItems().length === 0;
@@ -175,12 +211,42 @@ const RSProvider = (() => {
   }
   function modeWarning() {
     if (loginGatePresent()) return '<b>' + site.name + '</b> — sign in, then open a chat.';
-    if (site.experimental) return '<b>Tencent Hy</b> — experimental adapter; signed-in replies have not been verified.';
-    if (!getEditor()) return '<b>' + site.name + '</b> — open a chat and wait for its message box.';
+    // modeWarning disables Start in the shared UI. Experimental status belongs
+    // in the provider label; only a missing/ambiguous composer blocks Start.
+    if (!getEditor()) return '<b>' + site.name + '</b> — '+(site.experimental?'experimental adapter; ':'')+'open a chat and wait for one recognized message box.';
     return '';
   }
-  function setInputLock(on) { const ed = getEditor(); if (ed) ed.readOnly = !!on; }
+  function setInputLock(on) {
+    const ed=getEditor();if(!ed)return;
+    if(on){
+      if(!editorLocks.has(ed))editorLocks.set(ed,richEditor(ed)?ed.getAttribute('contenteditable'):ed.readOnly);
+      lockedEditor=ed;
+      if(richEditor(ed))ed.setAttribute('contenteditable','false');else ed.readOnly=true;
+    }else{
+      const prior=editorLocks.get(ed);
+      if(richEditor(ed)){if(prior===null)ed.removeAttribute('contenteditable');else if(prior!==undefined)ed.setAttribute('contenteditable',prior);}
+      else ed.readOnly=prior===undefined?false:prior;
+      editorLocks.delete(ed);lockedEditor=null;
+    }
+  }
   function setValue(ed, value) {
+    if(richEditor(ed)){
+      const editable=ed.getAttribute('contenteditable');
+      try{
+        if(editable==='false')ed.setAttribute('contenteditable','true');
+        ed.focus();
+        const range=document.createRange();range.selectNodeContents(ed);
+        const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);
+        // insertText turns blank lines into DIV+BR in Chromium, which can
+        // change innerText in pre-wrap editors. Insert escaped plain text in
+        // a pre-wrap span through the native editing command instead. No
+        // outgoing markup is interpreted; sendOnce verifies the exact text.
+        const escaped=String(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+        if(typeof document.execCommand!=='function' || !document.execCommand(value?'insertHTML':'delete',false,value?'<span style="white-space: pre-wrap">'+escaped+'</span>':''))throw Error(site.name+': the chat editor did not accept the text. Nothing was sent.');
+        ed.dispatchEvent(new Event('input',{bubbles:true}));
+      }finally{if(editable===null)ed.removeAttribute('contenteditable');else ed.setAttribute('contenteditable',editable);}
+      return;
+    }
     const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value').set;
     setter.call(ed, value);
     ed.dispatchEvent(new Event('input', {bubbles:true}));
@@ -203,8 +269,8 @@ const RSProvider = (() => {
     return !!fn();
   }
   function startupFeedbackMessages(value) {
-    const text = String(value), limit = 10000;
-    if (!site.max || text.length <= limit) return [{text}];
+    const text = String(value), limit = site.startupPage || 10000;
+    if ((!site.max && !site.compact) || text.length <= limit) return [{text}];
     const chunks = []; let offset = 0;
     while (offset < text.length) {
       let end = Math.min(offset + limit, text.length);
@@ -406,16 +472,16 @@ const RSProvider = (() => {
     binding.place();return binding;
   }
   return {
-    id:site.id, displayName:site.name, supportsVision:false, timings,
-    build:'r15',
+    id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
+    build:'r16',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the
     // COMPLETE context to acknowledged parts, never to the first handshake.
-    compactStartup:site.max > 0,
-    startupReplyAsCode:true, startupRequest:site.max > 0 ? startupRequest : undefined, startupFeedbackMessages,
+    compactStartup:!!site.compact || site.max > 0,
+    startupReplyAsCode:true, startupRequest:site.compact || site.max > 0 ? startupRequest : undefined, startupFeedbackMessages,
     requireConfirmedStartup:true,
-    requireFreshResponse:site.id==='motif',
+    requireFreshResponse:site.id==='motif' || !!site.strictComposer,
     // Legacy marker-only sessions may have been armed by an unsuccessful
     // handshake. Restore only when this chat visibly confirms readiness.
     canRestoreSession,
@@ -423,7 +489,7 @@ const RSProvider = (() => {
     needsToolContinuation:site.id==='motif' ? needsToolContinuation : undefined,
     toolContinuationKind:site.id==='motif' ? toolContinuationKind : undefined,
     mountActivitySummary:site.id==='motif' ? mountMotifActivity : undefined,
-    toolFeedbackMaxChars:site.max > 0 ? site.max - 1000 : 0,
+    toolFeedbackMaxChars:site.feedbackBudget || (site.max > 0 ? site.max - 1000 : 0),
     toolResultPageChars:site.page, authoritativeSendResult:true,
     sendFailureAmbiguous:() => ambiguous, sendRetryable:() => false,
     sendFailureDetail:() => failure, thinkingSel:'.reasoning,[data-testid*="reasoning"],.msg-thinking,.hy-think',

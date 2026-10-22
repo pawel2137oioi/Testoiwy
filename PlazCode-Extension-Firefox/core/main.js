@@ -535,6 +535,8 @@
   }
 
   const AI_SITES = [
+    { name: "Arcee (experimental)", url: "https://platform.arcee.ai/" },
+    { name: "Copilot (experimental)", url: "https://copilot.com/" },
     { name: "Tencent Hy", url: "https://aistudio.tencent.ai/" },
     { name: "Motif", url: "https://chat.motiftech.io/chat" },
     { name: "ChatWave", url: "https://chat.thewave.cv/" },
@@ -1692,7 +1694,7 @@
   // result, so the model can never claim the local engine is gone.
   function transportDiagnostics() {
     return {
-      transport_build: {core:"r15",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
+      transport_build: {core:"r16",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
       provider: P.id,
       last_parse_failure: A.lastParseFailure || null,
     };
@@ -4071,7 +4073,7 @@ return result`;
         if (res.kind === "parse_error") {
           A.lastParseFailure = {
             reason: res.reason, provider: P.id,
-            core_build: "r15", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
+            core_build: "r16", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
             ...(typeof RSParse.transportInfo === "function" ? RSParse.transportInfo(res.raw) : {chars:String(res.raw || "").length}),
           };
           diag("tool.parseFailure", A.lastParseFailure);

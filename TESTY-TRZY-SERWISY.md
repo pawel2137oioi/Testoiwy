@@ -1,5 +1,13 @@
 # Raport weryfikacji — 2026-10-22
 
+## r16 — eksperymentalne Arcee i dokładnie copilot.com
+
+**610 testów, 610 zaliczonych, 0 nieudanych i 0 pominiętych.** Polecenie: `cd tests && npm test`. Dodano 58 przypadków dla nowych adapterów: wspólny kontrakt wysyłki, rzeczywiste funkcje startu i parsera, kontekst Ultra dla Roblox/AgentScript, potwierdzanie części, odmowy, nieznane role, brak granicy kompozytora i niejednoznaczne edytory, contenteditable, natywny limit i kompletny długi kod Luau. Poprzednie 552 testy pozostają zaliczone.
+
+**6/6 prób Chromium**: każda domena z textarea oraz contenteditable w trybach białych znaków pre-wrap i normal. Test `node tests/browser/webchats-smoke.cjs` korzysta z natywnego edytora Chromium. Sprawdza dokładny tekst wraz z pustymi liniami, końcowym newline, Unicode i znakami HTML, jedno kliknięcie, potwierdzenie, przywrócenie blokady i szkic. Wykrył różnicę w insertText, które tworzyło dodatkowe puste linie; poprawka używa natywnego wstawiania escapowanego tekstu w pre-wrap i sprawdza treść przed wysłaniem.
+
+**Ograniczenie:** fixture obu nowych serwisów są syntetyczne. Proxy zwraca CONNECT 403; nie obejrzano zalogowanego DOM i nie potwierdzono rzeczywistego działania platform.arcee.ai ani copilot.com. Wersja 1.24.24 jest eksperymentalna dla tych adresów. Nie zarejestrowano copilot.microsoft.com. Instrukcja: `ARCEE-COPILOT.md`. Raport: `core:r16/parser:r13/provider:r16`; sumy: `WEBCHATS-R16-SHA256SUMS.txt`.
+
 ## r15 — oczekiwanie Motif na zwrócony wynik odczytu
 
 **552 testy, 552 zaliczone, 0 nieudanych i 0 pominiętych.** Polecenie: `cd tests && npm test`, Node.js 24.19.0 na Linux x86_64. Zestaw Motif rozszerzono z 25 do 42 przypadków. Na zachowanym kodzie r14 przechodziły 34, a 8 nie przechodziło; po poprawce przechodzą wszystkie 42.

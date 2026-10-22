@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "PlazCode \u00d7 Roblox Studio & AgentScript",
-  "version": "1.24.23",
+  "version": "1.24.24",
   "minimum_chrome_version": "111",
   "description": "PlazCode connects supported AI chats to Roblox Studio and local AgentScript with animation, VFX, Luau knowledge, web research, and project tools.",
   "permissions": [
@@ -58,7 +58,9 @@
     "https://app.clickup.com/*",
     "https://aistudio.tencent.ai/*",
     "https://chat.motiftech.io/*",
-    "https://chat.thewave.cv/*"
+    "https://chat.thewave.cv/*",
+    "https://platform.arcee.ai/*",
+    "https://copilot.com/*"
   ],
   "content_security_policy": {
     "extension_pages": "default-src 'none'; script-src 'self' 'wasm-unsafe-eval'; object-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self' https://* http://* ws://127.0.0.1:* http://127.0.0.1:* http://localhost:* https://ollama.com https://*.ollama.com"
@@ -86,7 +88,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "PlazCode 1.24.23 \u2014 RS/AS",
+    "default_title": "PlazCode 1.24.24 \u2014 RS/AS",
     "default_icon": {
       "16": "icon.png",
       "48": "icon.png",
@@ -131,7 +133,9 @@
         "https://app.clickup.com/*",
         "https://aistudio.tencent.ai/*",
         "https://chat.motiftech.io/*",
-        "https://chat.thewave.cv/*"
+        "https://chat.thewave.cv/*",
+        "https://platform.arcee.ai/*",
+        "https://copilot.com/*"
       ],
       "js": [
         "core/debug-capture.js",
@@ -176,7 +180,9 @@
         "https://app.clickup.com/*",
         "https://aistudio.tencent.ai/*",
         "https://chat.motiftech.io/*",
-        "https://chat.thewave.cv/*"
+        "https://chat.thewave.cv/*",
+        "https://platform.arcee.ai/*",
+        "https://copilot.com/*"
       ],
       "js": [
         "core/debug-capture-main.js"
@@ -896,7 +902,9 @@
       "matches": [
         "https://aistudio.tencent.ai/*",
         "https://chat.motiftech.io/*",
-        "https://chat.thewave.cv/*"
+        "https://chat.thewave.cv/*",
+        "https://platform.arcee.ai/*",
+        "https://copilot.com/*"
       ],
       "js": [
         "core/debug-capture.js",

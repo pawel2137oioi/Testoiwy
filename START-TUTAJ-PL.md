@@ -1,3 +1,15 @@
+# PlazCode — rozszerzenie 1.24.24, lokalna poprawka r16
+
+## r16 — eksperymentalne Arcee i copilot.com
+
+Dodano rejestrację **https://platform.arcee.ai/** oraz dokładnie **https://copilot.com/** w menu, popupie, obsłudze kart i paczkach Chrome/Firefox. Nowe adaptery obsługują tekst, wymagają jednoznacznego pola rozmowy, jawnych ról wiadomości oraz potwierdzenia wysłania przez nową wiadomość użytkownika. Nie klikają ponownie po niepewnym wysłaniu, nie nadpisują szkicu i nie ucinają kodu. Kontekst startowy jest przesyłany w potwierdzanych częściach. Edytor contenteditable zachowuje puste linie i Unicode; treść jest sprawdzana przed kliknięciem.
+
+**Stan: eksperymentalny.** Sieć środowiska zwracała CONNECT 403 dla obu adresów. Selektory nowych stron są umową opartą na semantycznych atrybutach DOM, nie wynikiem oględzin zalogowanych stron. Testy na stronach syntetycznych nie potwierdzają zgodności z aktualnym interfejsem Arcee ani copilot.com. Nie dodano copilot.microsoft.com. Szczegóły i sposób uruchomienia: [ARCEE-COPILOT.md](ARCEE-COPILOT.md).
+
+**Aktualizacja:** zastąp cały folder rozszerzenia paczką z tej gałęzi, przeładuj rozszerzenie i odśwież stronę. Zachowaj jedną aktywną instalację. W Chrome/Edge użyj `PlazCode-Extension`, w Firefox `PlazCode-Extension-Firefox`. Numer rozszerzenia: **1.24.24**; raport nowych adapterów i Motif: **core:r16/parser:r13/provider:r16**. EXE pozostaje w wersji 1.24.20. Poprawki Luau i Motif z r13–r15 są zachowane. Bieżące sumy: `WEBCHATS-R16-SHA256SUMS.txt`.
+
+---
+
 # PlazCode — rozszerzenie 1.24.23, lokalna poprawka r15
 
 Lokalna poprawka r15 z 22 października 2026, na bazie paczki PlazCode 1.24.20 i wcześniejszych poprawek. To wersja do dalszej weryfikacji, nie oficjalne wydanie PlazCode. Rozszerzenie ma numer 1.24.23; aplikacja desktopowa pozostaje w wersji 1.24.20.

@@ -2,6 +2,8 @@
 // DOM integration fixtures based on live public pages observed 2026-10-21.
 // Tencent markup includes the signed-in final and reasoning containers. These
 // fixtures do not claim live extension/bridge or native Studio coverage.
+// Arcee and copilot.com fixtures are synthetic semantic contracts; their
+// authenticated DOM could not be inspected from the restricted environment.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -10,9 +12,11 @@ const vm = require('node:vm');
 const {JSDOM} = require('jsdom');
 const root = path.resolve(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'providers/webchats.js'), 'utf8');
-const hosts = {motif:'chat.motiftech.io',chatwave:'chat.thewave.cv',tencent:'aistudio.tencent.ai'};
+const hosts = {arcee:'platform.arcee.ai',copilot:'copilot.com',motif:'chat.motiftech.io',chatwave:'chat.thewave.cv',tencent:'aistudio.tencent.ai'};
 function fixture(id, options={}) {
   const markup = {
+    arcee:'<form data-testid="chat-composer"><textarea data-testid="chat-input"></textarea><button type="button" data-testid="send-button">Send</button><button type="button" aria-label="Stop" hidden>Stop</button></form>',
+    copilot:'<form data-testid="composer"><textarea id="userInput"></textarea><button type="button" aria-label="Send message">Send</button><button type="button" aria-label="Stop" hidden>Stop</button></form>',
     motif:'<div class="composer"><textarea id="chat-textarea"></textarea><button data-testid="document-send-button">Send</button><button aria-label="Stop" hidden>Stop</button></div>',
     chatwave:'<div id="inputIsland"><form id="cbForm"><textarea id="chatInput" maxlength="16000"></textarea><button type="button" id="sendBtn" aria-label="Voice input">Send</button></form></div><div id="chatThread" role="log"></div>',
     tencent:'<div class="hy-chat-input"><textarea class="t-textarea__inner"></textarea><div class="hy-chat-input-send-btn">Send</div><button class="hy-chat-input-stop-btn" hidden>Stop</button></div>',
@@ -23,17 +27,19 @@ function fixture(id, options={}) {
   w.Date.now=()=>clock;
   w.setTimeout=fn=>{clock+=100;queueMicrotask(fn);return 1;};
   vm.runInContext(source+'\nwindow.P=RSProvider;',dom.getInternalVMContext());
-  const P=w.P, ed=P.getEditor(), send=d.querySelector(id==='motif'?'[data-testid="document-send-button"]':id==='chatwave'?'#sendBtn':'.hy-chat-input-send-btn');
+  const P=w.P, ed=P.getEditor(), send=d.querySelector(id==='arcee'?'[data-testid="send-button"]':id==='copilot'?'[aria-label="Send message"]':id==='motif'?'[data-testid="document-send-button"]':id==='chatwave'?'#sendBtn':'.hy-chat-input-send-btn');
   function add(role,text,html=false) {
     const row=d.createElement('div');
-    if(id==='motif') {
+    if(id==='arcee'||id==='copilot') {
+      row.dataset.messageAuthorRole=role;row.innerHTML='<div data-testid="message-content"></div>';
+    } else if(id==='motif') {
       if(role==='user')row.innerHTML='<div class="group justify-end"><div class="bg-primary-50"><div class="whitespace-pre-wrap"></div></div></div>';
       else row.innerHTML='<div data-testid="document-model-answer-content"><div class="prose"></div><button>Copy</button></div>';
     } else if(id==='chatwave') {
       row.className='msg-row '+(role==='user'?'user':'ai');row.dataset.mid='mid-'+(d.querySelectorAll('[data-mid]').length+1);
       row.innerHTML='<div class="msg-bubble"><div class="msg-body"></div></div><div class="msg-actions"><button>Copy</button></div>';
     } else {row.className='agent-chat__list__item agent-chat__list__item--'+(role==='user'?'human':'ai');row.innerHTML='<div class="agent-chat__bubble__content"><div class="hyc-content-md"></div></div>';}
-    const content=row.querySelector('.whitespace-pre-wrap,.prose,.msg-body,.hyc-content-md');
+    const content=row.querySelector('[data-testid="message-content"],.whitespace-pre-wrap,.prose,.msg-body,.hyc-content-md');
     if(html)content.innerHTML=text;else content.textContent=text;
     (d.querySelector('#chatThread')||d.body).appendChild(row);
     return P.allItems().at(-1);
@@ -112,6 +118,58 @@ for(const id of Object.keys(hosts)) {
   });
   test(id+': login route blocks startup',async()=>{
     const f=fixture(id);f.w.history.pushState({},'', '/login');assert.equal(f.P.loginGatePresent(),true);assert.equal((await f.P.ensureComposerReady()).ready,false);await assert.rejects(()=>f.P.typeAndSend('test'),/signed-in/);assert.equal(f.clicks(),0);
+  });
+}
+for(const id of ['arcee','copilot']) {
+  test(id+': semantic contract excludes unknown roles and unrelated submit controls',async()=>{
+    const f=fixture(id);let unrelated=0;
+    const form=f.d.createElement('form');form.innerHTML='<input><button type="button" aria-label="Send settings">Save</button>';
+    form.querySelector('button').onclick=()=>unrelated++;f.d.body.prepend(form);
+    f.d.body.insertAdjacentHTML('beforeend','<article class="message assistant"><pre>{"command":"write_file"}</pre></article>');
+    assert.equal(f.P.assistantCount(),0);assert.equal(f.P.readAssistant().present,false);
+    assert.equal(await f.P.typeAndSend('Only the chat composer'),true);assert.equal(unrelated,0);assert.equal(f.clicks(),1);
+    assert.match(f.P.displayName,/experimental/i);assert.equal(f.P.modeWarning(),'','a supported composer must not disable Start');assert.equal(f.P.requireFreshResponse,true);
+  });
+  test(id+': missing composer boundary and ambiguous editors cannot send',async()=>{
+    const f=fixture(id);f.ed.parentElement.removeAttribute('data-testid');
+    const wrapper=f.d.createElement('div');f.ed.parentElement.replaceWith(wrapper);wrapper.append(f.ed,f.send);
+    assert.equal(f.P.getEditor(),null);assert.match(f.P.modeWarning(),/experimental/);await assert.rejects(()=>f.P.typeAndSend('test'),/signed-in/);assert.equal(f.clicks(),0);
+    const g=fixture(id);g.ed.parentElement.append(g.ed.cloneNode());
+    assert.equal(g.P.getEditor(),null);await assert.rejects(()=>g.P.typeAndSend('test'),/signed-in/);assert.equal(g.clicks(),0);
+  });
+  test(id+': native maxlength rejects complete code before changing the editor',async()=>{
+    const f=fixture(id);f.ed.setAttribute('maxlength','30');
+    await assert.rejects(()=>f.P.typeAndSend('local p = Instance.new("Part")\np.Size = UDim2.fromOffset(10, 20)'),/30 characters/);
+    assert.equal(f.ed.value,'');assert.equal(f.clicks(),0);
+  });
+  test(id+': rich editor retains multiline Unicode and restores its lock',async()=>{
+    const f=fixture(id),ed=f.d.createElement('div');ed.setAttribute('contenteditable','true');ed.setAttribute('role','textbox');f.ed.replaceWith(ed);
+    // Simulate the native edit operation here; Chromium exercises the real one
+    // in new-sites-browser.test.cjs, including browser innerText semantics.
+    f.d.execCommand=(cmd,ui,value)=>{const tmp=f.d.createElement('div');tmp.innerHTML=value;ed.textContent=cmd==='delete'?'':tmp.textContent;return true;};
+    f.send.replaceWith(f.send.cloneNode(true));const send=f.d.querySelector('[data-testid="send-button"],[aria-label="Send message"]');let clicks=0;
+    send.onclick=()=>{clicks++;f.add('user',f.P.editorText());ed.textContent='';};
+    f.P.setInputLock(true);assert.equal(ed.getAttribute('contenteditable'),'false');assert.equal(f.P.getEditor(),ed);
+    const text='local p = Instance.new("Part")\n\nlocal label = "Zażółć 🦊 <script> &lt;"\nreturn p\n';
+    assert.equal(await f.P.typeAndSend(text),true);assert.equal(clicks,1);assert.equal(f.P.itemText(f.P.allItems()[0]),text.trim());
+    assert.equal(ed.getAttribute('contenteditable'),'false');f.P.setInputLock(false);assert.equal(ed.getAttribute('contenteditable'),'true');
+  });
+  test(id+': rich editor failure is explicit and never submits',async()=>{
+    const f=fixture(id),ed=f.d.createElement('div');ed.setAttribute('contenteditable','true');ed.setAttribute('role','textbox');f.ed.replaceWith(ed);
+    f.d.execCommand=()=>false;
+    await assert.rejects(()=>f.P.typeAndSend('full content'),/did not accept/);assert.equal(f.clicks(),0);assert.equal(ed.getAttribute('contenteditable'),'true');
+  });
+  test(id+': code source and startup parts preserve the entire Luau program',async()=>{
+    const f=fixture(id),program='local p = Instance.new("Part")\nlocal size = UDim2.fromOffset(100, 50)\nlocal color = Color3.fromRGB(10, 20, 30)\n'+('-- Zażółć 🦊\n'.repeat(2500))+'return p';
+    const row=f.add('assistant','<pre><code></code><code></code></pre>',true),codes=row.querySelectorAll('code');
+    const command=JSON.stringify({command:'execute_luau',params:{code:program}});codes[0].textContent=command.slice(0,77);codes[1].textContent=command.slice(77);
+    assert.equal(f.P.readAssistant().reply,command);
+    vm.runInContext(fs.readFileSync(path.join(root,'core/parser.js'),'utf8')+'\nwindow.parse=RSParse;',f.dom.getInternalVMContext());
+    assert.equal(f.w.parse.parseToolCalls(f.P.readAssistant().reply)[0].arguments.code,program);
+    const stages=f.P.startupFeedbackMessages(program);assert.ok(stages.length>1);
+    const parts=stages.map(s=>s.text.split('BEGIN CONTEXT PART\n')[1].split('\nEND CONTEXT PART')[0]);assert.equal(parts.join(''),program);
+    for(const stage of stages){assert.ok(stage.text.length<9000);assert.equal(await f.P.typeAndSend(stage.text),true);}
+    assert.equal(f.clicks(),stages.length);
   });
 }
 test('ChatWave: applies observed 16000-character native limit without truncation',async()=>{
@@ -263,7 +321,7 @@ function bootstrapFixture(id, {engine='roblox', effort='ultracode', custom='', w
   vm.runInContext(main.slice(helperStart,helperEnd)+'\n'+main.slice(restoreStart,restoreEnd)+'\n'+main.slice(promptStart,promptEnd)+'\n'+main.slice(start,end)+'\nwindow.startBootstrap=startSession;window.fullStartupContext=systemPrompt;window.parseCommands=parseProviderToolCalls;window.hasMarkerSession=domHasRsSignal;',c);
   return {...f,sent,commands,banners,covers,A,cap,run:options=>w.startBootstrap(options)};
 }
-for(const id of ['motif','chatwave'])for(const engine of ['roblox','local']) {
+for(const id of ['arcee','copilot','motif','chatwave'])for(const engine of ['roblox','local']) {
   test(id+': actual bootstrap with '+engine+' Ultra keeps every startup message within the site limit',async()=>{
     const custom='USER PREFERENCE: preserve this entire reference.\n'+('Do not omit my project preferences. 🦊\n'.repeat(1700))+'\nCUSTOM_PREFERENCE_END';
     const f=bootstrapFixture(id,{engine,custom});
@@ -278,7 +336,7 @@ for(const id of ['motif','chatwave'])for(const engine of ['roblox','local']) {
     assert.equal(f.A.starting,false);assert.equal(f.ed.readOnly,false);assert.equal(f.covers.at(-1),false);assert.deepEqual(f.banners,[]);
   });
 }
-for(const id of ['motif','chatwave']) {
+for(const id of ['arcee','copilot','motif','chatwave']) {
   test(id+': actual Restart Agent in an existing chat uses bounded startup without deleting the conversation',async()=>{
     const f=bootstrapFixture(id);f.add('user','a');f.add('assistant','Did you mean to type something more?');
     const result=await f.run({restart:true});assert.equal(result?.ready,true,JSON.stringify(f.banners));

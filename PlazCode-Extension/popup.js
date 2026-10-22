@@ -12,6 +12,7 @@ function applyPopupAppearance(value){
  for(const [key,value]of Object.entries(vars))root.style.setProperty(key,value);
 }
 const SUPPORTED_HOSTS = [
+  "platform.arcee.ai", "copilot.com",
   "aistudio.tencent.ai", "chat.motiftech.io", "chat.thewave.cv",
   "app.clickup.com",
   "chat.deepseek.com", "deepseek.com", "chatgpt.com", "chat.openai.com",
@@ -185,6 +186,7 @@ if (runHint) {
     const url = (tab && tab.url) || "";
     const host = (() => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; } })();
     const names = {
+      "platform.arcee.ai": "Arcee (experimental)", "copilot.com": "Copilot (experimental)",
       "chat.deepseek.com": "DeepSeek", "deepseek.com": "DeepSeek",
       "chatgpt.com": "ChatGPT", "chat.openai.com": "ChatGPT",
       "app.clickup.com": "ClickUp Brain", "claude.ai": "Claude", "claude.com": "Claude",
