@@ -1,5 +1,18 @@
 # Raport weryfikacji — 2026-10-23
 
+## r28 — diagnostyka zamiast kolejnej niepotwierdzonej poprawki DOM
+
+**851/851 testów Node**, bez błędów i pominięć (`npm test --prefix tests`). Nowy copilot-diagnostics.test.cjs dodaje 11 przypadków do wcześniejszych 840: nierozpoznany renderer i liczniki źródła, oddzielny stan z chwili błędu i aktualna strona, redakcję treści/ID/URL/szkicu/atrybutów, ograniczoną próbkę nieoznaczonych artykułów bez nadawania im ról, limity głębokości/liczby elementów, kopiowanie wyłącznie po kliknięciu, odmowę schowka i ręczny odczyt, zwykłe bannery bez nowej akcji, tanią etykietę wersji bez odczytywania DOM, awarię hooka diagnostycznego i odrzucenie dowolnych pól tekstowych w metadanych błędu.
+
+**4 celowane próby Chromium** z pełnym zestawem skryptów i CSS: microsoft-unrecognized-code, microsoft-scriptor-multiline, microsoft-refusal-unknown-user-shadow oraz Arcee plain. Pierwsza próba pokazuje poprawny JSON w kontrolowanym nieobsługiwanym rendererze, odtwarza rzeczywisty błąd handshake i sprawdza działający Copy transport report. Raport zawiera strukturę i candidate_chars=0, zachowuje sesję jako nieuruchomioną; kliknięcie nie dodaje wiadomości ani komend mostu. Pozostałe przypadki zachowują udany start/odczyt lub zatrzymanie po odmowie. Schowek w browser fixture jest kontrolowany. Model i most są kontrolowane; czasy stabilizacji skrócono wyłącznie w fixture.
+
+Nie powtarzano 36 niezmienionych prób bibliotek edytora i całej poprzedniej macierzy geometrii; nie zmieniono ich ścieżek pisania/wysyłania. Pełny poprzedni wynik 840 Node + 49 Chromium w r27 nie oznaczał zgodności z faktycznym kontem użytkownika. Obecny błąd z 1.24.35 jest nadal otwarty do uzyskania raportu rzeczywistej struktury. R28 zmienia tylko zbieranie i udostępnianie diagnostyki oraz metadane wersji.
+
+Raport ma ograniczoną próbkę 48 elementów, głębokość 10 i nazwy technicznych komponentów/markerów. Nie zawiera źródła wiadomości, kodu, wartości pola, adresu rozmowy ani natywnych ID; nie jest zapisywany w storage ani automatycznie eksportowany. Etykiety wersji korzystają z osobnego taniego helpera, bez cyklicznego skanowania DOM. Błąd opcjonalnego hooka nie blokuje raportu podstawowego. Składnia zmienionych JS sprawdzona Node 24 w Linux; kopie Chromium i Firefox zgodne. Nie ma próby na zalogowanym koncie ani w prawdziwym Studio. Wersja 1.24.36, core/provider r28, parser r13. Sumy: WEBCHATS-R28-SHA256SUMS.txt.
+
+---
+
+
 ## r27 — kod Scriptor w rozpoznanej odpowiedzi Microsoftu
 
 **840/840 testów Node**, bez błędów i pominięć (`npm test --prefix tests`). Nowy copilot-scriptor.test.cjs dodaje 29 przypadków do wcześniejszych 811. Obejmuje dokładne JSON-y list_commands z params i bez, odwróconą kolejność pól, kilka logicznych linii, brak markerów textRun, zagnieżdżone runy i ich warianty nazw klas, angielski/niemiecki/polski podgląd kodu, długą dosłowną treść Luau w JSON oraz 800 zamontowanych logicznych linii surowego Luau. Sprawdza Instance.new, UDim2.fromOffset, Color3.fromRGB, Unicode, znaki niewidoczne, whitespace i puste wiersze bez skracania źródła.

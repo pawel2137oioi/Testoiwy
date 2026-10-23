@@ -571,6 +571,33 @@ const RSProvider = (() => {
       /(?:^|[.!;:\n])\s*I(?:'ll| will)\s+(?:now\s+)?(?:inspect|check|read|search|find|locate|remove|fix|update|create|add|change|start|begin)\b/i.test(text) ? 'next_step' : '';
   }
   const needsToolContinuation=(value,item)=>!!toolContinuationKind(value,item);
+  let lastTransportFailure=null;
+  function transportSnapshot(){
+    const items=allItems(),item=items.filter(isAssistantItem).at(-1)||null;
+    const reply=item?classifyText(item,undefined,true):'',candidate=item?commandText(reply,item):'';
+    let json=null;try{json=JSON.parse(candidate);}catch{}
+    const roots=replyRoots(item),code=roots.flatMap(root=>[...(matches(root,replyCodeSelector())?[root]:[]),...sourceAll(root,replyCodeSelector())]);
+    const shape=[];let omitted=0;
+    const marker=value=>/^(?:user|assistant|copilot|ai|bot|chat|code|message|markdown|lastChat|scriptor|response|composer)[a-z_-]{0,64}$/i.test(value||'')?value:undefined;
+    function walk(node,path,depth){
+      if(!node||node.nodeType!==1||node.closest(OWN))return;
+      if(depth>10||shape.length>=48){omitted++;return;}
+      const classes=[...node.classList].filter(token=>/^(?:fai-|fui-|scriptor-|cm-|monaco-|group\/(?:ai|user)-message|view-line)/.test(token)&&/^[a-z0-9_\/-]{1,80}$/i.test(token)).slice(0,4);
+      const role=/^(?:article|button|code|textbox|paragraph|group|region|presentation|none)$/.test(node.getAttribute('role')||'')?node.getAttribute('role'):undefined;
+      const entry={path,tag:node.tagName.toLowerCase(),...(role?{role}:{}),...(classes.length?{classes}:{}),...(marker(node.getAttribute('data-testid'))?{testid:marker(node.getAttribute('data-testid'))}:{}),...(marker(node.getAttribute('data-content'))?{content:marker(node.getAttribute('data-content'))}:{}),chars:node.textContent.length,children:node.children.length,reader_excludes:textUIAncestor(node),...(node.shadowRoot?{open_shadow:true}:{})};
+      shape.push(entry);
+      const children=[...node.children].filter(child=>!child.closest(OWN));
+      for(const [index,child] of children.entries())if(children.length<=6||index<3||index>=children.length-3)walk(child,path+'.'+index,depth+1);else omitted++;
+      if(node.shadowRoot)for(const [index,child] of [...node.shadowRoot.children].entries())walk(child,path+'.shadow.'+index,depth+1);
+    }
+    if(item)walk(item,'reply',0);
+    else for(const [index,article] of all(document,'[role="article"]').filter(node=>!node.closest(OWN)).slice(-3).entries())walk(article,'unclassified.'+index,0);
+    return {counts:{users:items.filter(isUserItem).length,assistants:items.filter(isAssistantItem).length,articles:all(document,'[role="article"]').filter(node=>!node.closest(OWN)).length,reply_roots:roots.length,pre:code.filter(node=>node.tagName==='PRE').length,scriptor:code.filter(node=>matches(node,SCRIPTOR_BLOCK)).length,reply_chars:reply.length,candidate_chars:candidate.length},candidate:{json:!!json&&typeof json==='object',has_command:!!json&&typeof json.command==='string',list_commands:json?.command==='list_commands',has_luau_opener:/^###\s*lua/i.test(candidate)},shape,omitted};
+  }
+  function captureTransportDiagnostics(stage,result={}){
+    lastTransportFailure={stage:/^(?:startup_handshake_failed|startup_send_failed)$/.test(stage)?stage:'unknown',result:{kind:/^(?:tool|text|timeout|stopped|parse_error|busy)$/.test(result.kind||'')?result.kind:'unknown',chars:Number.isSafeInteger(result.chars)?result.chars:0,calls:Number.isSafeInteger(result.calls)?result.calls:0,current_reply:result.currentReply===true,has_reply_item:result.hasItem===true},snapshot:read(transportSnapshot,{unavailable:true})};
+  }
+  const providerTransportDiagnostics=()=>({last_failure:lastTransportFailure,live:read(transportSnapshot,{unavailable:true})});
   function canRestoreSession() {
     const rows=allItems();
     return rows.some((item,index)=>isAssistantItem(item) && /^(?:PlazCode is ready|PLAZCODE_READY)[.!]?$/i.test(itemText(item)) &&
@@ -825,7 +852,7 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r27',
+    build:'r28',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the
@@ -842,6 +869,7 @@ const RSProvider = (() => {
     // handshake. Restore only when this chat visibly confirms readiness.
     canRestoreSession,
     commandText,isPolicyRefusal,
+    ...(site.id==='copilot'?{transportDiagnostics:providerTransportDiagnostics,captureTransportDiagnostics}:{}),
     needsToolContinuation:site.id==='motif' ? needsToolContinuation : undefined,
     toolContinuationKind:site.id==='motif' ? toolContinuationKind : undefined,
     mountActivitySummary:site.id==='motif' ? mountMotifActivity : undefined,

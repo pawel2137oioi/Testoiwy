@@ -1693,14 +1693,21 @@
   // memory ("context decay") - this tag survives because it rides inside each
   // result, so the model can never claim the local engine is gone.
   function transportDiagnostics() {
+    let providerDiagnostics;
+    try{if(typeof P.transportDiagnostics==='function')providerDiagnostics=P.transportDiagnostics();}catch{providerDiagnostics={unavailable:true};}
     return {
-      transport_build: {core:"r27",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
+      transport_build: transportBuildVersions(),
       provider: P.id,
+      engine:typeof activeEngine==='function'?activeEngine():'unknown',
       last_parse_failure: A.lastParseFailure || null,
+      ...(providerDiagnostics!==undefined?{provider_diagnostics:providerDiagnostics}:{}),
     };
   }
+  function transportBuildVersions() {
+    return {core:"r28",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"};
+  }
   function transportBuildLabel() {
-    const b = transportDiagnostics().transport_build;
+    const b = transportBuildVersions();
     return `core:${b.core}/parser:${b.parser}/provider:${b.provider}`;
   }
   // Clipboard writes only follow a user click. No chat send, bridge request,
@@ -4091,7 +4098,7 @@ return result`;
         if (res.kind === "parse_error") {
           A.lastParseFailure = {
             reason: res.reason, provider: P.id,
-            core_build: "r27", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
+            core_build: "r28", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
             ...(typeof RSParse.transportInfo === "function" ? RSParse.transportInfo(res.raw) : {chars:String(res.raw || "").length}),
           };
           diag("tool.parseFailure", A.lastParseFailure);
@@ -4954,10 +4961,11 @@ return result`;
       if (!startupCall || (startupCall.tool !== "list_commands" && startupCall.tool !== "list_tools")) {
         diag("start.handshakeFailed", { kind: listRes.kind, chars: String(listRes.text || "").length });
         if(isProviderPolicyRefusal(listRes.text)){showStartupRefusal();return;}
+        try{if(P.captureTransportDiagnostics)P.captureTransportDiagnostics('startup_handshake_failed',{kind:listRes.kind,chars:String(listRes.text||'').length,calls:listRes.calls?.length||0,currentReply:listRes.item===P.lastAssistant(),hasItem:!!listRes.item});}catch{}
         ui.banner("warn", "Startup handshake failed",
           P.id==='copilot'
             ? 'PlazCode could not read a complete list_commands request from this Copilot reply. Startup stayed stopped.'
-            : `${P.displayName} did not produce the required list_commands tool call. PlazCode stayed stopped instead of pretending it was ready. Try Start again.`);
+            : `${P.displayName} did not produce the required list_commands tool call. PlazCode stayed stopped instead of pretending it was ready. Try Start again.`,{transportReport:P.id==='copilot'});
         return;
       }
 
@@ -5085,7 +5093,10 @@ return result`;
         diag("start.sendAborted", {});
       } else if (alive()) {
         if(e && e.plazcodePolicyRefusal===true)showStartupRefusal();
-        else ui.banner("warn", "Startup failed", String((e && e.message) || e));
+        else {
+          try{if(P.captureTransportDiagnostics)P.captureTransportDiagnostics('startup_send_failed');}catch{}
+          ui.banner("warn", "Startup failed", String((e && e.message) || e),{transportReport:P.id==='copilot'});
+        }
       }
     } finally {
       // Only tear down our OWN starting state. If we were superseded (the user
@@ -9603,7 +9614,7 @@ function renderCards(panel) {
       setTimeout(() => { t.classList.remove("show"); setTimeout(() => t.remove(), 300); }, 3500);
     }
 
-    function banner(kind, title, msg) {
+    function banner(kind, title, msg, options={}) {
       const b = document.createElement("div");
       b.className = `rs-banner ${kind}`;
       b.innerHTML = `<div class="rs-banner-t"></div><div class="rs-banner-m"></div>
@@ -9613,6 +9624,13 @@ function renderCards(panel) {
       b.querySelector(".rs-banner-t").textContent = title;
       b.querySelector(".rs-banner-m").textContent = msg;
       b.querySelector(".rs-banner-x").addEventListener("click", () => b.remove());
+      if(options.transportReport){
+        const button=document.createElement('button'),report=document.createElement('pre');
+        button.type='button';button.className='rs-copy-failure-report';button.textContent='Copy transport report';
+        report.className='rs-failure-report';report.hidden=true;report.style.cssText='max-height:280px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text';
+        button.onclick=async()=>{const text=JSON.stringify(transportDiagnostics(),null,2);report.textContent=text;report.hidden=false;await copyTransportText(text,button);};
+        b.querySelector('.rs-banner-acts').prepend(button);b.append(report);
+      }
       root.appendChild(b);
     }
 

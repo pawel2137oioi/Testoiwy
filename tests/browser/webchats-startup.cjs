@@ -7,7 +7,7 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.PLAZCODE_CHROMIUM||'/usr/bin/chromium',args:['--no-sandbox']});
  try{let passed=0;
-  for(const [host,historyKind] of [['copilot.com','css-disclosure'],['copilot.com','truncated-disclosure'],['copilot.com','named-groups'],['copilot.com','named-groups-truncated'],['copilot.com','named-ai-group'],['copilot.com','microsoft-plain'],['copilot.com','microsoft-shadow'],['copilot.com','microsoft-scriptor'],['copilot.com','microsoft-scriptor-shadow'],['copilot.com','microsoft-scriptor-multiline'],['copilot.com','microsoft-refusal'],['copilot.com','microsoft-refusal-unknown-user-shadow'],['platform.arcee.ai','plain']].filter(([,kind])=>!process.env.PLAZCODE_TEST_HISTORY||kind===process.env.PLAZCODE_TEST_HISTORY)){
+  for(const [host,historyKind] of [['copilot.com','css-disclosure'],['copilot.com','truncated-disclosure'],['copilot.com','named-groups'],['copilot.com','named-groups-truncated'],['copilot.com','named-ai-group'],['copilot.com','microsoft-plain'],['copilot.com','microsoft-shadow'],['copilot.com','microsoft-scriptor'],['copilot.com','microsoft-scriptor-shadow'],['copilot.com','microsoft-scriptor-multiline'],['copilot.com','microsoft-unrecognized-code'],['copilot.com','microsoft-refusal'],['copilot.com','microsoft-refusal-unknown-user-shadow'],['platform.arcee.ai','plain']].filter(([,kind])=>!process.env.PLAZCODE_TEST_HISTORY||kind===process.env.PLAZCODE_TEST_HISTORY)){
    const copilot=host==='copilot.com',page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',error=>errors.push(error.message));
    try{
     await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><main><section id="thread"></section><form id="native-form">'+(copilot?'<div id="native-editor" contenteditable="true" aria-label="Message Copilot"></div>':'<textarea id="native-editor" placeholder="Send a message"></textarea>')+'<button type="button" id="native-send" aria-label="Send" disabled>Send</button></form></main>'}));
@@ -15,7 +15,7 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
     await page.addStyleTag({content:'body{background:#171717;color:white;margin:0}#native-form{position:fixed;bottom:12px;left:10%;width:80%;display:flex}#native-editor{white-space:pre-wrap;min-height:50px;max-height:150px;overflow:auto;flex:1;background:#333;color:white}#thread{max-height:550px;overflow:auto;padding:10px}'});
     await page.evaluate(({copilot,version,historyKind})=>{
       const ed=document.querySelector('#native-editor'),send=document.querySelector('#native-send'),thread=document.querySelector('#thread');let model='',serial=0;const named=historyKind.startsWith('named-'),microsoft=historyKind.startsWith('microsoft-');thread.dataset.content='conversation';
-      window.nativeSent=[];window.bridgeCalls=[];window.backgroundMessages=[];window.historyExpands=0;window.copyClicks=0;window.nativeSendClicks=0;
+      window.reportCopies=[];Object.defineProperty(navigator,'clipboard',{configurable:true,value:{writeText:async text=>window.reportCopies.push(text)}});window.nativeSent=[];window.bridgeCalls=[];window.backgroundMessages=[];window.historyExpands=0;window.copyClicks=0;window.nativeSendClicks=0;
       function add(role,text,code=false){
         const row=document.createElement('div');row.dataset.messageId=role+'-'+(++serial);
         if(copilot){
@@ -31,7 +31,9 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
           if(named){row.removeAttribute('aria-expanded');if(truncated){body.id='echo-'+serial;const toggle=document.createElement('button');toggle.type='button';toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls',body.id);toggle.textContent='Show more';toggle.onclick=()=>{expand();toggle.setAttribute('aria-expanded','true');};row.append(toggle);}}else row.onclick=expand;
         }else if(microsoft){
           const host=document.createElement('div');host.dataset.testid='markdown-reply';row.append(host);const body=historyKind.includes('shadow')?host.attachShadow({mode:'open'}):host;
-          if(code&&historyKind.includes('scriptor')){
+          if(code&&historyKind==='microsoft-unrecognized-code'){
+            const editor=document.createElement('div'),header=document.createElement('span'),line=document.createElement('div');editor.className='monaco-editor';header.textContent='JSON';line.className='view-line';line.textContent='1 '+text;editor.append(header,line);body.append(editor);
+          }else if(code&&historyKind.includes('scriptor')){
             if(historyKind.endsWith('multiline')){const value=JSON.parse(text);if(value.command==='list_commands')delete value.params;text=JSON.stringify(value,null,2);}
             const group=document.createElement('section'),editor=document.createElement('div'),header=document.createElement('span'),copy=document.createElement('button');group.setAttribute('aria-label','Code preview');header.textContent='JSON';copy.type='button';copy.textContent='Copy code';copy.onclick=()=>window.copyClicks++;group.append(header,copy,editor);editor.className='scriptor-component-code-block';editor.dataset.lineCount=String(text.split('\n').length);
             for(const [index,line] of text.split('\n').entries()){const paragraph=document.createElement('div'),number=document.createElement('span');paragraph.className='scriptor-paragraph';paragraph.dataset.lineNumber=String(index+1);number.className='line-number';number.textContent=String(index+1);paragraph.append(number);for(const part of [line.slice(0,Math.floor(line.length/2)),line.slice(Math.floor(line.length/2))]){const run=document.createElement('span');run.className='scriptor-textRun';run.textContent=part;paragraph.append(run);}editor.append(paragraph);}body.append(group);
@@ -78,6 +80,13 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
       assert.equal(await page.evaluate(()=>RSProvider.canRestoreSession()),false);assert.deepEqual(await page.evaluate(()=>window.bridgeCalls),[]);assert.equal(await page.evaluate(()=>window.nativeSent.length),1);assert.equal(await page.evaluate(()=>window.nativeSendClicks),1);assert.equal(await page.evaluate(()=>RSProvider.editorText()),'');assert.deepEqual(errors,[]);
       const titles=await page.locator('.rs-banner-t').allTextContents();assert.deepEqual(titles,['AI declined the connection request']);
       passed++;console.log(host+' '+historyKind+': exact refusal stops startup, no correction, context or tool call');continue;
+    }
+    if(historyKind==='microsoft-unrecognized-code'&&process.env.PLAZCODE_EXPECT_HANDSHAKE_FAILURE!=='1'){
+      await page.locator('.rs-banner-t').filter({hasText:'Startup handshake failed'}).waitFor({timeout:30000});
+      assert.equal(await page.evaluate(()=>window.reportCopies.length),0);const sent=await page.evaluate(()=>window.nativeSent.length);assert.equal(sent,2);
+      await page.locator('.rs-copy-failure-report').click();const report=await page.evaluate(()=>JSON.parse(window.reportCopies[0]));
+      assert.equal(report.transport_build.core,'r28');assert.equal(report.engine,'roblox');assert.equal(report.provider_diagnostics.last_failure.stage,'startup_handshake_failed');assert.equal(report.provider_diagnostics.last_failure.result.kind,'text');assert.equal(report.provider_diagnostics.last_failure.snapshot.counts.candidate_chars,0);assert.ok(report.provider_diagnostics.last_failure.snapshot.shape.some(node=>node.classes?.includes('monaco-editor')));assert.equal(await page.evaluate(()=>RSProvider.canRestoreSession()),false);assert.equal(await page.evaluate(()=>window.nativeSent.length),sent);assert.deepEqual(await page.evaluate(()=>window.bridgeCalls),[]);assert.deepEqual(errors,[]);assert.equal(await page.locator('.rs-failure-report').isVisible(),true);
+      passed++;console.log(host+' '+historyKind+': bounded redacted report captures actual reader failure; copying sends no message');continue;
     }
     if(process.env.PLAZCODE_EXPECT_HANDSHAKE_FAILURE==='1'){
       assert.ok(process.env.PLAZCODE_TEST_PROVIDER,'Baseline source must be supplied explicitly');

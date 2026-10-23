@@ -1,3 +1,19 @@
+# PlazCode — rozszerzenie 1.24.36, diagnostyka r28
+
+## r28 — raport rzeczywistej strony przy błędzie Copilot
+
+Użytkownik potwierdził, że 1.24.35 nadal nie odczytuje widocznego list_commands. Przyczyna na jego koncie pozostaje nieustalona. To wydanie dodaje diagnostykę potrzebną do analizy rzeczywistego interfejsu; nie deklaruje naprawy handshake i nie dodaje kolejnych zgadywanych selektorów.
+
+**Jak zebrać dane:** podmień cały folder rozszerzenia, przeładuj dodatek i odśwież kartę Copilot. Sprawdź **1.24.36** oraz **core:r28/parser:r13/provider:r28**. Po wystąpieniu Startup handshake failed lub Startup failed kliknij **Copy transport report** w tym oknie. Wklej skopiowany JSON w rozmowie z osobą naprawiającą problem. Gdy schowek jest zablokowany, raport pokaże się pod przyciskami i można go zaznaczyć ręcznie. Jest też dostępny przez Settings → Copy transport report.
+
+Raport zawiera wersje, wybrany silnik RS/AS, liczniki wiadomości i bloków, długość odczytanego tekstu/kandydata komendy, flagi poprawnego JSON oraz ograniczoną strukturę ostatniej odpowiedzi. Zachowuje stan z chwili błędu i osobno aktualny odczyt. Nie kopiuje treści wiadomości, kodu, szkicu, adresu rozmowy, ID wiadomości, href/title/aria-label ani dowolnych atrybutów. Nazwy komponentów są ograniczone do technicznych markerów interfejsu. Dane pozostają w pamięci karty; kopiowanie następuje wyłącznie po kliknięciu. Nie wysyła wiadomości, nie klika Copy na stronie AI i nie wykonuje poleceń Studio.
+
+**Weryfikacja:** 851/851 testów Node i 4 celowane próby Chromium. Obejmują rzeczywisty kod błędu z nieobsługiwanym kontrolowanym rendererem i skopiowanie zredagowanego raportu, poprawny start Scriptor, odmowę i Arcee. Nie przeprowadzono próby na zalogowanym koncie. W tej wersji nie zmieniono parsera, reguł odczytu bloków ani protokołu startowego. EXE bez zmian; Chrome/Edge: `PlazCode-Extension`, Firefox: `PlazCode-Extension-Firefox`. Wyniki: [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md); opis: [ARCEE-COPILOT.md](ARCEE-COPILOT.md); sumy: `WEBCHATS-R28-SHA256SUMS.txt`.
+
+Poniżej historia; do aktualizacji obowiązuje r28 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.35, lokalna poprawka r27
 
 ## r27 — poprawny list_commands w bloku kodu Microsoftu

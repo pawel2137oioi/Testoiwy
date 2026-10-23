@@ -1,4 +1,17 @@
-# Arcee i copilot.com — r27, rozszerzenie 1.24.35
+# Arcee i copilot.com — r28, rozszerzenie 1.24.36
+
+## R28 — jednorazowy raport rzeczywistej struktury odpowiedzi
+
+Na koncie użytkownika również r27 kończy się Startup handshake failed mimo poprawnego JSON na ekranie. Nie potwierdzono przyczyny. Kolejne zgadywanie wariantu HTML nie rozstrzygnie, czy problem dotyczy wyboru odpowiedzi, źródła kodu, filtra UI czy walidacji świeżości. Dotychczasowy raport zawierał głównie wersje i metadane błędu parsera; brakowało odczytu dostawcy.
+
+R28 dodaje opcjonalny raport dostawcy i przycisk Copy transport report bezpośrednio przy błędzie startu Copilot. Ten sam raport jest w Settings. Dane obejmują wybrany silnik, wynik startu (rodzaj, długość, liczba wywołań, obecność/bieżącość przypisanej odpowiedzi), liczniki rozpoznanych wiadomości i bloków, długości źródła, flagi poprawnego JSON/klucza command/list_commands oraz próbkę struktury ostatniej odpowiedzi. Gdy żadna odpowiedź nie ma rozpoznanej roli, raport może opisać ostatnie trzy natywne artykuły jako unclassified, bez uznania ich za AI.
+
+Próbka ma najwyżej 48 elementów i głębokość 10. Zachowuje tag, techniczną rolę, ograniczone nazwy komponentów/markerów, liczbę znaków/dzieci, znacznik otwartego shadow root i informację o pomijaniu przez czytnik. Nie przechowuje tekstu, kodu, szkicu, URL, ID, href/title/aria-label ani dowolnych atrybutów. Metadane przekazane przez core są jawnie ograniczone do znanego rodzaju wyniku, liczników i booleanów. Jeden snapshot z chwili błędu pozostaje w pamięci obok oddzielnego aktualnego odczytu. Nie jest to eksport historii.
+
+Kopiowanie następuje tylko po kliknięciu, przez istniejącą funkcję schowka; przy odmowie przeglądarki raport pozostaje widoczny do zaznaczenia. Brak automatycznego wysyłania danych i brak kliknięć natywnych przycisków Copilot. Zwykłe etykiety wersji nie wykonują skanowania struktury. Inni dostawcy zachowują raport podstawowy. Parser, reguły ról, selektory bloków i reguły startu nie są zmienione.
+
+Po aktualizacji odtwórz błąd i użyj przycisku w jego oknie. Raport jest potrzebny do diagnozy faktycznej strony zamiast dopasowywania kolejnego fixture do przypuszczenia. R28 nie jest potwierdzoną naprawą tego konta. Sprawdzenia i ograniczenia: TESTY-TRZY-SERWISY.md.
+
 
 ## R27 — natywny blok kodu Scriptor
 
@@ -117,7 +130,7 @@ Pasek obu nowych adapterów znajduje się nad wykrytym kompozytorem, bez dopisyw
 
 1. Podmień cały folder rozszerzenia i przeładuj go. Zachowaj jedną aktywną instalację. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`.
 2. Odśwież kartę Arcee lub dokładnie `https://copilot.com/`. Nie dodano domeny copilot.microsoft.com. EXE pozostaje bez zmian.
-3. Sprawdź wersję **1.24.35**. Raport transportu nowych adapterów: **core:r27/parser:r13/provider:r27**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
+3. Sprawdź wersję **1.24.36**. Raport transportu nowych adapterów: **core:r28/parser:r13/provider:r28**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
 4. Jeżeli aktualny interfejs serwisu nadal nie zostanie rozpoznany, zwykły czat pozostaje dostępny, a agent nie powinien klikać przypadkowych przycisków. Dla innej domeny po przekierowaniu ta rejestracja nie obowiązuje.
 
 Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przeglądarce. Wysyłanie obrazów pozostaje niezweryfikowane. Brak potwierdzenia wiadomości przez nowy wpis użytkownika zatrzymuje wysyłkę bez ponownego kliknięcia; przed ręczną próbą sprawdź historię, ponieważ wiadomość mogła dotrzeć.
@@ -146,7 +159,7 @@ PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-layout.cjs
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-startup.cjs
 ```
 
-Sumy bieżącej paczki: `WEBCHATS-R27-SHA256SUMS.txt`.
+Sumy bieżącej paczki: `WEBCHATS-R28-SHA256SUMS.txt`.
 
 
 ### Dodatkowe testy kontrolowanych bibliotek
