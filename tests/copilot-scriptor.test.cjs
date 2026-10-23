@@ -65,3 +65,46 @@ test('Copilot Scriptor edits are read fresh instead of returning cached calls',t
 test('Copilot Scriptor card anchor is the actual code group and own cards stay out of source',t=>{
  const f=fixture();t.after(()=>f.dom.window.close());const b=f.block('{"command":"list_commands","params":{}}'),spot=f.P.findToolBlockSpot(f.row);assert.equal(spot.ref,b.wrapper);const card=f.d.createElement('div');card.className='rs-chip';card.innerHTML='<pre>{"command":"wrong_card"}</pre>';spot.parent.insertBefore(card,spot.ref);assert.equal(f.calls().length,1);assert.equal(f.calls()[0].tool,'list_commands');
 });
+
+function unmarkedJSON(f,source,{header=true,semantic=false}={}){
+ const wrapper=f.d.createElement('section');wrapper.setAttribute('aria-label','Code preview');
+ const block=f.d.createElement('div');block.className='scriptor-component-code-block';wrapper.append(block);
+ if(header){const heading=f.d.createElement('div');heading.innerHTML='<span>JSON</span><button>Copy code<svg aria-hidden="true"><path></path></svg><span hidden aria-setsize="10">Copy menu</span></button>';block.append(heading);}
+ const content=f.d.createElement(semantic?'code':'div');content.textContent=source;block.append(content);f.body.append(wrapper);return{wrapper,block,content};
+}
+for(const source of ['{"command":"list_commands"}','{"command":"list_commands","params":{}}',JSON.stringify({command:'get_studio_state',params:{}},null,2)])for(const header of [false,true])test('Copilot native JSON without paragraph classes; header='+header+' '+source,t=>{
+ const f=fixture();t.after(()=>f.dom.window.close());unmarkedJSON(f,source,{header});assert.equal(f.command(),source);assert.equal(f.calls().length,1);assert.equal(f.P.readAssistant().reply,source);
+});
+test('Copilot native JSON preserves long literal Luau and invisible characters',t=>{
+ const f=fixture();t.after(()=>f.dom.window.close());const code='local x=Instance.new("TextLabel")\nx.Size=UDim2.fromOffset(100,40)\nx.TextColor3=Color3.fromRGB(1,2,3)\n'+('-- Zażółć 😀\t\u200B\u200C\n'.repeat(1000))+'return x',source=JSON.stringify({command:'execute_luau',params:{code}},null,2);unmarkedJSON(f,source,{semantic:true});assert.equal(f.command(),source);assert.equal(f.calls()[0].arguments.code,code);
+});
+for(const corruption of ['extra-prose','truncated','unmarked-gutter','virtualized','monaco','codemirror','missing-model','hidden','slot','rows','indices'])test('Copilot unmarked JSON rejects '+corruption+' instead of extracting a nested candidate',t=>{
+ const f=fixture();t.after(()=>f.dom.window.close());const b=unmarkedJSON(f,'{"command":"list_commands"}');
+ if(corruption==='extra-prose')b.block.append(f.d.createTextNode('This is an example.'));
+ if(corruption==='truncated')b.content.textContent='{"command":"list_commands"';
+ if(corruption==='unmarked-gutter')b.content.prepend(f.d.createTextNode('1 '));
+ if(corruption==='virtualized')b.wrapper.dataset.virtualized='true';
+ if(corruption==='monaco')b.content.className='monaco-editor';
+ if(corruption==='codemirror')b.content.className='cm-content';
+ if(corruption==='missing-model'){const host=f.d.createElement('div');b.block.append(host);host.attachShadow({mode:'open'}).textContent='unknown source';}
+ if(corruption==='hidden'){const other=f.d.createElement('div');other.hidden=true;other.textContent='unknown source';b.block.append(other);}
+ if(corruption==='slot')b.block.append(f.d.createElement('slot'));
+ if(corruption==='rows')b.wrapper.dataset.lineCount='2';
+ if(corruption==='indices')b.content.dataset.lineNumber='1';
+ assert.equal(f.command(),'');assert.equal(f.calls().length,0);
+});
+test('Copilot unmarked JSON omits only marked UI gutters, not numbers inside parameters',t=>{
+ const f=fixture();t.after(()=>f.dom.window.close());const source='{"command":"execute_luau","params":{"code":"return 123"}}',b=unmarkedJSON(f,source);const gutter=f.d.createElement('span');gutter.className='line-number';gutter.textContent='1';b.content.prepend(gutter);assert.equal(f.command(),source);assert.equal(f.calls()[0].arguments.code,'return 123');
+});
+test('Copilot unreadable unmarked block also prevents dispatch of other readable blocks',t=>{
+ const f=fixture();t.after(()=>f.dom.window.close());unmarkedJSON(f,'{"command":"get_studio_state"}');const b=unmarkedJSON(f,'{"command":"execute_luau","params":{}}');b.wrapper.dataset.virtualized='true';assert.equal(f.command(),'');assert.equal(f.calls().length,0);
+});
+for(const context of ['blockquote','button','own'])test('Copilot unmarked native JSON in '+context+' is not executable',t=>{
+ const f=fixture();t.after(()=>f.dom.window.close());const b=unmarkedJSON(f,'{"command":"list_commands"}'),parent=f.d.createElement(context==='own'?'div':context);if(context==='own')parent.className='rs-chip';f.body.append(parent);parent.append(b.wrapper);assert.equal(f.command(),'');
+});
+test('Copilot unmarked native JSON does not override a refusal',t=>{
+ const f=fixture();t.after(()=>f.dom.window.close());unmarkedJSON(f,'{"command":"list_commands"}');f.body.prepend(f.d.createTextNode('I cannot participate in or control external browser extensions by emitting structured commands for them.'));assert.equal(f.command(),'');
+});
+test('Copilot unmarked source does not create an assistant role',t=>{
+ const f=fixture({known:false});t.after(()=>f.dom.window.close());unmarkedJSON(f,'{"command":"list_commands"}');assert.equal(f.command(),'');assert.equal(f.P.allItems().length,0);
+});

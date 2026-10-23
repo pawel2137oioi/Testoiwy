@@ -1,5 +1,21 @@
 # Raport weryfikacji — 2026-10-23
 
+## r29 — odczyt pełnego JSON bez markerów paragrafów
+
+**877/877 testów Node**, bez błędów i pominięć (`npm test --prefix tests`). Dodano 25 przypadków czytnika oraz 1 przypadek diagnostyki. Obejmują list_commands z params i bez, wielowierszowy JSON, opcjonalny osobny nagłówek JSON, natywny code oraz pełną długą treść Luau z Instance.new, UDim2.fromOffset, Color3.fromRGB, Unicode i dosłownymi znakami niewidocznymi. Dodatkowa ścieżka odczytu wymaga całego poprawnego JSON z command, bez wyszukiwania wybranego potomka i bez domykania źródła.
+
+Przypadki ujemne sprawdzają dodatkową prozę, niekompletny JSON, nieoznaczony numer linii, jawnie wirtualizowany blok, Monaco/CodeMirror bez pełnego źródła, nieczytelny shadow root, ukryty fragment, slot, deklarację wierszy bez rozpoznanych linii, indeksy, cytaty, przyciski, własne karty, odmowę i nieznane role. Oznaczony gutter jest pomijany, a liczby w dosłownych parametrach pozostają zachowane. Nieczytelny blok obok poprawnej komendy zatrzymuje całość. Nowy test diagnostyki umieszcza blok pod 18 opakowaniami i potwierdza, że próbka obejmuje wnętrze kodu, liczniki paragrafów/runów i brak dostępnego źródła, nadal bez treści i w limicie 48 elementów.
+
+Pełny zestaw bibliotek edytora: **36/36 prób Chromium** (`PLAZCODE_BROWSER_DEPS=/tmp/plazcode-ui-r19 node tests/browser/controlled-editors.cjs`). Sprawdza rzeczywiste modele React/Lexical i CodeMirror, dosłowne źródło, niewidoczne znaki, pojedynczą wysyłkę, remounty i blokadę zaufanej edycji użytkownika. Zmieniony czytnik odpowiedzi nie zmienia tych ścieżek pisania.
+
+Pełny interfejs: **15/15 scenariuszy Chromium** (`node tests/browser/webchats-startup.cjs`), łącznie z bibliotekami edytora **51 różnych prób Chromium**. Nowy wariant `microsoft-native-json` przechodzi Start, list_commands bez params, potwierdzony kontekst i jedno natywne pytanie z jednym get_studio_state oraz wynikiem. Adapter r28 na tym samym fixture odtwarza rzeczywisty Startup handshake failed po jednej korekcie, z pustą listą komend mostu. Brak ponownego Send i kliknięć natywnego Copy. Zewnętrzne markery FAI, lastChatMessage i głębokie opakowania odpowiadają raportowi użytkownika, ale pominięte w tym raporcie wnętrze kodu jest reprezentatywnym fixture, a nie pobranym HTML konta.
+
+Pierwsze uruchomienie pełnej macierzy UI wykryło wyścig w harnessie: domyślny monitor Play/console wykonywał dwa własne odczyty podczas przerwy po gotowości, co naruszało licznik komend protokołu. Fixture wyłącza ten odrębny monitor przez istniejące rsAutoFix=false; runtime i jego domyślne ustawienie nie są zmienione. Końcowe 15/15 obejmuje również dotychczasowe warianty historii, Scriptor, raport błędu, oba scenariusze odmowy i Arcee.
+
+Node v24.19.0 w Linux sprawdza składnię zmienionych JS; kopie root, Chromium i Firefox są zgodne. Wersja 1.24.37, core/provider r29, parser r13. Nie zmieniono parsera, prośby startowej, ról, odmów ani wymagań potwierdzenia. Nie ma próby na zalogowanym koncie Copilot ani w rzeczywistym Studio. Dostarczony raport ustala etap utraty źródła, ale nie dowodzi dokładnej struktury wierszy użytkownika; naprawa usuwa konkretną znalezioną lukę czytnika. Sumy: WEBCHATS-R29-SHA256SUMS.txt.
+
+---
+
 ## r28 — diagnostyka zamiast kolejnej niepotwierdzonej poprawki DOM
 
 **851/851 testów Node**, bez błędów i pominięć (`npm test --prefix tests`). Nowy copilot-diagnostics.test.cjs dodaje 11 przypadków do wcześniejszych 840: nierozpoznany renderer i liczniki źródła, oddzielny stan z chwili błędu i aktualna strona, redakcję treści/ID/URL/szkicu/atrybutów, ograniczoną próbkę nieoznaczonych artykułów bez nadawania im ról, limity głębokości/liczby elementów, kopiowanie wyłącznie po kliknięciu, odmowę schowka i ręczny odczyt, zwykłe bannery bez nowej akcji, tanią etykietę wersji bez odczytywania DOM, awarię hooka diagnostycznego i odrzucenie dowolnych pól tekstowych w metadanych błędu.

@@ -243,17 +243,47 @@ const RSProvider = (() => {
     }
     return [...new Set(nodes)];
   }
+  function scriptorJSONSource(block){
+    // Some native code previews have no paragraph/textRun classes. Read their
+    // entire mounted document, never search for a JSON-looking descendant or
+    // repair delimiters. Only a separately rendered leading JSON label is UI.
+    // A hidden/virtual source needs a dedicated full-document contract. Do
+    // not accept valid-looking JSON left around an unreadable source subtree.
+    if([block,...all(block,'*')].some(node=>!textUIAncestor(node,'blockquote')&&(node.shadowRoot||matches(node,'slot,[hidden],[aria-hidden="true"],[data-virtualized="true"],[data-virtualization="true"],.monaco-editor,.cm-editor,.cm-content,[data-virtuoso-scroller]'))))return null;
+    const leading=[];
+    function first(node){
+      if(node.nodeType===3)return node.nodeValue.trim()?node:null;
+      if(node.nodeType!==1||skippedTextNode(node,'blockquote')||node.shadowRoot||matches(node,'slot'))return null;
+      for(const child of node.childNodes){const found=first(child);if(found)return found;}
+      return null;
+    }
+    const token=first(block);
+    if(token&&/^json$/i.test(token.nodeValue.trim())){
+      for(let node=token.parentElement;node&&node!==block&&node.textContent.trim().toLowerCase()==='json';node=node.parentElement)leading.push(node);
+      if(!leading.length)return null;
+    }
+    const source=textWithout(block,'blockquote',true,{plainScriptor:true,skip:new Set(leading)}).trim();
+    try{
+      const object=JSON.parse(source);
+      return object&&!Array.isArray(object)&&typeof object.command==='string'?source:null;
+    }catch{return null;}
+  }
   function scriptorSource(block){
     const family=(node,name)=>[...node.classList].some(token=>token===name||token.startsWith(name+'-')||token.startsWith(name+'_'));
     const paragraphs=sourceAll(block,'[class*="scriptor-paragraph"]').filter(node=>family(node,'scriptor-paragraph')&&!textUIAncestor(node,'blockquote'));
     const paragraphSet=new Set(paragraphs),parents=new Set();
     for(const node of paragraphs)for(let parent=node.parentElement;parent&&parent!==block;parent=parent.parentElement)if(paragraphSet.has(parent))parents.add(parent);
     const lines=paragraphs.filter(node=>!parents.has(node));
-    if(!lines.length)return null;
     // Without a full editor model, a virtualized viewport isn't source. Do not
     // join around missing rows or run a syntactically valid shortened command.
     const containers=[block];for(let parent=block.parentElement;parent&&!isAssistantItem(parent);parent=parent.parentElement)if(matches(parent,SCRIPTOR_BLOCK))containers.push(parent);
     if(containers.some(node=>matches(node,'[data-virtualized="true"],[data-virtualization="true"]')||query(node,'[data-virtualized="true"],[data-virtualization="true"],.monaco-editor,[data-virtuoso-scroller]')))return null;
+    if(!lines.length){
+      const source=scriptorJSONSource(block);
+      // Unknown row metadata cannot prove a complete mounted document.
+      if(containers.some(node=>node.hasAttribute('data-line-count')||node.hasAttribute('aria-rowcount')||node.hasAttribute('aria-setsize'))||all(block,'[data-line-number],[data-line-index],[aria-posinset],[aria-setsize]').some(node=>!textUIAncestor(node,'blockquote')))return null;
+      return source;
+    }
     for(const container of containers)for(const name of ['data-line-count','aria-rowcount','aria-setsize']){
       const total=container.getAttribute(name);if(total!==null&&(!/^\d+$/.test(total)||Number(total)!==lines.length))return null;
     }
@@ -284,17 +314,17 @@ const RSProvider = (() => {
     const value=content.getAttribute('data-rs-cm'),length=content.getAttribute('data-rs-cm-len');
     return value!==null && length!==null && Number(length)===value.length ? value : null;
   }
-  function textWithout(root, exclude = '', preserveEdges = false) {
+  function textWithout(root, exclude = '', preserveEdges = false, options = {}) {
     let text = '';
     function walk(node) {
       if (node.nodeType === 3) { text += node.nodeValue; return; }
-      if (node.nodeType !== 1 || skippedTextNode(node,exclude)) return;
+      if (node.nodeType !== 1 || options.skip?.has(node) || skippedTextNode(node,exclude)) return;
       if(site.id==='arcee' && node.matches('.cm-content')){
         const source=codeMirrorSource(node);
         if(source!==null){if(text && !text.endsWith('\n'))text+='\n';text+=source;}
         return;
       }
-      if(site.id==='copilot'&&matches(node,SCRIPTOR_BLOCK)){
+      if(site.id==='copilot'&&!options.plainScriptor&&matches(node,SCRIPTOR_BLOCK)){
         const source=scriptorSource(node);
         if(source!==null){if(text&&!text.endsWith('\n'))text+='\n';text+=source;return;}
       }
@@ -590,9 +620,18 @@ const RSProvider = (() => {
       for(const [index,child] of children.entries())if(children.length<=6||index<3||index>=children.length-3)walk(child,path+'.'+index,depth+1);else omitted++;
       if(node.shadowRoot)for(const [index,child] of [...node.shadowRoot.children].entries())walk(child,path+'.shadow.'+index,depth+1);
     }
+    // The user's r28 report spent its depth/node budget on outer wrappers and
+    // reaction buttons, before reaching either detected code block. Inspect
+    // those blocks first so a failed reader always has a useful source shape.
+    const codeLeaves=[...new Set(code)].filter(node=>!code.some(other=>other!==node&&node.contains(other)));
+    const codeSources=codeLeaves.slice(0,3).map(block=>{
+      const source=renderedCodeSource(block);
+      return {kind:matches(block,SCRIPTOR_BLOCK)?'scriptor':'pre',available:source!==null,chars:source?.length||0,paragraphs:sourceAll(block,'[class*="scriptor-paragraph"]').length,runs:sourceAll(block,'[class*="scriptor-textRun"]').length,reader_excludes:textUIAncestor(block,'blockquote')};
+    });
+    for(const [index,block] of codeLeaves.slice(0,3).entries())walk(block,'code.'+index,0);
     if(item)walk(item,'reply',0);
     else for(const [index,article] of all(document,'[role="article"]').filter(node=>!node.closest(OWN)).slice(-3).entries())walk(article,'unclassified.'+index,0);
-    return {counts:{users:items.filter(isUserItem).length,assistants:items.filter(isAssistantItem).length,articles:all(document,'[role="article"]').filter(node=>!node.closest(OWN)).length,reply_roots:roots.length,pre:code.filter(node=>node.tagName==='PRE').length,scriptor:code.filter(node=>matches(node,SCRIPTOR_BLOCK)).length,reply_chars:reply.length,candidate_chars:candidate.length},candidate:{json:!!json&&typeof json==='object',has_command:!!json&&typeof json.command==='string',list_commands:json?.command==='list_commands',has_luau_opener:/^###\s*lua/i.test(candidate)},shape,omitted};
+    return {counts:{users:items.filter(isUserItem).length,assistants:items.filter(isAssistantItem).length,articles:all(document,'[role="article"]').filter(node=>!node.closest(OWN)).length,reply_roots:roots.length,pre:code.filter(node=>node.tagName==='PRE').length,scriptor:code.filter(node=>matches(node,SCRIPTOR_BLOCK)).length,reply_chars:reply.length,candidate_chars:candidate.length},candidate:{json:!!json&&typeof json==='object',has_command:!!json&&typeof json.command==='string',list_commands:json?.command==='list_commands',has_luau_opener:/^###\s*lua/i.test(candidate)},code_sources:codeSources,shape,omitted};
   }
   function captureTransportDiagnostics(stage,result={}){
     lastTransportFailure={stage:/^(?:startup_handshake_failed|startup_send_failed)$/.test(stage)?stage:'unknown',result:{kind:/^(?:tool|text|timeout|stopped|parse_error|busy)$/.test(result.kind||'')?result.kind:'unknown',chars:Number.isSafeInteger(result.chars)?result.chars:0,calls:Number.isSafeInteger(result.calls)?result.calls:0,current_reply:result.currentReply===true,has_reply_item:result.hasItem===true},snapshot:read(transportSnapshot,{unavailable:true})};
@@ -852,7 +891,7 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r28',
+    build:'r29',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the

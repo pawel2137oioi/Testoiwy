@@ -7,7 +7,7 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.PLAZCODE_CHROMIUM||'/usr/bin/chromium',args:['--no-sandbox']});
  try{let passed=0;
-  for(const [host,historyKind] of [['copilot.com','css-disclosure'],['copilot.com','truncated-disclosure'],['copilot.com','named-groups'],['copilot.com','named-groups-truncated'],['copilot.com','named-ai-group'],['copilot.com','microsoft-plain'],['copilot.com','microsoft-shadow'],['copilot.com','microsoft-scriptor'],['copilot.com','microsoft-scriptor-shadow'],['copilot.com','microsoft-scriptor-multiline'],['copilot.com','microsoft-unrecognized-code'],['copilot.com','microsoft-refusal'],['copilot.com','microsoft-refusal-unknown-user-shadow'],['platform.arcee.ai','plain']].filter(([,kind])=>!process.env.PLAZCODE_TEST_HISTORY||kind===process.env.PLAZCODE_TEST_HISTORY)){
+  for(const [host,historyKind] of [['copilot.com','css-disclosure'],['copilot.com','truncated-disclosure'],['copilot.com','named-groups'],['copilot.com','named-groups-truncated'],['copilot.com','named-ai-group'],['copilot.com','microsoft-plain'],['copilot.com','microsoft-shadow'],['copilot.com','microsoft-scriptor'],['copilot.com','microsoft-scriptor-shadow'],['copilot.com','microsoft-scriptor-multiline'],['copilot.com','microsoft-native-json'],['copilot.com','microsoft-unrecognized-code'],['copilot.com','microsoft-refusal'],['copilot.com','microsoft-refusal-unknown-user-shadow'],['platform.arcee.ai','plain']].filter(([,kind])=>!process.env.PLAZCODE_TEST_HISTORY||kind===process.env.PLAZCODE_TEST_HISTORY)){
    const copilot=host==='copilot.com',page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',error=>errors.push(error.message));
    try{
     await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><main><section id="thread"></section><form id="native-form">'+(copilot?'<div id="native-editor" contenteditable="true" aria-label="Message Copilot"></div>':'<textarea id="native-editor" placeholder="Send a message"></textarea>')+'<button type="button" id="native-send" aria-label="Send" disabled>Send</button></form></main>'}));
@@ -31,7 +31,15 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
           if(named){row.removeAttribute('aria-expanded');if(truncated){body.id='echo-'+serial;const toggle=document.createElement('button');toggle.type='button';toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls',body.id);toggle.textContent='Show more';toggle.onclick=()=>{expand();toggle.setAttribute('aria-expanded','true');};row.append(toggle);}}else row.onclick=expand;
         }else if(microsoft){
           const host=document.createElement('div');host.dataset.testid='markdown-reply';row.append(host);const body=historyKind.includes('shadow')?host.attachShadow({mode:'open'}):host;
-          if(code&&historyKind==='microsoft-unrecognized-code'){
+          if(code&&historyKind==='microsoft-native-json'){
+            // The user's r28 report confirms FAI content, a lastChatMessage
+            // below deep wrappers and two detected code containers. The code
+            // descendants were omitted; these are representative native DOM.
+            host.removeAttribute('data-testid');host.className='fai-CopilotMessage__content';
+            let parent=body;for(let i=0;i<14;i++){const child=document.createElement('div');if(i===9)child.dataset.testid='lastChatMessage';parent.append(child);parent=child;}
+            const group=document.createElement('section'),editor=document.createElement('div'),header=document.createElement('span'),copy=document.createElement('button'),source=document.createElement('div');group.setAttribute('aria-label','Code preview');editor.className='scriptor-component-code-block';header.textContent='JSON';copy.type='button';copy.textContent='';copy.onclick=()=>window.copyClicks++;
+            const value=JSON.parse(text);if(value.command==='list_commands')delete value.params;source.textContent=JSON.stringify(value);editor.append(header,copy,source);group.append(editor);parent.append(group);
+          }else if(code&&historyKind==='microsoft-unrecognized-code'){
             const editor=document.createElement('div'),header=document.createElement('span'),line=document.createElement('div');editor.className='monaco-editor';header.textContent='JSON';line.className='view-line';line.textContent='1 '+text;editor.append(header,line);body.append(editor);
           }else if(code&&historyKind.includes('scriptor')){
             if(historyKind.endsWith('multiline')){const value=JSON.parse(text);if(value.command==='list_commands')delete value.params;text=JSON.stringify(value,null,2);}
@@ -56,7 +64,10 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
         else if(!copilot)add('assistant','PlazCode is ready.');
         else add('assistant','{"command":"list_commands","params":{}}',true);
       };
-      const storage={rsSetupSeen:true},status={ok:true,connected:true,roblox_connected:true,local_connected:false,mcpAlive:true,studio:true,studioApp:true,studioProc:true,robloxProc:true,engine:'roblox',tools:1,servers:[{id:'roblox',alive:true,tools:1}]};
+      // Isolate protocol dispatch from the unrelated periodic Play/console
+      // monitor. Otherwise a 4-second tick can add two calls during an idle
+      // gap after readiness, making the no-extra-command assertion race.
+      const storage={rsSetupSeen:true,rsAutoFix:false},status={ok:true,connected:true,roblox_connected:true,local_connected:false,mcpAlive:true,studio:true,studioApp:true,studioProc:true,robloxProc:true,engine:'roblox',tools:1,servers:[{id:'roblox',alive:true,tools:1}]};
       const tools=[{name:'get_studio_state',server:'roblox',description:'Read current Studio state',inputSchema:{type:'object',properties:{}}}];
       const reply=message=>{
         window.backgroundMessages.push(message.type);
@@ -85,7 +96,7 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
       await page.locator('.rs-banner-t').filter({hasText:'Startup handshake failed'}).waitFor({timeout:30000});
       assert.equal(await page.evaluate(()=>window.reportCopies.length),0);const sent=await page.evaluate(()=>window.nativeSent.length);assert.equal(sent,2);
       await page.locator('.rs-copy-failure-report').click();const report=await page.evaluate(()=>JSON.parse(window.reportCopies[0]));
-      assert.equal(report.transport_build.core,'r28');assert.equal(report.engine,'roblox');assert.equal(report.provider_diagnostics.last_failure.stage,'startup_handshake_failed');assert.equal(report.provider_diagnostics.last_failure.result.kind,'text');assert.equal(report.provider_diagnostics.last_failure.snapshot.counts.candidate_chars,0);assert.ok(report.provider_diagnostics.last_failure.snapshot.shape.some(node=>node.classes?.includes('monaco-editor')));assert.equal(await page.evaluate(()=>RSProvider.canRestoreSession()),false);assert.equal(await page.evaluate(()=>window.nativeSent.length),sent);assert.deepEqual(await page.evaluate(()=>window.bridgeCalls),[]);assert.deepEqual(errors,[]);assert.equal(await page.locator('.rs-failure-report').isVisible(),true);
+      assert.equal(report.transport_build.core,'r29');assert.equal(report.engine,'roblox');assert.equal(report.provider_diagnostics.last_failure.stage,'startup_handshake_failed');assert.equal(report.provider_diagnostics.last_failure.result.kind,'text');assert.equal(report.provider_diagnostics.last_failure.snapshot.counts.candidate_chars,0);assert.ok(report.provider_diagnostics.last_failure.snapshot.shape.some(node=>node.classes?.includes('monaco-editor')));assert.equal(await page.evaluate(()=>RSProvider.canRestoreSession()),false);assert.equal(await page.evaluate(()=>window.nativeSent.length),sent);assert.deepEqual(await page.evaluate(()=>window.bridgeCalls),[]);assert.deepEqual(errors,[]);assert.equal(await page.locator('.rs-failure-report').isVisible(),true);
       passed++;console.log(host+' '+historyKind+': bounded redacted report captures actual reader failure; copying sends no message');continue;
     }
     if(process.env.PLAZCODE_EXPECT_HANDSHAKE_FAILURE==='1'){

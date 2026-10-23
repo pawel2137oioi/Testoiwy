@@ -1,4 +1,16 @@
-# Arcee i copilot.com — r28, rozszerzenie 1.24.36
+# Arcee i copilot.com — r29, rozszerzenie 1.24.37
+
+## R29 — pełny JSON z natywnego bloku bez klas paragrafów
+
+Raport r28 z konta użytkownika potwierdził etap awarii: rozpoznano 2 wpisy użytkownika i 2 odpowiedzi AI, 4 artykuły, 1 korzeń treści i 2 elementy podglądu Scriptor. Ostatnia odpowiedź ma 34 znaki w czytniku, lecz candidate_chars=0; core kończy ją jako text, z 0 wywołań i bez błędu parsera. Problem występuje przed parserem. Próbka struktury dochodzi do lastChatMessage, ale limit głębokości odcina wnętrze kodu. Raport nie dowodzi konkretnej klasy jego wierszy ani dokładnej przyczyny odrzucenia źródła.
+
+W czytniku znaleziono brakującą ścieżkę: natywny blok bez scriptor-paragraph zawsze zwracał brak źródła, nawet gdy zawierał kompletny JSON. R29 czyta cały taki blok i przyjmuje go wyłącznie jako poprawny obiekt JSON z kluczem command. Może pominąć osobno wyrenderowany początkowy nagłówek JSON, znane kontrolki i oznaczone guttery. Nie szuka komendy w wybranym potomku, nie usuwa nieoznaczonych numerów, nie naprawia nawiasów ani nie dopisuje parametrów. Obsługuje list_commands z params i bez niego oraz zwykłe komendy z dosłownym kodem Luau w parametrze. Surowy Luau nadal wymaga dotychczasowego kontraktu logicznych linii.
+
+Nieczytelne modele/shadow roots, sloty, ukryte fragmenty, jawna wirtualizacja i metadane wierszy bez rozpoznanych linii blokują tę dodatkową ścieżkę. Zwykły tekst poza kodem, niepełny JSON i nieoznaczone guttery nie są wycinane w poszukiwaniu poprawnego podzbioru. Nieczytelny blok nadal zatrzymuje pozostałe komendy tej odpowiedzi. Role, odmowy modelu, potwierdzenie wysłania i protokół startu pozostają wymagane.
+
+Diagnostyka najpierw opisuje wykryte bloki kodu, dopiero później zewnętrzne opakowania odpowiedzi. Dodaje liczniki paragrafów/runów, dostępność i długość odczytanego źródła oraz flagę wykluczenia przez czytnik. Nadal zachowuje limit 48 elementów i nie zawiera tekstu czatu ani kodu. Pozwala sprawdzić wnętrze bloku, które zniknęło z raportu r28.
+
+Reprezentatywny wariant bez klas paragrafów odtwarza błąd na r28 i przechodzi pełny start oraz jeden odczyt na r29. Jego zewnętrzne markery i głębokie opakowania odpowiadają raportowi; niewidoczne w raporcie potomki kodu są kontrolowanym fixture, nie kopią DOM użytkownika. Wyniki i granice weryfikacji: TESTY-TRZY-SERWISY.md. Nie potwierdzono działania na zalogowanym koncie.
 
 ## R28 — jednorazowy raport rzeczywistej struktury odpowiedzi
 
@@ -130,7 +142,7 @@ Pasek obu nowych adapterów znajduje się nad wykrytym kompozytorem, bez dopisyw
 
 1. Podmień cały folder rozszerzenia i przeładuj go. Zachowaj jedną aktywną instalację. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`.
 2. Odśwież kartę Arcee lub dokładnie `https://copilot.com/`. Nie dodano domeny copilot.microsoft.com. EXE pozostaje bez zmian.
-3. Sprawdź wersję **1.24.36**. Raport transportu nowych adapterów: **core:r28/parser:r13/provider:r28**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
+3. Sprawdź wersję **1.24.37**. Raport transportu nowych adapterów: **core:r29/parser:r13/provider:r29**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
 4. Jeżeli aktualny interfejs serwisu nadal nie zostanie rozpoznany, zwykły czat pozostaje dostępny, a agent nie powinien klikać przypadkowych przycisków. Dla innej domeny po przekierowaniu ta rejestracja nie obowiązuje.
 
 Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przeglądarce. Wysyłanie obrazów pozostaje niezweryfikowane. Brak potwierdzenia wiadomości przez nowy wpis użytkownika zatrzymuje wysyłkę bez ponownego kliknięcia; przed ręczną próbą sprawdź historię, ponieważ wiadomość mogła dotrzeć.
@@ -159,7 +171,7 @@ PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-layout.cjs
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-startup.cjs
 ```
 
-Sumy bieżącej paczki: `WEBCHATS-R28-SHA256SUMS.txt`.
+Sumy bieżącej paczki: `WEBCHATS-R29-SHA256SUMS.txt`.
 
 
 ### Dodatkowe testy kontrolowanych bibliotek

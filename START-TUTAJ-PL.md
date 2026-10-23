@@ -1,3 +1,19 @@
+# PlazCode — rozszerzenie 1.24.37, poprawka odczytu r29
+
+## r29 — natywny blok JSON bez klas wierszy
+
+Raport użytkownika potwierdza poprawne rozpoznanie wiadomości oraz dwóch elementów podglądu kodu, ale kandydat polecenia ma długość 0. Awaria następuje przed parserem. Raport r28 odciął strukturę przed wnętrzem kodu, więc nie ustala dokładnej postaci jego wierszy.
+
+R29 uzupełnia brakującą ścieżkę odczytu: kompletny JSON w rozpoznanym natywnym bloku nie wymaga już klas scriptor-paragraph. Czytany jest cały blok, z pominięciem osobnego nagłówka JSON i znanych kontrolek. Niekompletny JSON, nieczytelny model, wirtualizacja i niespójne metadane nadal zatrzymują wykonanie. Dosłowny kod w parametrach pozostaje zachowany. Diagnostyka pokazuje teraz wnętrze wykrytych bloków przed zewnętrznymi opakowaniami strony, bez kopiowania treści.
+
+**Aktualizacja:** podmień cały folder rozszerzenia, przeładuj dodatek i odśwież Copilot. Sprawdź **1.24.37** oraz **core:r29/parser:r13/provider:r29**. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`. EXE bez zmian. Na pustym polu Start Agent musi odebrać list_commands i potwierdzenie kontekstu. W razie błędu przycisk Copy transport report zawiera teraz również strukturę wnętrza kodu.
+
+**Weryfikacja:** 877/877 testów Node i 51 różnych prób Chromium. Scenariusz bez klas paragrafów odtwarza błąd r28 i przechodzi pełny start oraz odczyt na r29. Dokładne wyniki: [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md); opis: [ARCEE-COPILOT.md](ARCEE-COPILOT.md); sumy: `WEBCHATS-R29-SHA256SUMS.txt`. Model i most są kontrolowane. Nie ma testu na zalogowanym koncie; struktura niewidocznych potomków kodu z raportu pozostaje niepotwierdzona.
+
+Poniżej historia; do aktualizacji obowiązuje r29 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.36, diagnostyka r28
 
 ## r28 — raport rzeczywistej strony przy błędzie Copilot
