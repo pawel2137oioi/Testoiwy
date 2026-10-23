@@ -17,10 +17,10 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
       const ed=document.querySelector('#native-editor'),send=document.querySelector('#native-send'),thread=document.querySelector('#thread');let model='',serial=0;
       window.nativeSent=[];window.bridgeCalls=[];window.backgroundMessages=[];
       function add(role,text,code=false){const row=document.createElement('div');row.dataset.role=role;row.dataset.messageId=role+'-'+(++serial);if(code){const body=document.createElement('div');body.className='markdown';const node=document.createElement(copilot?'pre':'code');node.textContent=text;body.append(node);row.append(body);}else row.textContent=text;thread.append(row);}
-      if(copilot)ed.onpaste=event=>{event.preventDefault();model=event.clipboardData.getData('text/plain');ed.textContent=model+'\u200B\u200B';send.disabled=!model;};
+      if(copilot)ed.onpaste=event=>{event.preventDefault();model=event.clipboardData.getData('text/plain');ed.textContent=model+'\u200B\u200C';send.disabled=!model;};
       ed.oninput=event=>{if(!copilot || event.isTrusted){model=copilot?ed.textContent:ed.value;send.disabled=!model;}};
       send.onclick=()=>{
-        const text=model;window.nativeSent.push(text);add('user',text+(copilot?'\u200B\u200B':''));model='';if(copilot)ed.textContent='';else ed.value='';send.disabled=true;
+        const text=model;window.nativeSent.push(text);add('user',text+(copilot?'\u200B\u200C':''));model='';if(copilot)ed.textContent='';else ed.value='';send.disabled=true;
         if(!copilot && window.nativeSent.length===1)history.replaceState({},'','/playground/first-saved-chat');
         const part=text.match(/PlazCode startup context part (\d+)\/(\d+)\./);
         if(part)add('assistant',part[1]===part[2]?'PlazCode is ready.':`PlazCode startup part ${part[1]}/${part[2]} received.`);
@@ -42,7 +42,7 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
       window.chrome={runtime:{id:'plazcode-startup-fixture',getManifest:()=>({version}),getURL:p=>location.origin+'/__extension/'+p,onMessage:{addListener(){}},sendMessage:(message,callback)=>{const value=reply(message);if(callback){queueMicrotask(()=>callback(value));return;}return Promise.resolve(value);}},storage:{local:{get:(key,callback)=>{if(callback)callback({...storage});else return Promise.resolve({...storage});},set:(value,callback)=>{Object.assign(storage,value);callback?.();return Promise.resolve();}},onChanged:{addListener(){}}},i18n:{getMessage:()=>''}};
     },{copilot,version:manifest.version});
     for(const script of scripts){
-      await page.addScriptTag({content:fs.readFileSync(path.join(root,script),'utf8')});
+      await page.addScriptTag({content:fs.readFileSync(script==='providers/webchats.js' && process.env.PLAZCODE_TEST_PROVIDER || path.join(root,script),'utf8')});
       if(script==='providers/webchats.js')await page.evaluate(()=>Object.assign(RSProvider.timings,{GEN_IDLE_MS:20,STABLE_MS:40,REASON_IDLE_MS:100}));
     }
     await page.addStyleTag({content:fs.readFileSync(path.join(root,'overlay.css'),'utf8')});

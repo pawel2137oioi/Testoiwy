@@ -18,7 +18,7 @@ const provider=fs.readFileSync(process.env.PLAZCODE_TEST_PROVIDER||path.join(roo
     await page.evaluate(kind=>{window.nativeSent=[];window.retainDraft=kind.endsWith('retained');if(kind.startsWith('lexical')){
       mountLexical();
       if(kind.includes('padded'))document.querySelector('[contenteditable]').addEventListener('paste',()=>{
-        setTimeout(()=>{const span=document.createElement('span');span.textContent='\u200B\u200B';const paragraph=document.querySelector('[contenteditable]').lastElementChild;paragraph.insertBefore(span,paragraph.lastChild?.nodeName==='BR'?paragraph.lastChild:null);},50);
+        setTimeout(()=>{const span=document.createElement('span');span.textContent='\u200B\u200C';const paragraph=document.querySelector('[contenteditable]').lastElementChild;paragraph.insertBefore(span,paragraph.lastChild?.nodeName==='BR'?paragraph.lastChild:null);},50);
       });
       if(kind==='lexical-delayed')document.querySelector('[contenteditable]').addEventListener('paste',event=>{
         if(event.fixtureDelivery)return;
@@ -39,7 +39,7 @@ const provider=fs.readFileSync(process.env.PLAZCODE_TEST_PROVIDER||path.join(roo
       assert.equal(actual,value);passed++;
     }
     if(kind.includes('padded')){
-      const value='local s = "a\u200Bb"\n\nreturn s\n\u200B\uFEFF';
+      const value='local s = "a\u200Bb\u200Cc"\n\nreturn s\n\u200B\u200C';
       const actual=await page.evaluate(async value=>{P.setInputLock(true);try{await P.typeAndSend(value);}finally{P.setInputLock(false);}return window.nativeSent.at(-1);},value);
       assert.equal(actual,value);passed++;
     }
@@ -57,7 +57,7 @@ const provider=fs.readFileSync(process.env.PLAZCODE_TEST_PROVIDER||path.join(roo
     assert.deepEqual(errors,[]);console.log(kind+': native model, exact source, single send and user lock passed');
    }finally{await page.close();}
   }
-  for(const transform of ['none','uppercase'])for(const suffix of ['', '\u200B\u200B', '\u200B\n']){
+  for(const transform of ['none','uppercase'])for(const suffix of ['', '\u200B\u200B', '\u200B\u200C', '\u200B\n']){
     const page=await browser.newPage();
     try{
       await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><form><div contenteditable="true" aria-label="Message Copilot" style="white-space:pre-wrap;text-transform:'+transform+';min-height:60px"></div><button type="button" aria-label="Send">Send</button></form><section id="thread"></section>'}));
@@ -80,7 +80,7 @@ const provider=fs.readFileSync(process.env.PLAZCODE_TEST_PROVIDER||path.join(roo
       assert.deepEqual(await page.evaluate(()=>window.nativeSent),[expected]);assert.equal(await page.evaluate(()=>P.editorText()),'');passed++;
       // A real user can deliberately type invisible source after an owned
       // empty write. Trusted input must discard the previous projection.
-      await page.evaluate(()=>P.writeDraft('',''));await page.locator('[contenteditable]').focus();await page.keyboard.insertText('\u200B\u200B');assert.equal(await page.evaluate(()=>P.editorText()),'\u200B\u200B');
+      await page.evaluate(()=>P.writeDraft('',''));await page.locator('[contenteditable]').focus();await page.keyboard.insertText('\u200B\u200C');assert.equal(await page.evaluate(()=>P.editorText()),'\u200B\u200C');
       console.log('Controlled paragraph editor: exact source, literal user padding, text-transform '+transform+' and suffix '+JSON.stringify(suffix)+' passed');
     }finally{await page.close();}
   }

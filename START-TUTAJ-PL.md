@@ -1,3 +1,19 @@
+# PlazCode — rozszerzenie 1.24.31, lokalna poprawka r23
+
+## r23 — dokładna końcówka Copilot U+200B U+200C
+
+Zrzut 1.24.30 ujawnił drugi znak: **U+200C**. R22 obsługiwało inne warianty końcówki po U+200B, ale nie tę parę. R23 dodaje dokładnie ten przypadek do porównania własnego znanego zapisu i echa. Nie usuwa U+200C z dowolnego tekstu, wnętrza kodu ani ze świadomie podanej końcówki źródła.
+
+Test odtwarza na r22 pełny komunikat: **Expected 552 characters, read 554; difference at 552 (end / U+200B U+200C)**. Przypadek sprawdzany jest również po kliknięciu Start Agent z całym zestawem skryptów rozszerzenia i późniejszą komendą get_studio_state. Model i most pozostają kontrolowane; nie jest to próba na zalogowanym koncie.
+
+**Aktualizacja:** zastąp cały folder rozszerzenia, przeładuj dodatek i odśwież Copilot. Sprawdź **1.24.31** i raport **core:r23/parser:r13/provider:r23**. Uruchom Start Agent w nowym pustym czacie, żeby nie pozostał tekst po wcześniejszej próbie. EXE bez zmian. Zmiany zachowania dotyczą wyłącznie tej końcówki Copilot.
+
+**Weryfikacja:** 746/746 testów Node i 38/38 wykonanych prób Chromium. Wyniki: [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md); instrukcja: [ARCEE-COPILOT.md](ARCEE-COPILOT.md); sumy: `WEBCHATS-R23-SHA256SUMS.txt`.
+
+Poniżej historia; do aktualizacji obowiązuje r23 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.30, lokalna poprawka r22
 
 ## r22 — niewidoczna końcówka Copilot i start Arcee po odpowiedzi opisowej

@@ -76,13 +76,13 @@ const RSProvider = (() => {
   const editorLocks=new WeakMap();
   const copilotWritten=new WeakMap();
   function presentedValue(actual,expected,echo=false){
-    // Copilot may append an invisible caret suffix (the report showed two
-    // extra UTF-16 units starting with U+200B). Project ONLY our known write:
+    // Copilot may append an invisible caret suffix (the report identified
+    // U+200B U+200C). Project ONLY our known write:
     // preserve every character of expected, including its own invisible tail.
     // Never strip format characters from arbitrary drafts or command source.
     if(site.id!=='copilot' || !actual.startsWith(expected))return actual;
     const suffix=actual.slice(expected.length),padding=echo?suffix.replace(/^ /,''):suffix;
-    return /^\u200B(?:[ \t\u00A0\u200B\uFEFF]|\r?\n)?$/.test(padding)?expected:actual;
+    return /^\u200B(?:[ \t\u00A0\u200B\u200C\uFEFF]|\r?\n)?$/.test(padding)?expected:actual;
   }
   const richEditor=ed=>!!ed && !/^(?:TEXTAREA|INPUT)$/.test(ed.tagName);
   const transcriptSelector='pre,code,[role="dialog"],'+site.user+','+site.assistant;
@@ -696,7 +696,7 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r22',
+    build:'r23',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the

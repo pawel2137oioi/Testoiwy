@@ -1,4 +1,10 @@
-# Arcee i copilot.com — r22, rozszerzenie 1.24.30
+# Arcee i copilot.com — r23, rozszerzenie 1.24.31
+
+## R23 — drugi znak końcówki: U+200C
+
+R22 dopuszczało krótkie końcówki od U+200B, ale nie U+200B U+200C. Nowy zrzut pokazuje pełną parę, a porównanie na r22 odtwarza dokładnie 552/554/end/U+200B U+200C. Dodano U+200C wyłącznie jako drugi znak końcówki za całym niezmienionym własnym zapisem. Te same reguły obowiązują w echu. Dosłowne U+200C wewnątrz źródła lub w podanej końcówce pozostają zachowane; inny szkic i nieznana końcówka nadal blokują Send.
+
+Testy dotychczasowego zestawu r22 rozszerzono o dokładną parę, literalne U+200C wewnątrz kodu i na końcu oraz różnicę wewnątrz szkicu. Pełny interfejs Chromium otrzymuje tę parę zarówno w polu, jak i w echu każdej wiadomości: klika Start Agent, odbiera kontekst, wysyła natywne pytanie i wykonuje jeden kontrolowany odczyt Studio. Fixture prawdziwych edytorów i zaufanego input również obejmują U+200C. Wyniki: TESTY-TRZY-SERWISY.md.
 
 ## R22 — U+200B po tekście i katalog Arcee bez powtarzania Start
 
@@ -62,7 +68,7 @@ Pasek obu nowych adapterów znajduje się nad wykrytym kompozytorem, bez dopisyw
 
 1. Podmień cały folder rozszerzenia i przeładuj go. Zachowaj jedną aktywną instalację. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`.
 2. Odśwież kartę Arcee lub dokładnie `https://copilot.com/`. Nie dodano domeny copilot.microsoft.com. EXE pozostaje bez zmian.
-3. Sprawdź wersję **1.24.30**. Raport transportu nowych adapterów: **core:r22/parser:r13/provider:r22**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
+3. Sprawdź wersję **1.24.31**. Raport transportu nowych adapterów: **core:r23/parser:r13/provider:r23**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
 4. Jeżeli aktualny interfejs serwisu nadal nie zostanie rozpoznany, zwykły czat pozostaje dostępny, a agent nie powinien klikać przypadkowych przycisków. Dla innej domeny po przekierowaniu ta rejestracja nie obowiązuje.
 
 Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przeglądarce. Wysyłanie obrazów pozostaje niezweryfikowane. Brak potwierdzenia wiadomości przez nowy wpis użytkownika zatrzymuje wysyłkę bez ponownego kliknięcia; przed ręczną próbą sprawdź historię, ponieważ wiadomość mogła dotrzeć.
@@ -91,7 +97,7 @@ PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-layout.cjs
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-startup.cjs
 ```
 
-Sumy bieżącej paczki: `WEBCHATS-R22-SHA256SUMS.txt`.
+Sumy bieżącej paczki: `WEBCHATS-R23-SHA256SUMS.txt`.
 
 
 ### Dodatkowe testy kontrolowanych bibliotek

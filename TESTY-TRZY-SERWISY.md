@@ -1,5 +1,18 @@
 # Raport weryfikacji — 2026-10-23
 
+## r23 — dokładna para U+200B U+200C z komunikatu Copilot
+
+**746/746 testów Node**, bez błędów i pominięć (`cd tests && npm test`). Dotychczasowy webchats-r22.test.cjs rozszerzono z 26 do 30 przypadków. Dodano dokładną końcówkę U+200B U+200C, literalne U+200C w kodzie i na końcu podanego źródła oraz różnicę wewnątrz szkicu. Domyślne opakowanie tego fixture jest teraz parą ze zrzutu, więc dotychczasowe próby echa, remountu i czyszczenia również ją obejmują. Suma: wcześniejsze 742 + 4.
+
+**38/38 wykonanych prób Chromium**: 36 controlled-editors.cjs i 2 webchats-startup.cjs. Zestawy obejmują rzeczywiste React/Lexical/CodeMirror oraz kontrolowane contenteditable z dokładną parą w edytorze i echu. Zaufany input użytkownika z literalną parą pozostaje niezmieniony. Pełne skrypty rozszerzenia i overlay.css przechodzą kliknięcie Start Agent, gotowość i jedno natywne pytanie z komendą get_studio_state oraz jej wynikiem. Model, background i Studio są symulowane; czasy stabilizacji skrócono wyłącznie w fixture.
+
+Nowy dodatni przypadek porównano z adapterem r22: z 9 wariantów końcówki przechodziło 8, a U+200B U+200C odtwarzało dokładnie „Expected 552 characters, read 554; difference at 552 (end / U+200B U+200C)”. Pełny interfejs ze starym adapterem również zatrzymał się na tym komunikacie. Na r23 oba zestawy przechodzą. Nie wykonywano ponownie niezmienionych zestawów geometrii i podstawowej wysyłki; ich poprzednie wyniki są w r22.
+
+Jedyna zmiana zachowania to dopuszczenie U+200C jako drugiego znaku krótkiej końcówki od U+200B, za pełnym dokładnym własnym zapisem. Brak ogólnego usuwania znaków niewidocznych. Wersja 1.24.31, core/provider r23, parser r13. Trzy kopie zsynchronizowane. Nie przeprowadzono próby na zalogowanym Copilot ani w prawdziwym Studio. Sumy: WEBCHATS-R23-SHA256SUMS.txt.
+
+---
+
+
 ## r22 — dokładny błąd 552/554/U+200B i lokalny katalog Arcee
 
 **742/742 testy Node**, bez błędów i pominięć (`cd tests && npm test`). Nowy webchats-r22.test.cjs zawiera 26 przypadków: niewidoczna końcówka po pełnym znanym zapisie Copilot, znaki literalne wewnątrz i na końcu źródła, własność szkicu, remount, echo i czyszczenie własnego zapisu, inny szkic i nieznana końcówka, Arcee inline JSON oraz odrzucenie opisów/cytatów/odmów/przykładów. Dodano 16 przypadków rzeczywistego startSession: dwie odpowiedzi opisowe w istniejącym czacie, pełny watcher i kontekst, poprawny inline JSON, odmowa, uszkodzone/inne polecenie, błędy katalogu, brak odbioru kontekstu, Stop/zmiana rozmowy/generacji i świeży live-status zamiast wnioskowania o połączeniu z samych schematów. Suma: wcześniejsze 700 + 26 + 16.
