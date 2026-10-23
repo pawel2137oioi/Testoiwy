@@ -119,6 +119,27 @@ const RSProvider = (() => {
       const inline=node=>node.nodeType===3?node.nodeValue:node.nodeType!==1?'':node.tagName==='BR'?(node===node.parentNode.lastChild?'':'\n'):[...node.childNodes].map(inline).join('');
       return [...ed.children].map(inline).join('\n\n');
     }
+    if(site.id==='copilot'){
+      // innerText includes CSS text transforms and browser layout. Read the
+      // editable document instead; noneditable controls and a marked
+      // ProseMirror caret BR are not message source. Real BRs stay literal.
+      const ignored=node=>node.nodeType===1 && node.matches('[contenteditable="false"],br.ProseMirror-trailingBreak');
+      function content(node){
+        if(node.nodeType===3)return node.nodeValue;
+        if(node.nodeType!==1 || ignored(node))return '';
+        if(node.tagName==='BR')return '\n';
+        const children=[...node.childNodes].filter(child=>!ignored(child));
+        if((node===ed || /^(P|DIV)$/.test(node.nodeName)) && children.length===1 && children[0].nodeName==='BR')return '';
+        let value='',previous=null;
+        for(const child of children){
+          const block=child.nodeType===1 && /^(P|DIV|LI|PRE|H[1-6])$/.test(child.tagName);
+          if(previous && (previous.block || block))value+=previous.paragraph || child.nodeName==='P'?'\n\n':'\n';
+          value+=content(child);previous={block,paragraph:child.nodeName==='P'};
+        }
+        return value;
+      }
+      return content(ed);
+    }
     return ed.innerText ?? ed.textContent ?? '';
   }
   const editorText = () => read(() => {const ed=getEditor();return richEditor(ed) ? richEditorText(ed) : ed.value;}, '');
@@ -479,7 +500,8 @@ const RSProvider = (() => {
     const savedRoute=isSaved(route),previousSavedRoute=isSaved(lastRoute||'');
     const changed = chat && ((hadTurns && !any && !!getEditor()) ||
       (firstUser !== null && token !== null && !sameFirst) ||
-      (route !== lastRoute && !(savedRoute && !previousSavedRoute && sameFirst)));
+      (route !== lastRoute && !(savedRoute && !previousSavedRoute && sameFirst &&
+        (!site.strictComposer || any || hadTurns || sending && ambiguous))));
     if (!chat || changed) { chat = site.id + ':' + route + ':' + (++epoch); firstUser = null; hadTurns = false; }
     if (token !== null) firstUser = token;
     hadTurns = hadTurns || any; lastRoute = route;
@@ -517,15 +539,18 @@ const RSProvider = (() => {
     // boundary, with an unchanged chat and the exact expected draft.
     const originalFrame=composerFrame(),originalParent=ed.parentElement;
     const replacementBoundary=originalFrame?.parentElement;
-    const verifyEditor=(expected,stage)=>{
+    const verifyEditor=(expected,stage,checkText=true)=>{
       if(origin!==conversationKey())throw Error(site.name+': chat changed '+stage+'. Nothing was sent.');
       const current=getEditor();
       if(!current || current!==ed && (site.id!=='copilot' || ed.isConnected && visible(ed) ||
           ![originalParent,originalFrame,replacementBoundary].some(node=>node?.isConnected && node!==document.body && node!==document.documentElement && !node.matches('main,[role="main"]') && node.contains(current))))
         throw Error(site.name+': composer changed '+stage+'. Nothing was sent.');
-      if(editorText()!==expected){
-        diag(site.id+'.draft_changed',{stage,expectedChars:expected.length,actualChars:editorText().length,editorReplaced:current!==ed});
-        throw Error(site.name+': prepared text changed '+stage+'. Nothing was sent.');
+      const actual=editorText();
+      if(checkText && actual!==expected){
+        let at=0;while(at<expected.length && at<actual.length && expected[at]===actual[at])at++;
+        const point=(value,index)=>index===value.length?'end':'U+'+value.codePointAt(index).toString(16).toUpperCase().padStart(4,'0');
+        diag(site.id+'.draft_changed',{stage,expectedChars:expected.length,actualChars:actual.length,firstDifference:at,editorReplaced:current!==ed});
+        throw Error(site.name+': prepared text changed '+stage+'. Nothing was sent. Expected '+expected.length+' characters, read '+actual.length+'; difference at '+at+' ('+point(expected,at)+' / '+point(actual,at)+').');
       }
       ed=current;if(site.id==='copilot' && copilotInputLocked)lockedEditor=ed;
     };
@@ -534,6 +559,18 @@ const RSProvider = (() => {
     setValue(ed, text);
     await sleep(100);
     checkCancelled();
+    if(site.id==='copilot'){
+      // Paste handlers may commit their controlled model asynchronously.
+      // Wait for exact, stable source; never rewrite or accept normalized code.
+      let exactSince=null;
+      const prepared=await waitFor(()=>{
+        checkCancelled();verifyEditor(text,'while preparing',false);
+        if(editorText()!==text){exactSince=null;return false;}
+        if(exactSince===null)exactSince=Date.now();
+        return Date.now()-exactSince>=200;
+      },2000);
+      if(!prepared && editorText()===text)throw Error(site.name+': prepared text did not settle before sending. Nothing was sent.');
+    }
     verifyEditor(text,'before sending');
     if (!await waitFor(() => owner !== sendEpoch || enabled(sendButton()) || loginGatePresent(), 3000) || loginGatePresent()) {
       failure = site.name + ': send is unavailable. Check the chat and sign in if needed.';
@@ -630,7 +667,7 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r20',
+    build:'r21',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the
@@ -639,6 +676,8 @@ const RSProvider = (() => {
     startupReplyAsCode:true, startupRequest:site.compact || site.max > 0 ? startupRequest : undefined, startupFeedbackMessages,
     startupCorrection:site.id==='arcee'?'PlazCode startup check: reply with only the plain JSON object {"command":"list_commands","params":{}}, without markdown backticks or any language label. The extension runs it against the connected bridge. Wait for the actual result.':undefined,
     requireConfirmedStartup:true,
+    inspectOnReadRequest:!!site.strictComposer,
+    promptExtra:site.strictComposer?'When the user asks what is in their connected Studio or whether a named object exists, perform a read-only inspection using the actual command schemas and answer from its result. That question authorizes the read. Do not merely offer to inspect, invent project facts or guess command names. Do not edit the project for an inspection question.':undefined,
     requireFreshResponse:site.id==='motif' || !!site.strictComposer,
     // Legacy marker-only sessions may have been armed by an unsuccessful
     // handshake. Restore only when this chat visibly confirms readiness.

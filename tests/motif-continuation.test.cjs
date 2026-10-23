@@ -1,4 +1,4 @@
-// Screenshot-derived prose and controlled Motif DOM/model/bridge responses.
+// Screenshot-derived prose and controlled Motif/Arcee/Copilot DOM/model/bridge responses.
 // Executes the real adapter, parser, response watcher and agent loop.
 const test=require('node:test'),assert=require('node:assert/strict');
 const fs=require('node:fs'),path=require('node:path'),vm=require('node:vm');
@@ -13,8 +13,8 @@ const done='Gotowe. Sprawdziłem stan projektu i zakończyłem zadanie.';
 const waiting='Czekam na wynik odczytu BuildSolarisHud, żeby potwierdzić, czy trzeba wyłączyć coś jeszcze poza skryptem HUD-u autobusu.';
 const scriptRead={command:'script_read',params:{path:'Workspace.Solaris.BuildSolarisHud'}};
 function section(start,end){const a=main.indexOf(start),b=main.indexOf(end,a);assert.ok(a>=0&&b>a,start);return main.slice(a,b);}
-function fixture({initial={command:search},replies=[{text:done}],requestKind='task',ambiguous=false,replyDelay=0,remountPrevious=false,nativeIds=true,lateId=false,toolResults={}}={}){
-  const dom=new JSDOM('<!doctype html><body><main id="thread" data-testid="document-message-list-wrapper"></main><div class="composer"><textarea id="chat-textarea"></textarea><button data-testid="document-send-button">Send</button></div>',{url:'https://chat.motiftech.io/chat/test',runScripts:'outside-only'});
+function fixture({initial={command:search},replies=[{text:done}],requestKind='task',ambiguous=false,replyDelay=0,remountPrevious=false,nativeIds=true,lateId=false,toolResults={},host='chat.motiftech.io',requestText='Usuń HUD z pojazdu Solaris w moim projekcie.',liveStatus={ok:true,roblox_connected:true},onProbe}={}){
+  const dom=new JSDOM('<!doctype html><body><main id="thread" data-testid="document-message-list-wrapper"></main><div class="composer"><textarea id="chat-textarea"></textarea><button data-testid="document-send-button">Send</button></div>',{url:'https://'+host+'/chat/test',runScripts:'outside-only'});
   const w=dom.window,d=w.document,c=dom.getInternalVMContext();let clock=10000,seq=0,replyIndex=0,clicks=0,toolBudget=0;
   const sent=[],commands=[],banners=[],events=[],checkpoints=[],scheduled=[];
   function advance(ms){clock+=ms;while(scheduled.length && scheduled[0].at<=clock)assistant(scheduled.shift().reply);}
@@ -29,19 +29,20 @@ function fixture({initial={command:search},replies=[{text:done}],requestKind='ta
   vm.runInContext(fs.readFileSync(path.join(root,'core/config.js'),'utf8'),c);
   vm.runInContext(fs.readFileSync(path.join(sourceRoot,'core/tool-guard.js'),'utf8'),c);
   const P=w.P;
-  function user(text){const row=d.createElement('div');row.className='group justify-end';const bubble=d.createElement('div');bubble.className='bg-primary-50';bubble.dataset.messageId='user-'+(++seq);bubble.textContent=text;row.append(bubble);d.querySelector('#thread').append(row);return bubble;}
+  function user(text){const row=d.createElement('div');row.className='group justify-end';const bubble=d.createElement('div');bubble.className='bg-primary-50';if(host!=='chat.motiftech.io')bubble.dataset.role='user';bubble.dataset.messageId='user-'+(++seq);bubble.textContent=text;row.append(bubble);d.querySelector('#thread').append(row);return bubble;}
   function assistant(spec){
-    const item=d.createElement('div');item.dataset.testid='document-model-answer-content';if(nativeIds)item.dataset.messageId='assistant-'+(++seq);
+    const item=d.createElement('div');item.dataset.testid='document-model-answer-content';if(host!=='chat.motiftech.io')item.dataset.role='assistant';if(nativeIds)item.dataset.messageId='assistant-'+(++seq);
     function body(){const b=d.createElement('div');b.className='prose';item.append(b);return b;}
     const first=body();if(spec.text){const p=d.createElement('p');p.textContent=spec.text;first.append(p);}
     if(spec.command){const pre=d.createElement('pre'),code=d.createElement('code');code.textContent=JSON.stringify(spec.command);pre.append(code);(spec.sections?body():first).append(pre);}
     if(spec.after){const p=d.createElement('p');p.textContent=spec.after;(spec.sections?body():first).append(p);}
     d.querySelector('#thread').append(item);return item;
   }
-  user('Usuń HUD z pojazdu Solaris w moim projekcie.');assistant(initial);
-  const A={sessionGen:1,sendToken:'previous',stop:false,starting:false,running:false,started:true,imageTools:new Set(),toolList:[],toolNames:new Set(['search_game_tree','get_studio_state','script_read','inspect_instance']),taskRequest:'Usuń HUD z pojazdu Solaris w moim projekcie.',requestKind};
+  user(requestText);assistant(initial);d.querySelector('button').setAttribute('aria-label','Send');
+  const A={sessionGen:1,sendToken:'previous',stop:false,starting:false,running:false,started:true,imageTools:new Set(),toolList:[],toolNames:new Set(['search_game_tree','get_studio_state','script_read','inspect_instance']),taskRequest:requestText,requestKind};
   const noop=()=>{};
   Object.assign(w,{A,T:P.timings,bgMode:true,diag:(...args)=>events.push(args),log:noop,sleep:async ms=>{advance(ms);},
+    bg:async()=>{if(onProbe)onProbe({w,P,A});return liveStatus;},
     ui:{banner:(...args)=>banners.push(args),showStop:noop,inputCover:noop,trackCard:noop,captureHandoff:noop,toast:noop,setStatus:noop},
     cowork:{snapshot:()=>({enabled:false,pending:[],paused:false,sending:false}),take:async()=>null,pause:noop},
     activity:{active:()=>({}),step:noop,sync:noop},syncActivityItems:noop,markActivity:noop,rememberExecuted:noop,
@@ -200,4 +201,38 @@ test('an inline code tool name survives waiting-result classification',t=>{
   const f=fixture();t.after(()=>f.dom.window.close());const item=f.assistant({text:'Czekam na wynik '});
   const p=item.querySelector('p'),code=f.d.createElement('code');code.textContent='script_read';p.append(code,'.');
   assert.equal(f.P.needsToolContinuation(f.P.itemText(item),item),true);
+});
+
+// Actual normal-reply loop for the two strict adapters, using screenshot prose.
+const arceeDeferred='Jeszcze nie widzę struktury studia ani plików, ponieważ nie wykonałem żadnych poleceń inspekcji. Aby zacząć przeglądać zawartość, musisz mi dać konkretne polecenie — na przykład list_commands lub inspect_instance. Daj znać, co chciałbyś zrobić.';
+for(const host of ['platform.arcee.ai','copilot.com'])test(host+': an explicit Studio read question gets one read reminder and an actual result',async t=>{
+  const f=fixture({host,requestText:'Czy na studio widzisz Solaris II GOTOWY 111 TEST?',initial:{text:arceeDeferred},replies:[{command:search},{text:'Znalazłem Workspace.Solaris w zwróconym wyniku.'}]});t.after(()=>f.dom.window.close());
+  await f.run();clean(f);assert.deepEqual(f.commands.map(c=>c.tool),['search_game_tree']);assert.equal(f.sent.length,2);assert.match(f.sent[0],/read-only inspection/);assert.match(f.sent[1],/actual fixture result/);assert.equal(f.checkpoints.at(-1),true);assert.equal(f.events.filter(e=>e[0]==='loop.projectReadReminder').length,1);
+});
+test('Arcee: repeated deferral pauses after one reminder and never marks the read complete',async t=>{
+  const f=fixture({host:'platform.arcee.ai',requestText:'Widzisz na studio coś?',initial:{text:arceeDeferred},replies:[{text:arceeDeferred}]});t.after(()=>f.dom.window.close());await f.run();clean(f);assert.equal(f.sent.length,1);assert.equal(f.commands.length,0);assert.equal(f.checkpoints.at(-1),false);assert.ok(f.banners.some(row=>row[1]==='AI did not inspect the project'));
+});
+for(const requestText of ['Cześć','Explain how Studio files work','Teoretycznie czy widzisz pliki na studio?','Czy widzisz pliki w Studio? Nie używaj narzędzi.','Usuń model z projektu Studio'])test('Arcee: unrelated, hypothetical, forbidden or editing request gets no read reminder: '+requestText,async t=>{
+ const f=fixture({host:'platform.arcee.ai',requestText,initial:{text:arceeDeferred}});t.after(()=>f.dom.window.close());await f.run();clean(f);assert.equal(f.sent.length,0);assert.equal(f.commands.length,0);
+});
+for(const liveStatus of [{ok:true,roblox_connected:false},{ok:false}])test('Arcee: disconnected bridge does not get a claim of live inspection '+JSON.stringify(liveStatus),async t=>{
+ const f=fixture({host:'platform.arcee.ai',requestText:'Widzisz pliki na studio?',initial:{text:arceeDeferred},liveStatus});t.after(()=>f.dom.window.close());await f.run();clean(f);assert.equal(f.sent.length,0);assert.equal(f.commands.length,0);
+});
+for(const action of ['stop','chat','generation'])test('Arcee: '+action+' during the live check prevents the read reminder',async t=>{
+ const f=fixture({host:'platform.arcee.ai',requestText:'Widzisz pliki na studio?',initial:{text:arceeDeferred},onProbe:({w,A})=>{if(action==='stop')A.stop=true;else if(action==='generation')A.sessionGen++;else w.history.pushState({},'','/chat/other');}});t.after(()=>f.dom.window.close());await f.run();clean(f);assert.equal(f.sent.length,0);assert.equal(f.commands.length,0);
+});
+test('Arcee: an explicit refusal still stops without a read reminder',async t=>{
+ const f=fixture({host:'platform.arcee.ai',requestText:'Widzisz pliki w Studio?',initial:{text:'Nie wykonam tego polecenia. Mogę sprawdzić dokumentację.'}});t.after(()=>f.dom.window.close());await f.run();clean(f);assert.equal(f.sent.length,0);assert.equal(f.commands.length,0);
+});
+test('Arcee: a completed read answer does not cause another inspection',async t=>{
+ const f=fixture({host:'platform.arcee.ai',requestText:'Widzisz pliki w Studio?',initial:{text:'Wynik wcześniejszej inspekcji zawiera Workspace.Solaris.'}});t.after(()=>f.dom.window.close());await f.run();clean(f);assert.equal(f.sent.length,0);assert.equal(f.commands.length,0);
+});
+test('Arcee: a question for an ambiguous target waits for the user',async t=>{
+ const f=fixture({host:'platform.arcee.ai',requestText:'Sprawdź plik w Studio.',initial:{text:'Który plik mam odczytać? Mogę sprawdzić wskazany skrypt.'}});t.after(()=>f.dom.window.close());await f.run();clean(f);assert.equal(f.sent.length,0);assert.equal(f.commands.length,0);
+});
+test('Arcee: a write after the read reminder is blocked before dispatch',async t=>{
+ const f=fixture({host:'platform.arcee.ai',requestText:'Widzisz pliki w Studio?',initial:{text:arceeDeferred},replies:[{command:{command:'execute_luau',params:{code:'workspace:ClearAllChildren()'}}}]});t.after(()=>f.dom.window.close());f.A.toolNames.add('execute_luau');await f.run();clean(f);assert.equal(f.sent.length,1);assert.equal(f.commands.length,0);assert.equal(f.checkpoints.at(-1),false);assert.ok(f.banners.some(row=>row[1]==='Inspection stopped before a change'));
+});
+test('Arcee: the read reminder can fetch real schemas before inspecting the target',async t=>{
+ const f=fixture({host:'platform.arcee.ai',requestText:'Czy na studio widzisz Solaris?',initial:{text:arceeDeferred},replies:[{command:{command:'list_commands',params:{}}},{command:{command:'inspect_instance',params:{path:'Workspace.Solaris'}}},{text:'Tak, odczytany obiekt ma ścieżkę Workspace.Solaris.'}]});t.after(()=>f.dom.window.close());f.A.toolNames.add('list_commands');await f.run();clean(f);assert.deepEqual(f.commands.map(c=>c.tool),['list_commands','inspect_instance']);assert.equal(f.sent.length,3);assert.match(f.sent[1],/Output of 'list_commands'/);assert.match(f.sent[2],/Output of 'inspect_instance'/);assert.equal(f.events.filter(e=>e[0]==='loop.projectReadReminder').length,1);
 });

@@ -9,14 +9,20 @@ const provider=fs.readFileSync(process.env.PLAZCODE_TEST_PROVIDER||path.join(roo
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.PLAZCODE_CHROMIUM||'/usr/bin/chromium',args:['--no-sandbox']});let passed=0;
  try{
-  for(const kind of ['lexical','lexical-retained','react-remount','react-retained']){
+  for(const kind of ['lexical','lexical-retained','react-remount','react-retained','lexical-delayed']){
    const lexical=kind.startsWith('lexical');
    const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
    try{
     await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><main>'+(lexical?'<form><div contenteditable="true" aria-label="Message Copilot" style="white-space:pre-wrap;min-height:60px"></div><button type="button" aria-label="Send message">Send</button></form>':'<div id="react-root"></div>')+'<div id="thread"><div data-role="user" data-message-id="u1">aa</div><div data-role="assistant" data-message-id="a1">Cześć! Wysłałeś tylko aa.</div></div></main>'}));
     await page.goto('https://copilot.com/chat');await page.addScriptTag({content:fixture});
     await page.evaluate(kind=>{window.nativeSent=[];window.retainDraft=kind.endsWith('retained');if(kind.startsWith('lexical')){
-      mountLexical();document.querySelector('button').onclick=()=>{const text=modelText();window.nativeSent.push(text);const row=document.createElement('div');if(window.retainDraft)row.dataset.testid='user-message';else row.dataset.role='user';row.textContent=text;document.querySelector('#thread').append(row);if(!window.retainDraft)modelClear();};
+      mountLexical();
+      if(kind==='lexical-delayed')document.querySelector('[contenteditable]').addEventListener('paste',event=>{
+        if(event.fixtureDelivery)return;
+        const text=event.clipboardData.getData('text/plain');event.preventDefault();event.stopImmediatePropagation();
+        setTimeout(()=>{const data=new DataTransfer();data.setData('text/plain',text);const delivery=new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true});delivery.fixtureDelivery=true;document.querySelector('[contenteditable]').dispatchEvent(delivery);},350);
+      },true);
+      document.querySelector('button').onclick=()=>{const text=modelText();window.nativeSent.push(text);const row=document.createElement('div');if(window.retainDraft)row.dataset.testid='user-message';else row.dataset.role='user';row.textContent=text;document.querySelector('#thread').append(row);if(!window.retainDraft)modelClear();};
     }else mountReact();},kind);
     await page.addScriptTag({content:provider+'\nwindow.P=RSProvider;'});
     const expected='First handshake {"command":"list_commands"}';
@@ -41,6 +47,29 @@ const provider=fs.readFileSync(process.env.PLAZCODE_TEST_PROVIDER||path.join(roo
     assert.deepEqual(cleared,{ok:true,model:'',text:''});passed++;
     assert.deepEqual(errors,[]);console.log(kind+': native model, exact source, single send and user lock passed');
    }finally{await page.close();}
+  }
+  for(const transform of ['none','uppercase']){
+    const page=await browser.newPage();
+    try{
+      await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><form><div contenteditable="true" aria-label="Message Copilot" style="white-space:pre-wrap;text-transform:'+transform+';min-height:60px"></div><button type="button" aria-label="Send">Send</button></form><section id="thread"></section>'}));
+      await page.goto('https://copilot.com/chat');
+      await page.evaluate(()=>{
+        const ed=document.querySelector('[contenteditable]');window.nativeSent=[];window.nativeModel='';
+        ed.onpaste=event=>{
+          event.preventDefault();window.nativeModel=event.clipboardData.getData('text/plain');
+          const p=document.createElement('p'),hint=document.createElement('span'),caret=document.createElement('br');
+          p.append(document.createTextNode(window.nativeModel));hint.contentEditable='false';hint.textContent='UI hint';caret.className='ProseMirror-trailingBreak';p.append(hint,caret);ed.replaceChildren(p);
+        };
+        document.querySelector('button').onclick=()=>{
+          window.nativeSent.push(window.nativeModel);const row=document.createElement('div');row.dataset.role='user';row.textContent=window.nativeModel;document.querySelector('#thread').append(row);ed.textContent='';window.nativeModel='';
+        };
+      });
+      await page.addScriptTag({content:provider+'\nwindow.P=RSProvider;'});
+      const expected='Exact  source 🦊\n\nlocal text = "One\u00a0 two"\n';
+      await page.evaluate(async expected=>{P.setInputLock(true);try{await P.typeAndSend(expected);}finally{P.setInputLock(false);}},expected);
+      assert.deepEqual(await page.evaluate(()=>window.nativeSent),[expected]);assert.equal(await page.evaluate(()=>P.editorText()),'');passed++;
+      console.log('Controlled paragraph editor: exact source with decoration, caret BR and text-transform '+transform+' passed');
+    }finally{await page.close();}
   }
   const page=await browser.newPage();
   try{

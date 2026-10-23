@@ -1694,7 +1694,7 @@
   // result, so the model can never claim the local engine is gone.
   function transportDiagnostics() {
     return {
-      transport_build: {core:"r20",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
+      transport_build: {core:"r21",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
       provider: P.id,
       last_parse_failure: A.lastParseFailure || null,
     };
@@ -3601,6 +3601,19 @@ return result`;
     });
   }
   const PLAN_CONTINUE_FEEDBACK = "(PlazCode: plan received. Do not stop or wait for approval; Plan Mode means plan, then implement. Start step 1 now: send exactly ONE command using the exact list_commands schemas. Do not repeat the plan.)";
+  const PROJECT_READ_FEEDBACK = '(PlazCode: the user asked to inspect their currently connected Roblox Studio project. This authorizes a read-only inspection. Your reply deferred that read without issuing a command. Send ONE read-only command using an exact available schema; if you need the schema, send list_commands. The extension reads commands in normal replies and returns their actual results. Then answer the user from those results. Do not edit, create, delete, start/stop Play, invent a tool name, or claim to have inspected anything before a result arrives. If a target is ambiguous, ask which target.)';
+  function deferredProjectRead(request,response){
+    const asked=String(request||''),reply=String(response||'');
+    if(!P.inspectOnReadRequest || !asked || RSParse.parseToolCalls(reply).length)return false;
+    if(/^\s*(?:explain|describe how|tell me about|wyjaśnij|wytłumacz|opisz jak|jak\b.{0,50}\bdziała)/i.test(asked))return false;
+    if(/\b(?:which|what)\s+(?:(?:exact|specific)\s+)?(?:target|file|script|model|object|path)\b|(?:który|które|jaką)\s+(?:plik|skrypt|model|obiekt|ścieżk)/i.test(reply))return false;
+    if(/\b(?:do not|don't|never)\s+(?:inspect|read|search|check|access|use)|\bwithout\b.{0,30}\btools?\b|nie\s+(?:sprawdzaj|odczytuj|szukaj|przeglądaj|używaj|wykonuj)|bez\s+(?:narzędzi|poleceń)|\b(?:hypothetical|hypothetically|theoretically|teoretycznie|hipotetycznie)\b/i.test(asked))return false;
+    const project=/\b(?:studio|workspace|explorer|project|projekt\w*)\b/i.test(asked);
+    const readIntent=/\b(?:see|inspect|read|check|look|find|show|list|what|which|files?|scripts?|objects?)\b|widzisz|sprawdź|sprawdz|odczytaj|pokaż|pokaz|pliki|skrypty|obiekty|znajdź|znajdz/i.test(asked);
+    const editIntent=/\b(?:build|create|delete|remove|change|edit|fix|implement)\b|usuń|usun|zbuduj|stwórz|stworz|zmień|zmien|napraw|wyłącz|wylacz/i.test(asked);
+    const deferred=/\b(?:have not|haven't|has not|hasn't|not yet)\b.{0,100}\b(?:inspect|read|check|run|execute|see)|\b(?:can|could) (?:inspect|read|check|search|use)\b|jeszcze nie widzę|nie (?:wykonałem|sprawdziłem|odczytałem|przejrzałem)|mogę (?:użyć|sprawdzić|przejrzeć|odczytać|zbadać)|aby zacząć przeglądać/i.test(reply);
+    return project && readIntent && !editIntent && deferred;
+  }
   function toolContinuationFeedback(kind,results) {
     if(kind !== 'waiting_for_tool_result')return '(PlazCode: your last reply announced a next step but contained no command. Continue the current user task with one command from the available schemas, or explain that it is complete or what information is missing. Use the results already returned; do not repeat completed commands or retry a command whose outcome is uncertain.)';
     const recent=results.slice(-3).map(result=>'--- Previously returned result: '+result.tool+' ---\n'+result.feedback).join('\n\n');
@@ -3908,7 +3921,7 @@ return result`;
     // Results are already bounded/paged by compressToolFeedback; keep three.
     const recentToolFeedback = [];
     let refuseRetries = recoveryAttempt;
-    let pasteReminders = 0;
+    let pasteReminders = 0, readReminders = 0;
     let recoverSession = null;
     let completed = false;
     // Re-send the command list after this many successful tool calls. Kept high
@@ -4054,6 +4067,11 @@ return result`;
         truncCount = 0;
         deadRetries = 0; // healthy turn (text/tool/parse outcome) — refill the retry budget
 
+        if(readReminders>0 && ['tools','tool'].includes(res.kind) && (res.calls||[]).some(call=>
+          !/^(?:list_commands|list_tools|plazcode_status|get_studio_state|search_game_tree|inspect_instance|script_read|script_grep)$/.test(call.tool||'') ||
+          call.arguments?.server && !['roblox','studio'].includes(call.arguments.server))){
+          ui.banner('warn','Inspection stopped before a change','The reply requested a command outside this read-only inspection. Nothing from that reply ran.');break;
+        }
         if(["tools","tool"].includes(res.kind)){const enhanced=await enhanceCreationBeforeTools(res);if(enhanced){base=enhanced.base;continue;}}
         if((A.templateContext || A.creatorContext || A.engramContext || A.skillContext) && ["tools","tool"].includes(res.kind)){
           const calls = res.calls || [];
@@ -4073,7 +4091,7 @@ return result`;
         if (res.kind === "parse_error") {
           A.lastParseFailure = {
             reason: res.reason, provider: P.id,
-            core_build: "r20", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
+            core_build: "r21", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
             ...(typeof RSParse.transportInfo === "function" ? RSParse.transportInfo(res.raw) : {chars:String(res.raw || "").length}),
           };
           diag("tool.parseFailure", A.lastParseFailure);
@@ -4104,6 +4122,18 @@ return result`;
         if (res.kind === "text") {
           const body=String(res.text||"");
           if(isProviderPolicyRefusal(body)){ui.banner("warn","AI declined the request","The AI declined the instructions. PlazCode did not restart the connection or repeat the request. You can clarify the intended work in this chat.");break;}
+          if(P.inspectOnReadRequest && A.started && !A.stop && !A.userStopped && toolsThisLoop===0 && activeEngine()==='roblox' && deferredProjectRead(A.taskRequest,body)){
+            if(readReminders>=1){
+              ui.banner('warn','AI did not inspect the project','The AI still deferred the requested read after one reminder. No project inspection was confirmed.');break;
+            }
+            const target={chat:P.conversationKey(),generation:A.sessionGen};
+            const live=await bg({type:'live-status'});
+            if(A.stop || A.userStopped || target.chat!==P.conversationKey() || target.generation!==A.sessionGen || activeEngine()!=='roblox')break;
+            if(live?.ok && live.roblox_connected){
+              readReminders++;diag('loop.projectReadReminder');
+              base=await submitAndGetBase(PROJECT_READ_FEEDBACK);continue;
+            }
+          }
           if (refuseRetries >= 1 && isCapabilityRefuse(body)) {
             ui.banner("warn", "Command access recovery stopped", "The AI still reports no command access after one reconnect. No repeated restart was attempted.");
             break;
@@ -4161,7 +4191,7 @@ return result`;
           void finishTaskCheckpoint(true);
           activity.sync(false, P.conversationKey(), undefined, {collapse:true});
           const next = await cowork.take();
-          if (next && !A.stop) { completed = false; recentToolFeedback.length=0;toolContinues=0;toolsThisLoop=0;await beginTaskCheckpoint(); base = next.base; continue; }
+          if (next && !A.stop) { completed = false; recentToolFeedback.length=0;toolContinues=0;toolsThisLoop=0;readReminders=0;await beginTaskCheckpoint(); base = next.base; continue; }
           if (cowork.snapshot().pending.length && !cowork.snapshot().paused && !cowork.snapshot().sending) {
             // The idle pump waits out a late native busy signal or an existing draft.
             setTimeout(pumpCowork, 450);

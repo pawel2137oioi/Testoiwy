@@ -1,3 +1,19 @@
+# PlazCode — rozszerzenie 1.24.29, lokalna poprawka r21
+
+## r21 — Copilot „prepared text changed” i Arcee bez inspekcji
+
+Copilot: po wklejeniu agent czeka do 2 sekund na dokładny tekst i jego stabilność przez 200 ms. Nie wpisuje go ponownie. Odczyt zwykłego contenteditable korzysta z dokumentu, zamiast tekstu zależnego od CSS. Pomija nieedytowalne kontrolki i oznaczony techniczny BR ProseMirror; rzeczywiste znaki, odstępy i nowe linie pozostają dosłowne. Zmiana rozmowy przed wysłaniem nie jest traktowana jak pierwszy zapis rozmowy. Błąd podaje teraz długości i pozycję pierwszej różnicy, bez kopiowania całego źródła.
+
+Arcee i Copilot: pytanie o zawartość obecnego Studio jest prośbą o odczyt. Jeżeli AI tylko oferuje inspekcję, aktywny agent sprawdza połączenie i wysyła najwyżej jedno przypomnienie o rzeczywistym odczycie. Korzysta wyłącznie z dostępnych schematów; list_commands może poprzedzić inspekcję. Ta ścieżka blokuje komendy spoza listy odczytu. Kolejna zapowiedź bez wykonania kończy się widoczną pauzą, bez oznaczenia odczytu jako ukończonego. Odmowa, pytanie o niejednoznaczny cel, zakaz narzędzi, teoria i Stop nie uruchamiają przypomnienia.
+
+**Aktualizacja:** podmień cały folder rozszerzenia, przeładuj je i odśwież strony. Sprawdź **1.24.29** i raport **core:r21/parser:r13/provider:r21** dla Arcee/Copilot/Motif. Otwórz nowy pusty czat przed Start Agent, aby nie wysyłać szkicu pozostałego po poprzedniej próbie ani używać starego kontekstu startowego. EXE bez zmian; zachowaj jedną instalację dodatku.
+
+**Weryfikacja:** 700/700 testów Node i 43/43 prób Chromium. Wyniki i ograniczenia: [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md). Komunikat Copilot odtworzono na r20 przy opóźnionym wklejeniu do prawdziwego Lexical; poprawiony przepływ przechodzi. Nie obejrzano zalogowanego DOM Copilot i nie ustalono, która różnica źródła wystąpiła na koncie użytkownika. Arcee testowano z tekstem ze zrzutu, rzeczywistą pętlą i kontrolowanymi odpowiedziami modelu/mostu. Szczegóły: [ARCEE-COPILOT.md](ARCEE-COPILOT.md); sumy: `WEBCHATS-R21-SHA256SUMS.txt`.
+
+Poniżej historia; do aktualizacji obowiązuje r21 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.28, lokalna poprawka r20
 
 ## r20 — pierwsze uruchomienie Arcee i potwierdzenie wysyłki Copilot

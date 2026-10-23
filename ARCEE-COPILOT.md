@@ -1,4 +1,14 @@
-# Arcee i copilot.com — r20, rozszerzenie 1.24.28
+# Arcee i copilot.com — r21, rozszerzenie 1.24.29
+
+## R21 — stabilne źródło i faktyczna inspekcja
+
+Copilot dotychczas sprawdzał tekst 100 ms po wpisaniu. Fixture z prawdziwym Lexical i opóźnionym handlerem paste odtwarza na r20 dokładny błąd „prepared text changed before sending”. R21 czeka najwyżej 2 sekundy na dokładne źródło stabilne przez 200 ms; nie ponawia wklejenia ani Send. Zmiana szkicu, rozmowy lub Stop nadal blokują wysłanie. Odczyt contenteditable bez oznaczenia Lexical omija CSS text-transform, nieedytowalne kontrolki i oznaczony techniczny BR; testy zachowują literalny BR, Unicode, NBSP, podwójne spacje i końcowy newline. Nie stosuje się trimowania ani normalizacji treści wysyłanego kodu. Komunikat odrzucenia podaje długości, indeks i kod pierwszego różniącego się znaku; diagnostyka zapisuje wyłącznie długości/indeks/etap.
+
+Nie ustalono, czy na koncie użytkownika wystąpiło opóźnienie, inna struktura DOM czy inna różnica źródła. W środowisku nie ma dostępu do zalogowanego edytora Copilot. Zestawy React/Lexical i kontrolowany edytor akapitowy w Chromium weryfikują odtworzone warianty, bez twierdzenia, że są to prywatne komponenty Microsoft.
+
+Tekst Arcee ze zrzutu nie zawiera komendy. Samo połączenie nie wysyła zawartości Studio do AI. Dodano instrukcję odczytu przy pytaniu o zawartość oraz jedną ograniczoną prośbę o odczyt, gdy AI go odkłada. Jest wysyłana tylko w aktywnej sesji Roblox, po sprawdzeniu live-status i niezmienionej rozmowie/generacji. Dozwolone są list_commands/list_tools, plazcode_status, get_studio_state, search_game_tree, inspect_instance, script_read i script_grep z rzeczywistych schematów. Inna komenda zatrzymuje tę ścieżkę przed dispatch; nie próbuje się zgadywać schematu. Kolejna zapowiedź bez inspekcji oznacza pauzę, bez fałszywego ukończenia. Teoria, zakaz narzędzi, doprecyzowanie celu, odmowa, zmiana czatu i Stop pozostają respektowane.
+
+Po aktualizacji użyj nowego pustego czatu i Start Agent. To usuwa wpływ starego kontekstu startowego; nie usuwa się automatycznie istniejącego szkicu. Weryfikacja całego przepływu i wyniki: TESTY-TRZY-SERWISY.md.
 
 ## R20 — pierwsza sesja i potwierdzenie odbioru
 
@@ -40,7 +50,7 @@ Pasek obu nowych adapterów znajduje się nad wykrytym kompozytorem, bez dopisyw
 
 1. Podmień cały folder rozszerzenia i przeładuj go. Zachowaj jedną aktywną instalację. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`.
 2. Odśwież kartę Arcee lub dokładnie `https://copilot.com/`. Nie dodano domeny copilot.microsoft.com. EXE pozostaje bez zmian.
-3. Sprawdź wersję **1.24.28**. Raport transportu nowych adapterów: **core:r20/parser:r13/provider:r20**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
+3. Sprawdź wersję **1.24.29**. Raport transportu nowych adapterów: **core:r21/parser:r13/provider:r21**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
 4. Jeżeli aktualny interfejs serwisu nadal nie zostanie rozpoznany, zwykły czat pozostaje dostępny, a agent nie powinien klikać przypadkowych przycisków. Dla innej domeny po przekierowaniu ta rejestracja nie obowiązuje.
 
 Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przeglądarce. Wysyłanie obrazów pozostaje niezweryfikowane. Brak potwierdzenia wiadomości przez nowy wpis użytkownika zatrzymuje wysyłkę bez ponownego kliknięcia; przed ręczną próbą sprawdź historię, ponieważ wiadomość mogła dotrzeć.
@@ -68,7 +78,7 @@ PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-smoke.cjs
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-layout.cjs
 ```
 
-Sumy bieżącej paczki: `WEBCHATS-R20-SHA256SUMS.txt`.
+Sumy bieżącej paczki: `WEBCHATS-R21-SHA256SUMS.txt`.
 
 
 ### Dodatkowe testy kontrolowanych bibliotek

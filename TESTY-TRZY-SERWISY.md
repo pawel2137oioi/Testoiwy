@@ -1,5 +1,20 @@
 # Raport weryfikacji — 2026-10-23
 
+## r21 — Copilot przed Send i Arcee bez odczytu projektu
+
+**700/700 testów Node**, bez błędów i pominięć (`cd tests && npm test`). Nowy `webchats-r21.test.cjs` ma 12 przypadków źródła contenteditable, rzeczywistych/technicznych BR, odstępów/Unicode, opóźnionego zatwierdzenia, zmienionego szkicu, stabilności, Stop i przełączenia rozmowy. Wspólny fixture rzeczywistej pętli `motif-continuation.test.cjs` rozszerzono o 18 przypadków obu nowych adapterów: pytanie ze zrzutu, jeden odczyt i wynik, pobranie schematów przed inspekcją, ograniczenie powtarzanej zapowiedzi, pytania teoretyczne, zakaz narzędzi, doprecyzowanie celu, odmowa, odpowiedź końcowa, odłączony most, Stop/zmiana czatu/generacji oraz blokada zapisu po przypomnieniu. Model i most są kontrolowane. Suma: wcześniejsze 670 + 12 + 18.
+
+**43/43 próby Chromium**: 15 pełnego interfejsu, 6 podstawowej wysyłki i 22 controlled-editors.cjs. Rzeczywisty Lexical otrzymuje paste po 350 ms; agent czeka na model i wysyła dokładnie raz. Ten sam test na adapterze r20 kończy się „Copilot: prepared text changed before sending. Nothing was sent.”, zgodnie z komunikatem ze zrzutu. Testy źródła kontrolowanego edytora akapitowego obejmują nieedytowalną kontrolkę, oznaczony techniczny BR oraz CSS text-transform, z zachowaniem pełnego wielowierszowego tekstu, NBSP i końcowego newline. Dotychczasowe modele React, wirtualizacja CodeMirror oraz geometria paska pozostają zaliczone. Powtórzenie: ARCEE-COPILOT.md.
+
+Cztery nowe dodatnie scenariusze pętli inspekcji uruchomiono też na samych plikach r20: żaden nie przechodził. Po poprawce przechodzą w całym zestawie. To odtworzenie zachowania w kontrolowanym środowisku, nie dowód zgodności z aktualnym prywatnym DOM serwisów.
+
+Nie przeprowadzono testu na zalogowanych Arcee/Copilot ani z prawdziwym Studio. Screenshot Arcee dostarcza tekstu odpowiedzi, ale nie dziennika bridge/DOM; screenshot Copilot potwierdza etap porównania, ale nie wskazuje różniącego się znaku. Naprawiono odtworzone warianty, dodając do błędu długości i indeks/kod pierwszej różnicy, bez udawania potwierdzonego dostępu do konta.
+
+Wersja 1.24.29, core/provider r21, parser r13. Zsynchronizowane trzy kopie rozszerzenia. Sumy: WEBCHATS-R21-SHA256SUMS.txt.
+
+---
+
+
 ## r20 — pierwsza rozmowa Arcee i potwierdzenie wysyłki Copilot
 
 **670/670 testów Node**, bez błędów i pominięć (`cd tests && npm test`). Nowy plik `webchats-r20.test.cjs` ma 17 przypadków: pierwszy zapis Arcee, remount i późny ID pierwszej wiadomości, stopniowe renderowanie jej tekstu, porządkowanie parametrów Copilot, rzeczywista zmiana rozmowy, jawne role, ponowne użycie pustego wiersza, stare identyczne wiadomości, wirtualizacja z nowym natywnym ID, pozostawiony własny szkic, inny szkic i brak dowodu doręczenia. Dodano 2 testy pełnego startu obu adapterów z rzeczywistym watcherem: jedno list_commands, wynik i potwierdzony kontekst, bez powtórzonego żądania i pozostałego tekstu w polu. Suma: wcześniejsze 651 + 17 + 2.
