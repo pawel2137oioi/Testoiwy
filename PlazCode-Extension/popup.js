@@ -12,6 +12,7 @@ function applyPopupAppearance(value){
  for(const [key,value]of Object.entries(vars))root.style.setProperty(key,value);
 }
 const SUPPORTED_HOSTS = [
+  "longcat.ai", "www.longcat.ai", "meta.ai", "www.meta.ai",
   "platform.arcee.ai", "copilot.com",
   "aistudio.tencent.ai", "chat.motiftech.io", "chat.thewave.cv",
   "app.clickup.com",
@@ -186,6 +187,7 @@ if (runHint) {
     const url = (tab && tab.url) || "";
     const host = (() => { try { return new URL(url).hostname.replace(/^www\./, ""); } catch { return ""; } })();
     const names = {
+      "longcat.ai": "LongCat (experimental)", "meta.ai": "Meta AI (experimental)",
       "platform.arcee.ai": "Arcee (experimental)", "copilot.com": "Copilot (experimental)",
       "chat.deepseek.com": "DeepSeek", "deepseek.com": "DeepSeek",
       "chatgpt.com": "ChatGPT", "chat.openai.com": "ChatGPT",

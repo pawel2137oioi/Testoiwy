@@ -535,6 +535,8 @@
   }
 
   const AI_SITES = [
+    { name: "LongCat (experimental)", url: "https://longcat.ai/chat/" },
+    { name: "Meta AI (experimental)", url: "https://www.meta.ai/" },
     { name: "Arcee (experimental)", url: "https://platform.arcee.ai/" },
     { name: "Copilot (experimental)", url: "https://copilot.com/" },
     { name: "Tencent Hy", url: "https://aistudio.tencent.ai/" },
@@ -1226,6 +1228,11 @@
           !(P.requireFreshResponse && sendOwner.sendToken == null))
         ? (curTok !== sendOwner.sendToken)
         : P.assistantCount() > base);
+      // An unreadable code viewer can contain no plain reply text at all.
+      // Give native Raw rendering a bounded grace period, then surface its
+      // source error instead of waiting through the empty-answer warm-up.
+      if(!gen && newReply && Date.now()-hardProgressAt >= (T.OPEN_TOOL_IDLE_MS||15000) && P.sourceReadFailure?.(d.item))
+        return {kind:'text',text:d.reply||'',item:d.item};
 
       // ChatGPT's streaming renderer can swap the reply subtree after the DOM
       // sweeper has already parsed a valid command. In that race the sweep paints
@@ -1708,7 +1715,7 @@
     };
   }
   function transportBuildVersions() {
-    return {core:"r32",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"};
+    return {core:"r33",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"};
   }
   function transportBuildLabel() {
     const b = transportBuildVersions();
@@ -3584,6 +3591,10 @@ return result`;
       ? "The selected ClickUp AI model declined the PlazCode connection request. Startup stopped; no project command ran and the request was not repeated. You can choose another available model and start a fresh chat. Model support varies; acceptance is not guaranteed."
       : "The AI did not accept or confirm the PlazCode connection. Startup stopped; no project action was started and the bridge was not restarted. You can clarify the request or choose another available model. Acceptance is not guaranteed.");
   }
+  function showSourceUnavailable(item) {
+    P.captureTransportDiagnostics?.('command_source_unavailable',{kind:'text',chars:String(P.classifyText(item)||'').length,calls:0,currentReply:item===P.lastAssistant(),hasItem:!!item});
+    ui.banner('warn','Full code source unavailable',`${P.displayName} displayed a code viewer whose complete source could not be read. No command from this reply ran and nothing was resent. Copy the transport report for troubleshooting.`,{transportReport:!!P.captureTransportDiagnostics});
+  }
   // 1.24.10 helpers ────────────────────────────────────────────────────────
   // Plain-text equivalents of Markdown that Notion's composer converts into
   // blocks/marks while a message is written. Meaning is unchanged.
@@ -4102,7 +4113,7 @@ return result`;
         if (res.kind === "parse_error") {
           A.lastParseFailure = {
             reason: res.reason, provider: P.id,
-            core_build: "r32", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
+            core_build: "r33", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
             ...(typeof RSParse.transportInfo === "function" ? RSParse.transportInfo(res.raw) : {chars:String(res.raw || "").length}),
           };
           diag("tool.parseFailure", A.lastParseFailure);
@@ -4133,8 +4144,7 @@ return result`;
         if (res.kind === "text") {
           const body=String(res.text||"");
           if(P.sourceReadFailure?.(res.item)){
-            P.captureTransportDiagnostics?.('command_source_unavailable',{kind:'text',chars:body.length,calls:0,currentReply:true,hasItem:!!res.item});
-            ui.banner('warn','Full code source unavailable','Copilot rendered this reply in a virtualized editor, but PlazCode could not read its complete source. No command from this reply ran. Copy the transport report for troubleshooting.',{transportReport:true});
+            showSourceUnavailable(res.item);
             break;
           }
           if(isProviderPolicyRefusal(body)){ui.banner("warn","AI declined the request","The AI declined the instructions. PlazCode did not restart the connection or repeat the request. You can clarify the intended work in this chat.");break;}
@@ -4934,6 +4944,7 @@ return result`;
         const parsed = parseProviderToolCalls(String(listRes.text || ""), listRes.item);
         if (parsed.length) listRes = { kind: "tool", calls: parsed, item: P.lastAssistant() };
       }
+      if(P.sourceReadFailure?.(listRes.item)){showSourceUnavailable(listRes.item);return;}
       // Notion may translate or answer the setup as prose. Correct a settled
       // non-command reply once; never execute a different tool or resend an
       // ambiguous delivery. Readiness still requires a real parsed command.

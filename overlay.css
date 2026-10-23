@@ -387,7 +387,9 @@ html.rs-light #rs-bar.rs-bar-anchored.rs-prov-qwen {
 /* Unknown Arcee/Copilot editors use a top dock. Honor the measured width
    instead of forcing a 520px minimum beyond narrow browser windows. */
 #rs-bar.rs-prov-arcee.rs-bar-float,
-#rs-bar.rs-prov-copilot.rs-bar-float {
+#rs-bar.rs-prov-copilot.rs-bar-float,
+#rs-bar.rs-prov-longcat.rs-bar-float,
+#rs-bar.rs-prov-meta.rs-bar-float {
   width: min(560px, calc(100vw - 24px)) !important;
   min-width: 0;
   max-width: calc(100vw - 24px);

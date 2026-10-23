@@ -1,5 +1,25 @@
 # Raport weryfikacji — 2026-10-24 (Europe/Warsaw)
 
+## r33 — LongCat i Meta AI
+
+**1048/1048 testów Node**, bez błędów i pominięć (`npm test --prefix tests`, Node v24.19.0, Linux). Nowy longcat-meta.test.cjs zawiera 31 celowanych prób: textarea i rich editor, Meta mirror, pusty kompozytor bez Send, zachowanie szkicu i załącznika, brak niepewnego ponowienia, logowanie, zmiana czatu, role/cytaty/rozumowanie/Copy, redakcja raportu, jawne Meta ID i starszy kontrakt native turn, logiczne linie span.block, Raw z dosłownymi symbolami, nieczytelne drzewo obok poprawnej komendy oraz rejestracja wszystkich wariantów domen. Istniejące testy bootstrapu rozszerzono o oba nowe serwisy i oba silniki, w tym pełny Ultra z długimi preferencjami, Restart, brak potwierdzenia, odmowę i odtwarzanie sesji. cross-ai-code-dom dodaje krótkie i długie źródło Luau dla obu nowych domen w sześciu postaciach DOM.
+
+**9/9 nowych scenariuszy pełnego interfejsu Chromium**: LongCat plain/windowed/refusal oraz Meta plain/legacy/tree/unreadable-tree/windowed/refusal. Dodatnie przechodzą cały Start, list_commands, wszystkie części kontekstu, gotowość, jedno natywne pytanie użytkownika, dokładnie jeden get_studio_state oraz przekazanie jego wyniku. Warianty windowed usuwają stare wpisy i nie nadają ID. Meta Tree przełącza wyłącznie Raw (raz na blok); natywny Copy nie jest klikany. Brak Raw zatrzymuje start po jednej wiadomości, bez korekty protokołu ani komendy projektu. Odmowy nie uruchamiają dalszego startu.
+
+**18/18 nowych prób układu Chromium**: po trzy rozmiary okna (980×596, 953×240, 390×596) dla obu serwisów, przy widocznym Send, przed pojawieniem się Send oraz przy dwóch niejednoznacznych kompozytorach. Sprawdzono wykrycie pustego pola, niezasłonięte pisanie, brak wyjścia paska poza ekran, pojedynczy własny handshake przed ręcznym wpisaniem znaku i natywne Send/Enter bez Start. Testy wykryły i usunęły brak długiej polskiej etykiety Wyślij wiadomość w Meta oraz odziedziczoną minimalną szerokość 520 px przy nierozpoznanym edytorze.
+
+Rzeczywiste modele bibliotek: **18 sprawdzeń LongCat** i **21 Meta** z React/Lexical, w tym remount, zachowany szkic po wysyłce, opóźniony paste, zachowanie źródła i końcowych pustych linii, blokowanie zaufanej klawiatury podczas działania oraz przywrócenie edycji. Meta ma dodatkowy prawdziwy React z widocznym contenteditable sterowanym ukrytym textarea; porównywany jest wewnętrzny model, nie tylko DOM.
+
+Regresja obejmuje **36 istniejących sprawdzeń bibliotek edytora** oraz **20 poprzednich scenariuszy pełnego interfejsu Copilot/Arcee**, także odmowy, raport, wirtualizowany kod, brak modelu i wolny start. Suma: **122 różne sprawdzenia Chromium** (9 + 18 + 18 + 21 + 36 + 20). Powtórzenia podczas poprawiania fixture i błędów nie zwiększają tej liczby. Nowe warunki załączników i jednoznacznego Send dotyczą wyłącznie dwóch nowych serwisów.
+
+Pierwszy pełny zestaw Node wykrył brak rejestracji nowych hostów w globalnym mostku zdarzeń Firefoksa. Końcowe manifesty rejestrują dokładnie jeden runtime na nowy host oraz właściwe globalne hooki; pozostałe grupy dostawców zachowano. Nie wykonano próby w przeglądarce Firefox. Składnia Node, zasoby manifestów, zgodność kopii root/Chromium/Firefox, ZIP-y i sumy sprawdzono przed publikacją.
+
+**Ograniczenie:** to kontrolowane strony, model i most. Bezpośredni odczyt longcat.ai oraz www.meta.ai jest blokowany w środowisku przez proxy (CONNECT 403), także po przyznaniu uprawnienia sieciowego. Nie testowano zalogowanych kont ani prawdziwego Studio. Meta wykorzystuje selektory z publicznych klientów i istniejącego kodu, ale nie potwierdzono ich aktualności na koncie. Bieżący DOM longcat.ai nie został odczytany; jego konserwatywny kontrakt semantyczny pozostaje niepotwierdzony. Źródła i dokładny zakres: LONGCAT-META.md. Nie jest to gwarancja działania na każdej odmianie stron.
+
+Wersja 1.24.41, core/provider r33, parser r13. Native EXE i desktopowe feedy bez zmian. Sumy: WEBCHATS-R33-SHA256SUMS.txt.
+
+---
+
 ## r32 — start przekraczający dziesięć minut i cztery widoczne tury
 
 **941/941 testów Node**, bez błędów i pominięć (`npm test --prefix tests`, Node v24.19.0, Linux). Dodano 13 przypadków do istniejącego webchats.test.cjs. Uruchamiają rzeczywisty startSession, czytnik odpowiedzi i watchdog z kontrolowanym zegarem. R31 odtwarza dwa niezależne przerwania: Start got stuck mimo kolejnych poprawnych odpowiedzi po 160 sekund oraz chat changed after sending po przycięciu listy do czterech tur. R32 przechodzi oba pełne starty, zachowując wszystkie części kontekstu.

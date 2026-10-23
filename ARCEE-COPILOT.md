@@ -1,4 +1,6 @@
-# Arcee i copilot.com — r32, rozszerzenie 1.24.40
+# Arcee i copilot.com — r33, rozszerzenie 1.24.41
+
+R33 dodaje do wspólnego adaptera LongCat i Meta AI; wcześniejsze poprawki Arcee i Copilot pozostają zachowane. Nowe integracje i ograniczenia ich weryfikacji opisuje LONGCAT-META.md. Bieżąca instalacja to 1.24.41, core/provider r33, parser r13; poniżej historia napraw r32 i starszych.
 
 ## R32 — pełny start mimo wolnych odpowiedzi i wirtualizacji historii
 
@@ -174,7 +176,7 @@ Pasek obu nowych adapterów znajduje się nad wykrytym kompozytorem, bez dopisyw
 
 1. Podmień cały folder rozszerzenia i przeładuj go. Zachowaj jedną aktywną instalację. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`.
 2. Odśwież kartę Arcee lub dokładnie `https://copilot.com/`. Nie dodano domeny copilot.microsoft.com. EXE pozostaje bez zmian.
-3. Sprawdź wersję **1.24.40**. Raport transportu nowych adapterów: **core:r32/parser:r13/provider:r32**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
+3. Sprawdź wersję **1.24.41**. Raport transportu nowych adapterów: **core:r33/parser:r13/provider:r33**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
 4. Jeżeli aktualny interfejs serwisu nadal nie zostanie rozpoznany, zwykły czat pozostaje dostępny, a agent nie powinien klikać przypadkowych przycisków. Dla innej domeny po przekierowaniu ta rejestracja nie obowiązuje.
 
 Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przeglądarce. Wysyłanie obrazów pozostaje niezweryfikowane. Brak potwierdzenia wiadomości przez nowy wpis użytkownika zatrzymuje wysyłkę bez ponownego kliknięcia; przed ręczną próbą sprawdź historię, ponieważ wiadomość mogła dotrzeć.
@@ -203,7 +205,7 @@ PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-layout.cjs
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-startup.cjs
 ```
 
-Sumy bieżącej paczki: `WEBCHATS-R32-SHA256SUMS.txt`.
+Sumy bieżącej paczki: `WEBCHATS-R33-SHA256SUMS.txt`.
 
 
 ### Dodatkowe testy kontrolowanych bibliotek

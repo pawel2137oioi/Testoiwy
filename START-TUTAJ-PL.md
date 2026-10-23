@@ -1,3 +1,19 @@
+# PlazCode — rozszerzenie 1.24.41, LongCat i Meta AI r33
+
+## r33 — dwie nowe integracje przeglądarkowe
+
+Dodano eksperymentalną obsługę dokładnie `https://longcat.ai/chat/` i `https://www.meta.ai/`, wraz z wariantami www/bez www tych samych domen. Nowe serwisy są w menu AI, popupie, routingu tła i manifestach Chrome/Edge oraz Firefox. Longcat.chat nie zostało włączone; użytkownik potwierdził longcat.ai.
+
+Nowe adaptery korzystają ze wspólnego mechanizmu pojedynczej wysyłki, pełnego potwierdzenia echa i odbioru wszystkich części kontekstu. Obsługują textarea, kontrolowane edytory, remount, opóźniony zapis i Meta z ukrytym textarea. Nie nadpisują szkiców ani nie wysyłają zastanych załączników. Meta odczytuje pełny Raw JSON oraz logiczne linie kodu; skrócone drzewo JSON nie jest komendą. Pasek mieści się również w wąskim oknie i pozostawia dostęp do natywnego pisania.
+
+**Aktualizacja:** podmień cały folder `PlazCode-Extension` (Firefox: `PlazCode-Extension-Firefox`), przeładuj rozszerzenie i odśwież nowe strony. Sprawdź **1.24.41** i raport **core:r33/parser:r13/provider:r33**. Włącz PlazCode.exe i Studio albo AgentScript, otwórz pusty czat i wybierz Start Agent. Obsługa obrazów przez agenta pozostaje wyłączona; zwykły czat strony nadal jest dostępny. EXE bez zmian.
+
+**Weryfikacja:** 1048/1048 testów Node i 122 różne sprawdzenia Chromium. Obejmują pełny start, późniejszy odczyt Studio, obydwa silniki w Node, odmowy, nieczytelny JSON, szkice, załączniki, kontrolowane modele React/Lexical i trzy rozmiary okna. **Nie jest to test zalogowanych kont.** Proxy środowiska odmawia bezpośredniego odczytu obu stron (CONNECT 403). Dla Meta wykorzystano kontrakty ze źródeł publicznych i istniejącego kodu; dla longcat.ai nie potwierdzono obecnego DOM, więc nie deklaruje się pełnej zgodności z prywatnym interfejsem. Opis i źródła: [LONGCAT-META.md](LONGCAT-META.md); wyniki: [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md); sumy: `WEBCHATS-R33-SHA256SUMS.txt`.
+
+Poniżej historia; do aktualizacji obowiązuje r33 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.40, ciągłość startu Copilot r32
 
 ## r32 — start zatrzymujący się przy części 4/10

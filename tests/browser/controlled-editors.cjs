@@ -4,17 +4,20 @@ const {chromium}=require('playwright');
 const deps=process.env.PLAZCODE_BROWSER_DEPS;
 const {buildSync}=deps?require(path.join(deps,'node_modules/esbuild')):require('esbuild');
 const root=path.resolve(__dirname,'../..');
+const targetHost=process.env.PLAZCODE_EDITOR_HOST||'copilot.com';
+assert.ok(['copilot.com','longcat.ai','www.meta.ai'].includes(targetHost));
 const fixture=buildSync({entryPoints:[path.join(__dirname,'fixtures/controlled-composers.js')],bundle:true,write:false,format:'iife',nodePaths:deps?[path.join(deps,'node_modules')]:[]}).outputFiles[0].text;
 const provider=fs.readFileSync(process.env.PLAZCODE_TEST_PROVIDER||path.join(root,'providers/webchats.js'),'utf8');
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.PLAZCODE_CHROMIUM||'/usr/bin/chromium',args:['--no-sandbox']});let passed=0;
  try{
-  for(const kind of ['lexical','lexical-retained','react-remount','react-retained','lexical-delayed','lexical-padded','lexical-padded-retained']){
+  for(const kind of [...['lexical','lexical-retained','react-remount','react-retained','lexical-delayed','lexical-padded','lexical-padded-retained'].filter(kind=>targetHost==='copilot.com'||!kind.includes('padded')),...(targetHost==='www.meta.ai'?['meta-mirror']:[])]){
    const lexical=kind.startsWith('lexical');
    const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
    try{
-    await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><main>'+(lexical?'<form><div contenteditable="true" aria-label="Message Copilot" style="white-space:pre-wrap;min-height:60px"></div><button type="button" aria-label="Send message">Send</button></form>':'<div id="react-root"></div>')+'<div id="thread"><div data-role="user" data-message-id="u1">aa</div><div data-role="assistant" data-message-id="a1">Cześć! Wysłałeś tylko aa.</div></div></main>'}));
-    await page.goto('https://copilot.com/chat');await page.addScriptTag({content:fixture});
+    await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><main>'+(lexical?'<form><div contenteditable="true" aria-label="Message Copilot" style="white-space:pre-wrap;min-height:60px"></div><button type="button" aria-label="Send">Send</button></form>':'<div id="react-root"></div>')+'<div id="thread"><div data-role="user" data-message-id="u1">aa</div><div data-role="assistant" data-message-id="a1">Cześć! Wysłałeś tylko aa.</div></div></main>'}));
+    await page.goto('https://'+targetHost+'/chat');await page.addScriptTag({content:fixture});
+    await page.evaluate(host=>window.fixtureProvider=host==='www.meta.ai'?'Meta AI':host==='longcat.ai'?'LongCat':'Copilot',targetHost);
     await page.evaluate(kind=>{window.nativeSent=[];window.retainDraft=kind.endsWith('retained');if(kind.startsWith('lexical')){
       mountLexical();
       if(kind.includes('padded'))document.querySelector('[contenteditable]').addEventListener('paste',()=>{
@@ -26,7 +29,7 @@ const provider=fs.readFileSync(process.env.PLAZCODE_TEST_PROVIDER||path.join(roo
         setTimeout(()=>{const data=new DataTransfer();data.setData('text/plain',text);const delivery=new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true});delivery.fixtureDelivery=true;document.querySelector('[contenteditable]').dispatchEvent(delivery);},350);
       },true);
       document.querySelector('button').onclick=()=>{const text=modelText();window.nativeSent.push(text);const row=document.createElement('div');if(window.retainDraft)row.dataset.testid='user-message';else row.dataset.role='user';row.textContent=text;document.querySelector('#thread').append(row);if(!window.retainDraft)modelClear();};
-    }else mountReact();},kind);
+    }else if(kind==='meta-mirror')mountMetaMirror();else mountReact();},kind);
     await page.addScriptTag({content:provider+'\nwindow.P=RSProvider;'});
     const expected=kind.includes('padded')?await page.evaluate(()=>P.startupRequest('roblox')):'First handshake {"command":"list_commands"}';
     if(kind.includes('padded'))assert.equal(expected.length,552);
@@ -48,7 +51,7 @@ const provider=fs.readFileSync(process.env.PLAZCODE_TEST_PROVIDER||path.join(roo
     await page.evaluate(()=>P.setInputLock(true));
     const ed=page.locator('textarea,[contenteditable]').first();await ed.focus();await ed.press('x');
     assert.equal(await page.evaluate(()=>modelText()),'');
-    assert.equal(await ed.getAttribute('contenteditable'),lexical?'true':null);
+    assert.equal(await ed.getAttribute('contenteditable'),lexical||kind==='meta-mirror'?'true':null);
     assert.equal(await ed.evaluate(ed=>!!ed.readOnly),false);
     await page.evaluate(()=>P.setInputLock(false));await ed.press('x');
     await page.waitForTimeout(80);assert.equal(await page.evaluate(()=>modelText()),'x');passed++;
@@ -57,7 +60,7 @@ const provider=fs.readFileSync(process.env.PLAZCODE_TEST_PROVIDER||path.join(roo
     assert.deepEqual(errors,[]);console.log(kind+': native model, exact source, single send and user lock passed');
    }finally{await page.close();}
   }
-  for(const transform of ['none','uppercase'])for(const suffix of ['', '\u200B\u200B', '\u200B\u200C', '\u200B\n']){
+  for(const transform of (targetHost==='copilot.com'?['none','uppercase']:[]))for(const suffix of ['', '\u200B\u200B', '\u200B\u200C', '\u200B\n']){
     const page=await browser.newPage();
     try{
       await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><form><div contenteditable="true" aria-label="Message Copilot" style="white-space:pre-wrap;text-transform:'+transform+';min-height:60px"></div><button type="button" aria-label="Send">Send</button></form><section id="thread"></section>'}));
@@ -84,6 +87,7 @@ const provider=fs.readFileSync(process.env.PLAZCODE_TEST_PROVIDER||path.join(roo
       console.log('Controlled paragraph editor: exact source, literal user padding, text-transform '+transform+' and suffix '+JSON.stringify(suffix)+' passed');
     }finally{await page.close();}
   }
+  if(targetHost==='copilot.com'){
   const page=await browser.newPage();
   try{
     await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><div data-role="assistant" class="chat-message"><div class="chat-response-content"><div class="markdown-content"><div>js</div><div id="code-root" style="height:120px;overflow:auto"></div></div></div></div>'}));
@@ -100,6 +104,7 @@ const provider=fs.readFileSync(process.env.PLAZCODE_TEST_PROVIDER||path.join(roo
     assert.equal(actual,code);passed++;
     console.log('CodeMirror: actual document, js/on artifact and complete virtualized Luau passed');
   }finally{await page.close();}
-  console.log(passed+' controlled-editor checks passed');
+  }
+  console.log(targetHost+': '+passed+' controlled-editor checks passed');
  }finally{await browser.close();}
 })().catch(error=>{console.error(error);process.exitCode=1;});

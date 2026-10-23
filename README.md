@@ -1,4 +1,4 @@
-LOCAL THREE-SITE PATCH r4 (2026-10-21): see START-TUTAJ-PL.md for setup and TESTY-TRZY-SERWISY.md for verified scope and limitations. Native release statements below do not validate this patch.
+EXTENSION UPDATE 1.24.41 / r33 (2026-10-24): experimental LongCat (longcat.ai/chat/) and Meta AI (www.meta.ai) adapters, with confirmed single-send delivery, staged startup and exact code reading. See [START-TUTAJ-PL.md](START-TUTAJ-PL.md), [LONGCAT-META.md](LONGCAT-META.md) and [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md) for installation, checks and limits. Automated controlled-page coverage does not establish compatibility with an authenticated live account; the current LongCat DOM remains unverified. This is an extension-only update. Native release statements below do not validate this patch.
 
 PlazCode 1.22.1 — Model Builder, Notion and add-on fixes
 

@@ -23,10 +23,21 @@ window.mountReact=()=>{
     window.modelText=()=>text;
     const submit=()=>{window.nativeSent.push(text);const row=document.createElement('div');if(window.retainDraft)row.dataset.testid='user-message';else row.dataset.role='user';row.textContent=text;document.querySelector('#thread').append(row);if(!window.retainDraft)setText('');};
     return React.createElement('form',{onSubmit:event=>event.preventDefault()},
-      React.createElement('textarea',{key:stage,value:text,placeholder:'Message Copilot',
+      React.createElement('textarea',{key:stage,value:text,placeholder:'Message '+(window.fixtureProvider||'Copilot'),'data-testid':window.fixtureProvider==='Meta AI'?'composer-input':undefined,
         onFocus:()=>{if(stage===0)flushSync(()=>setStage(1));},
         onChange:event=>{const value=event.target.value;flushSync(()=>{setText(value);if(stage===1)setStage(2);});}}),
-      React.createElement('button',{type:'button','aria-label':'Send message',disabled:!text,onClick:submit},'Send'));
+      React.createElement('button',{type:'button','aria-label':'Send',disabled:!text,onClick:submit},'Send'));
+  }
+  flushSync(()=>createRoot(document.querySelector('#react-root')).render(React.createElement(Composer)));
+};
+window.mountMetaMirror=()=>{
+  function Composer(){
+    const [text,setText]=useState('');window.modelText=()=>text;
+    const submit=()=>{window.nativeSent.push(text);const row=document.createElement('div');row.dataset.messageType='user';row.textContent=text;document.querySelector('#thread').append(row);flushSync(()=>setText(''));};
+    return React.createElement('form',null,
+      React.createElement('div',{contentEditable:true,role:'textbox','data-testid':'composer-input',suppressContentEditableWarning:true,style:{whiteSpace:'pre-wrap',minHeight:60},onInput:event=>flushSync(()=>setText(event.currentTarget.textContent))},text),
+      React.createElement('textarea',{'data-testid':'composer-input',style:{display:'none'},value:text,onChange:event=>flushSync(()=>setText(event.target.value))}),
+      React.createElement('button',{type:'button','aria-label':'Send',disabled:!text,onClick:submit},'Send'));
   }
   flushSync(()=>createRoot(document.querySelector('#react-root')).render(React.createElement(Composer)));
 };

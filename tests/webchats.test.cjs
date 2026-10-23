@@ -12,7 +12,7 @@ const vm = require('node:vm');
 const {JSDOM} = require('jsdom');
 const root = path.resolve(__dirname, '..');
 const source = fs.readFileSync(path.join(root, 'providers/webchats.js'), 'utf8');
-const hosts = {arcee:'platform.arcee.ai',copilot:'copilot.com',motif:'chat.motiftech.io',chatwave:'chat.thewave.cv',tencent:'aistudio.tencent.ai'};
+const hosts = {arcee:'platform.arcee.ai',copilot:'copilot.com',motif:'chat.motiftech.io',chatwave:'chat.thewave.cv',tencent:'aistudio.tencent.ai',longcat:'longcat.ai',meta:'www.meta.ai'};
 function fixture(id, options={}) {
   const markup = {
     arcee:'<form data-testid="chat-composer"><textarea data-testid="chat-input"></textarea><button type="button" data-testid="send-button">Send</button><button type="button" aria-label="Stop" hidden>Stop</button></form>',
@@ -20,6 +20,8 @@ function fixture(id, options={}) {
     motif:'<div class="composer"><textarea id="chat-textarea"></textarea><button data-testid="document-send-button">Send</button><button aria-label="Stop" hidden>Stop</button></div>',
     chatwave:'<div id="inputIsland"><form id="cbForm"><textarea id="chatInput" maxlength="16000"></textarea><button type="button" id="sendBtn" aria-label="Voice input">Send</button></form></div><div id="chatThread" role="log"></div>',
     tencent:'<div class="hy-chat-input"><textarea class="t-textarea__inner"></textarea><div class="hy-chat-input-send-btn">Send</div><button class="hy-chat-input-stop-btn" hidden>Stop</button></div>',
+    longcat:'<form><textarea placeholder="Message LongCat"></textarea><button type="button" aria-label="Send">Send</button><button aria-label="Stop" hidden>Stop</button></form>',
+    meta:'<form><textarea data-testid="composer-input"></textarea><button type="button" data-testid="composer-send-button">Send</button><button aria-label="Stop" hidden>Stop</button></form>',
   };
   const dom = new JSDOM('<!doctype html><body>'+markup[id]+'</body>',{url:'https://'+hosts[id]+'/',runScripts:'outside-only'});
   const w=dom.window, d=w.document; let clock=10000,clicks=0,stops=0;
@@ -27,10 +29,10 @@ function fixture(id, options={}) {
   w.Date.now=()=>clock;
   w.setTimeout=fn=>{clock+=100;queueMicrotask(fn);return 1;};
   vm.runInContext(source+'\nwindow.P=RSProvider;',dom.getInternalVMContext());
-  const P=w.P, ed=P.getEditor(), send=d.querySelector(id==='arcee'?'[data-testid="send-button"]':id==='copilot'?'[aria-label="Send message"]':id==='motif'?'[data-testid="document-send-button"]':id==='chatwave'?'#sendBtn':'.hy-chat-input-send-btn');
+  const P=w.P, ed=P.getEditor(), send=d.querySelector(id==='arcee'?'[data-testid="send-button"]':id==='copilot'?'[aria-label="Send message"]':id==='motif'?'[data-testid="document-send-button"]':id==='chatwave'?'#sendBtn':id==='meta'?'[data-testid="composer-send-button"]':id==='longcat'?'[aria-label="Send"]':'.hy-chat-input-send-btn');
   function add(role,text,html=false) {
     const row=d.createElement('div');
-    if(id==='arcee'||id==='copilot') {
+    if(['arcee','copilot','meta','longcat'].includes(id)) {
       row.dataset.messageAuthorRole=role;row.innerHTML='<div data-testid="message-content"></div>';
     } else if(id==='motif') {
       if(role==='user')row.innerHTML='<div class="group justify-end"><div class="bg-primary-50"><div class="whitespace-pre-wrap"></div></div></div>';
@@ -103,14 +105,14 @@ for(const id of Object.keys(hosts)) {
   });
   test(id+': Co-work draft compare-and-swap and input lock',async()=>{
     const f=fixture(id);assert.equal((await f.P.writeDraft('followup','')).ok,true);assert.equal((await f.P.writeDraft('lost','wrong')).ok,false);assert.equal(f.ed.value,'followup');
-    f.P.setInputLock(true);assert.equal(f.ed.readOnly,id!=='copilot');f.P.setInputLock(false);assert.equal(f.ed.readOnly,false);
+    f.P.setInputLock(true);assert.equal(f.ed.readOnly,!['copilot','longcat','meta'].includes(id));f.P.setInputLock(false);assert.equal(f.ed.readOnly,false);
   });
   test(id+': chat key survives first turn, decoration and saved route',()=>{
     const f=fixture(id);const key=f.P.conversationKey();const row=f.add('user','startup');assert.equal(f.P.conversationKey(),key);
     row.appendChild(f.d.createElement('div')).className='rs-chip';assert.equal(f.P.conversationKey(),key);
     f.w.history.pushState({},'', '/chat/saved-id');assert.equal(f.P.conversationKey(),key);
     for(const item of f.P.allItems())item.remove();
-    if(id==='copilot'||id==='arcee'){assert.equal(f.P.conversationKey(),key);f.w.history.pushState({},'', '/');}
+    if(['copilot','arcee','meta','longcat'].includes(id)){assert.equal(f.P.conversationKey(),key);f.w.history.pushState({},'', '/');}
     assert.notEqual(f.P.conversationKey(),key);
   });
   test(id+': hard generation remains busy across long reasoning pause',()=>{
@@ -345,7 +347,7 @@ for(const correction of [false,true])test('Arcee actual bootstrap accepts screen
  const result=await f.run();assert.equal(result?.ready,true,JSON.stringify(f.banners));assert.equal(f.A._confirmedStartup,true);assert.deepEqual(f.commands,['list_commands']);
  assert.match(f.sent[0],/plain JSON/);if(correction)assert.equal(f.sent[1],f.P.startupCorrection);assert.deepEqual(f.banners,[]);
 });
-for(const id of ['arcee','copilot','motif','chatwave'])for(const engine of ['roblox','local']) {
+for(const id of ['arcee','copilot','motif','chatwave','longcat','meta'])for(const engine of ['roblox','local']) {
   test(id+': actual bootstrap with '+engine+' Ultra keeps every startup message within the site limit',async()=>{
     const custom='USER PREFERENCE: preserve this entire reference.\n'+('Do not omit my project preferences. 🦊\n'.repeat(1700))+'\nCUSTOM_PREFERENCE_END';
     const f=bootstrapFixture(id,{engine,custom});
@@ -360,7 +362,7 @@ for(const id of ['arcee','copilot','motif','chatwave'])for(const engine of ['rob
     assert.equal(f.A.starting,false);assert.equal(f.ed.readOnly,false);assert.equal(f.covers.at(-1),false);assert.deepEqual(f.banners,[]);
   });
 }
-for(const id of ['arcee','copilot','motif','chatwave']) {
+for(const id of ['arcee','copilot','motif','chatwave','longcat','meta']) {
   test(id+': actual Restart Agent in an existing chat uses bounded startup without deleting the conversation',async()=>{
     const f=bootstrapFixture(id);f.add('user','a');f.add('assistant','Did you mean to type something more?');
     const result=await f.run({restart:true});assert.equal(result?.ready,true,JSON.stringify(f.banners));

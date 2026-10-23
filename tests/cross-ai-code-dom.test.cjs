@@ -11,6 +11,8 @@ const sites={
  motif:{host:'chat.motiftech.io',file:'webchats',shell:'<div data-testid="document-model-answer-content"><div class="prose" id="answer"></div></div>',header:'markdown-viewer-code-block-header'},
  chatwave:{host:'chat.thewave.cv',file:'webchats',shell:'<div id="chatThread"><div class="msg-row ai" data-mid="reply-2"><div class="msg-body" id="answer"></div></div></div>'},
  tencent:{host:'aistudio.tencent.ai',file:'webchats',shell:'<div class="agent-chat__list__item--ai"><div class="hyc-content-md" id="answer"></div></div>',header:'hyc-common-markdown__code__hd-container'},
+ longcat:{host:'longcat.ai',file:'webchats',shell:'<article data-message-author-role="assistant"><div class="markdown" id="answer"></div></article>'},
+ meta:{host:'www.meta.ai',file:'webchats',shell:'<article data-message-type="assistant"><div class="prose" id="answer"></div></article>'},
 };
 const source='local label = Instance.new("TextLabel")\nlabel.Size = UDim2.fromOffset(240, 40)\nlabel.TextXAlignment = Enum.TextXAlignment.Right\nlocal text = [=[one\n\n\n\nfive]=]\nreturn {text, label.Name}';
 const long=source+'\n'+Array.from({length:350},(_,i)=>`local value${i} = {"Zażółć 🦊", ${i}}`).join('\n')+'\nreturn "END"';

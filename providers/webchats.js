@@ -6,6 +6,28 @@
 const RSProvider = (() => {
   'use strict';
   const sites = {
+    'longcat.ai': {
+      id:'longcat',name:'LongCat',experimental:true,strictComposer:true,compact:true,controlledComposer:true,
+      editor:'textarea, [contenteditable="true"][role="textbox"], [contenteditable="true"][data-lexical-editor="true"], [contenteditable="plaintext-only"]',
+      frame:'[data-testid="composer"], [data-testid="chat-composer"], form',
+      send:'button[data-testid="send-button"], button[aria-label*="send" i], button[aria-label*="发送"], button[aria-label*="wyślij" i], button[type="submit"], [role="button"][aria-label="Send" i]',
+      stop:'button[data-testid="stop-button"], button[aria-label*="stop" i], button[aria-label*="停止"], [role="button"][aria-label*="stop" i]',
+      user:'[data-message-author-role="user"], [data-message-type="user"], [data-role="user"], [data-testid="user-message"]',
+      assistant:'[data-message-author-role="assistant"], [data-message-type="assistant"], [data-role="assistant"], [data-testid="assistant-message"]',
+      body:'.markdown-body, .markdown, .prose, [data-testid="message-content"]',
+      max:0,page:7000,startupPage:7000,feedbackBudget:8000,
+    },
+    'www.meta.ai': {
+      id:'meta',name:'Meta AI',experimental:true,strictComposer:true,compact:true,controlledComposer:true,
+      editor:'textarea[data-testid="composer-input"], [contenteditable="true"][data-testid="composer-input"], [contenteditable="true"][role="textbox"], [contenteditable="true"][data-lexical-editor="true"], [contenteditable="plaintext-only"]',
+      frame:'[data-testid="composer"], [data-testid="chat-composer"], form',
+      send:'[data-testid="composer-send-button"], button[aria-label^="Send" i], button[aria-label^="Wyślij" i], button[aria-label^="Envoyer" i], button[aria-label="Отправить" i], [role="button"][aria-label="Send" i], button[type="submit"]',
+      stop:'[data-testid="composer-stop-button"], button[aria-label*="stop" i], button[aria-label="Arrêter" i], button[aria-label="Zatrzymaj" i], [role="button"][aria-label*="stop" i]',
+      user:'[data-message-type="user"], [data-message-author-role="user"], [data-role="user"], [data-testid="user-message"], [data-message-item="true"][data-message-id*="_user"]',
+      assistant:'[data-message-type="assistant"], [data-message-author-role="assistant"], [data-role="assistant"], [data-testid="assistant-message"], [data-message-item="true"][data-message-id*="_assistant"]',
+      body:'[data-testid="assistant-message"], .prose, .markdown, [data-testid="message-content"]',
+      max:0,page:7000,startupPage:7000,feedbackBudget:8000,
+    },
     // Contract-based adapters: these semantic hooks must be confirmed on a
     // signed-in page. Never infer assistant roles from arbitrary page text.
     'platform.arcee.ai': {
@@ -21,7 +43,7 @@ const RSProvider = (() => {
       max:50000,page:8000,startupPage:7000,feedbackBudget:9000,
     },
     'copilot.com': {
-      id:'copilot',name:'Copilot',experimental:true,strictComposer:true,compact:true,
+      id:'copilot',name:'Copilot',experimental:true,strictComposer:true,compact:true,controlledComposer:true,
       editor:'textarea, [contenteditable="true"], [contenteditable="plaintext-only"]',
       frame:'[data-testid="composer"], [data-testid="composer-content"], [data-testid="chat-composer"], form',
       send:'button[data-testid="send-button"], button[data-testid="submit-button"], button[aria-label*="send" i], button[aria-label*="submit" i], button[aria-label*="wyślij" i], button[aria-label*="prześlij" i], button[title*="wyślij" i], button[type="submit"]',
@@ -57,6 +79,7 @@ const RSProvider = (() => {
       body: '.msg-body', max: 16000, page: 10000,
     },
   };
+  sites['www.longcat.ai']=sites['longcat.ai'];sites['meta.ai']=sites['www.meta.ai'];
   const site = sites[location.hostname];
   if (!site) throw Error('Unsupported PlazCode web chat host');
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -90,14 +113,14 @@ const RSProvider = (() => {
   }
   const richEditor=ed=>!!ed && !/^(?:TEXTAREA|INPUT)$/.test(ed.tagName);
   const transcriptSelector='pre,code,[role="dialog"],'+site.user+','+site.assistant;
-  function emptyCopilotFrame(ed) {
-    if(site.id!=='copilot')return null;
+  function emptyStrictFrame(ed) {
+    if(!site.controlledComposer)return null;
     const labels=['placeholder','aria-label','data-placeholder'].map(name=>ed.getAttribute(name)||'').join(' ');
     // Copilot hides Send until input arrives. A labeled chat editor, or the
     // sole editor in /chat's main pane, must be found before that button exists.
     // The actual send still waits for an enabled local button after typing.
-    const chatLabel=/copilot|send (?:a )?message|wyślij wiadomość|prześlij wiadomość/i.test(labels);
-    const chatPane=/^\/chat(?:\/|$)/i.test(location.pathname) && ed.closest('main,[role="main"]');
+    const chatLabel=/copilot|longcat|meta ai|send (?:a )?message|wyślij wiadomość|prześlij wiadomość|发送/i.test(labels);
+    const chatPane=(/^\/chat(?:\/|$)/i.test(location.pathname) || site.id==='meta') && ed.closest('main,[role="main"]');
     if(!chatLabel && !chatPane)return null;
     const parent=ed.parentElement;
     if(!parent || parent===document.body || parent===document.documentElement || parent.matches('main,[role="main"],'+transcriptSelector))return null;
@@ -117,13 +140,13 @@ const RSProvider = (() => {
       if(buttons.length && editors.length===1 && editors[0]===ed)return n;
       if(n===boundary)break;
     }
-    return boundary && boundary!==ed && !boundary.matches('main,[role="main"]') ? boundary : emptyCopilotFrame(ed);
+    return boundary && boundary!==ed && !boundary.matches('main,[role="main"]') ? boundary : emptyStrictFrame(ed);
   }
   const getEditor = () => {
     if(lockedEditor?.isConnected && visible(lockedEditor))return lockedEditor;
     if(!site.strictComposer)return firstVisible(site.editor) || (site.editorFallback && firstVisible(site.editorFallback));
     const editors=all(document,site.editor+(site.editorFallback?', '+site.editorFallback:''));
-    const candidates=editors.filter(ed=>visible(ed) && !ed.disabled && !ed.closest(OWN+','+transcriptSelector) && strictFrame(ed));
+    const candidates=editors.filter(ed=>visible(ed) && !ed.disabled && !ed.readOnly && !ed.closest(OWN+','+transcriptSelector) && strictFrame(ed));
     return candidates.length===1 ? candidates[0] : null;
   };
   function richEditorText(ed,paragraphBreak='\n\n'){
@@ -133,7 +156,7 @@ const RSProvider = (() => {
       const inline=node=>node.nodeType===3?node.nodeValue:node.nodeType!==1?'':node.tagName==='BR'?(node===node.parentNode.lastChild?'':'\n'):[...node.childNodes].map(inline).join('');
       return [...ed.children].map(inline).join(paragraphBreak);
     }
-    if(site.id==='copilot'){
+    if(site.controlledComposer){
       // innerText includes CSS text transforms and browser layout. Read the
       // editable document instead; noneditable controls and a marked
       // ProseMirror caret BR are not message source. Real BRs stay literal.
@@ -162,7 +185,7 @@ const RSProvider = (() => {
     const text=richEditorText(ed,paragraphBreak);
     if(!copilotWritten.has(ed))return text;
     const expected=copilotWritten.get(ed),actual=presentedValue(text,expected);
-    if(site.id==='copilot'&&!copilotParagraphBreak.has(ed)){
+    if(site.controlledComposer&&!copilotParagraphBreak.has(ed)){
       // Native paste can render every newline as a P, including empty P nodes
       // for blank lines. Other editors use one P for a whole paragraph. Only
       // project our exact known write when ONE complete structural read equals
@@ -174,13 +197,13 @@ const RSProvider = (() => {
     return actual;
   }, '');
   document.addEventListener('input',event=>{
-    if(site.id==='copilot' && event.isTrusted && !writingEditor){const ed=getEditor();if(ed?.contains(event.target))copilotWritten.delete(ed);}
+    if(site.controlledComposer && event.isTrusted && !writingEditor){const ed=getEditor();if(ed?.contains(event.target))copilotWritten.delete(ed);}
   },true);
   // Keep Copilot's framework-owned editable/readOnly attributes intact. Native
   // edits from the user are blocked during injection, while our synchronous
   // editing command is allowed to update the site's actual editor model.
   for(const eventName of ['beforeinput','paste','cut','drop','keydown'])document.addEventListener(eventName,event=>{
-    if(site.id!=='copilot' || !copilotInputLocked || writingEditor || !event.isTrusted)return;
+    if(!site.controlledComposer || !copilotInputLocked || writingEditor || !event.isTrusted)return;
     const ed=getEditor();if(!ed || !ed.contains(event.target))return;
     if(eventName==='keydown' && (event.key.length!==1 && !['Backspace','Delete','Enter'].includes(event.key)))return;
     if(eventName==='keydown' && (event.ctrlKey||event.metaKey) && /^c$/i.test(event.key))return;
@@ -208,6 +231,11 @@ const RSProvider = (() => {
       all(scope, 'button,[role="button"]').find(el => visible(el) && /^(stop|stop response|stop generating|停止生成|停止回答)$/i.test(buttonLabel(el))) || null;
   }
   function sendButton() {
+    if(site.id==='meta'||site.id==='longcat'){
+      const candidates=all(composerFrame(),site.send).filter(button=>visible(button)&&button!==stopButton());
+      const primary=candidates.filter(button=>matches(button,site.id==='meta'?'[data-testid="composer-send-button"]':'[data-testid="send-button"]'));
+      return primary.length===1?primary[0]:!primary.length&&candidates.length===1?candidates[0]:null;
+    }
     const b = site.strictComposer ? all(composerFrame(),site.send).find(visible) : firstVisible(site.send);
     if (!b || b === stopButton()) return null;
     if (site.id === 'chatwave' && !/^Send message$/i.test(buttonLabel(b))) return null;
@@ -216,21 +244,42 @@ const RSProvider = (() => {
   const enabled = el => !!el && !el.disabled && el.getAttribute('aria-disabled') !== 'true' &&
     !/--disabled\b/.test(String(el.className));
   const matches = (el, selector) => read(() => el.matches(selector), false);
-  const isUserItem = el => matches(el, site.user);
-  const isAssistantItem = el => matches(el, site.assistant) && !isUserItem(el);
+  function legacyMetaUser(el){
+    return site.id==='meta' && matches(el,'[class~="starting:opacity-0"]') &&
+      !matches(el,site.assistant) &&
+      matches(el.parentElement,'.flex.flex-col') && !!query(el.parentElement,'[data-testid="assistant-message"]') &&
+      !query(el,'[data-testid="assistant-message"],textarea,[contenteditable],form') && !!textWithout(el).trim();
+  }
+  const isUserItem = el => matches(el, site.user) || legacyMetaUser(el);
+  const isAssistantItem = el => matches(el, site.assistant) && !isUserItem(el) && !el.closest(site.user);
   function allItems() {
-    const nodes = all(document, site.user + ', ' + site.assistant).filter(el => !el.closest(OWN) &&
+    const candidates=all(document, site.user + ', ' + site.assistant);
+    if(site.id==='meta')for(const el of all(document,'[class~="starting:opacity-0"]'))if(legacyMetaUser(el)&&!candidates.includes(el))candidates.push(el);
+    if(site.id==='meta')candidates.sort((a,b)=>a===b?0:a.compareDocumentPosition(b)&Node.DOCUMENT_POSITION_FOLLOWING?-1:1);
+    const nodes = candidates.filter(el => !el.closest(OWN) &&
       // Named role classes are exact tokens, never group-hover utilities or
       // arbitrary markdown/alignment. Quoted content and other UI aren't turns.
-      (site.id!=='copilot' || !el.closest('nav,aside,pre,code,blockquote,[role="dialog"],[contenteditable="true"],[contenteditable="plaintext-only"]')));
+      (!site.strictComposer || !el.closest('nav,aside,pre,code,blockquote,.reasoning,[data-testid="thinking-status"],[data-testid="subagent-cot-list"],[role="dialog"],[contenteditable="true"],[contenteditable="plaintext-only"]')));
     // Keep a single turn when the same role is marked on nested elements.
     return nodes.filter(el => !nodes.some(parent => parent !== el && parent.contains(el) &&
       isUserItem(parent) === isUserItem(el)));
   }
-  const TEXT_UI_DECORATION = '.rs-chip, .rs-chat-activity, .msg-actions, .msg-err, .reasoning, [data-testid*="reasoning"], [data-variant="Thoughts"], .hy-think, .code-block-header, .md-code-block-banner-wrap, .markdown-viewer-code-block-header, .hyc-common-markdown__code__hd-container, .linenumber, .line-number, .react-syntax-highlighter-line-number';
+  const TEXT_UI_DECORATION = '.rs-chip, .rs-chat-activity, .msg-actions, .msg-err, .reasoning, [data-testid*="reasoning"], [data-testid="thinking-status"], [data-testid="subagent-cot-list"], [data-variant="Thoughts"], .hy-think, .code-block-header, .md-code-block-banner-wrap, .markdown-viewer-code-block-header, .hyc-common-markdown__code__hd-container, .linenumber, .line-number, .react-syntax-highlighter-line-number';
   const TEXT_UI_SKIP=TEXT_UI_DECORATION+', button, [role="button"]';
   const SCRIPTOR_BLOCK='.scriptor-component-code-block,[aria-label="Code preview" i],[aria-label="Codevorschau" i],[aria-label="Podgląd kodu" i]';
-  const replyCodeSelector=()=>site.id==='arcee'?'pre,.cm-content':site.id==='copilot'?'pre,'+SCRIPTOR_BLOCK:'pre';
+  const replyCodeSelector=()=>site.id==='arcee'?'pre,.cm-content':site.id==='copilot'?'pre,'+SCRIPTOR_BLOCK:site.id==='meta'?'pre,.ur-code-block':'pre';
+  const rawRequested=new WeakSet();
+  function metaViewerSource(block){
+    const pre=query(block,'pre');
+    if(pre)return textWithout(pre,'blockquote',true);
+    // Tree views abbreviate strings and decorate syntax. Only the native Raw
+    // view supplies source; never strip glyphs or parse an abbreviated preview.
+    if(!rawRequested.has(block) && block.closest(site.assistant) && !block.closest(site.user) && /"(?:command|tool)"\s*:|###\s*LUA/i.test(block.textContent||'')){
+      const raw=all(block,'button,[role="tab"]').filter(button=>/^(?:raw|surowy)$/i.test(button.textContent.trim()));
+      if(raw.length===1){rawRequested.add(block);raw[0].click();}
+    }
+    return null;
+  }
   function skippedTextNode(node,exclude=''){
     if(site.id!=='copilot')return matches(node,TEXT_UI_SKIP+(exclude?', '+exclude:''));
     if(matches(node,'[data-copy="false"],.sr-only,[data-testid="user-message-reactions"],[data-testid="message-item-reactions"]'))return true;
@@ -354,6 +403,8 @@ const RSProvider = (() => {
   }
   function renderedCodeSource(block){
     if(site.id==='copilot'&&matches(block,SCRIPTOR_BLOCK))return scriptorSource(block);
+    if(site.id==='meta'&&matches(block,'.ur-code-block'))return metaViewerSource(block);
+    if(site.id==='meta'&&block.tagName==='PRE')return textWithout(block,'blockquote',true);
     return block.matches('.cm-content')?codeMirrorSource(block):textWithout(codeSource(block));
   }
   const codeSource = pre => {
@@ -372,6 +423,9 @@ const RSProvider = (() => {
     function walk(node) {
       if (node.nodeType === 3) { text += node.nodeValue; return; }
       if (node.nodeType !== 1 || options.skip?.has(node) || skippedTextNode(node,exclude)) return;
+      if(site.id==='meta' && matches(node,'.ur-code-block')){
+        const source=metaViewerSource(node);if(source!==null){if(text&&!text.endsWith('\n'))text+='\n';text+=source;}return;
+      }
       if(site.id==='arcee' && node.matches('.cm-content')){
         const source=codeMirrorSource(node);
         if(source!==null){if(text && !text.endsWith('\n'))text+='\n';text+=source;}
@@ -384,6 +438,9 @@ const RSProvider = (() => {
       if (node.tagName === 'BR') { text += '\n'; return; }
       if (node.tagName === 'PRE') {
         const source = codeSource(node);
+        if(site.id==='meta' && source.children.length && [...source.children].every(child=>child.matches('span.block'))){
+          if(text&&!text.endsWith('\n'))text+='\n';text+=[...source.children].map(line=>textWithout(line,exclude,true)).join('\n');return;
+        }
         if (source !== node) {
           if (text && !text.endsWith('\n')) text += '\n';walk(source);
           if (!text.endsWith('\n')) text += '\n';return;
@@ -472,13 +529,14 @@ const RSProvider = (() => {
   }
   function modeWarning() {
     if (loginGatePresent()) return '<b>' + site.name + '</b> — sign in, then open a chat.';
+    if(pendingComposerAttachment())return '<b>'+site.name+'</b> — send or remove your pending attachment before starting PlazCode.';
     // modeWarning disables Start in the shared UI. Experimental status belongs
     // in the provider label; only a missing/ambiguous composer blocks Start.
     if (!getEditor()) return '<b>' + site.name + '</b> — '+(site.experimental?'experimental adapter; ':'')+'open a chat and wait for one recognized message box.';
     return '';
   }
   function setInputLock(on) {
-    if(site.id==='copilot'){
+    if(site.controlledComposer){
       copilotInputLocked=!!on;lockedEditor=on?getEditor():null;return;
     }
     const ed=getEditor();if(!ed)return;
@@ -493,11 +551,25 @@ const RSProvider = (() => {
       editorLocks.delete(ed);lockedEditor=null;
     }
   }
+  function pendingComposerAttachment(){
+    if(site.id!=='meta'&&site.id!=='longcat')return false;
+    return all(composerFrame(),'input[type="file"]').some(input=>input.files?.length) ||
+      !!query(getEditor(),'img,.inline-image-node') ||
+      all(composerFrame(),'[data-testid="attachment-preview"],[data-testid="file-preview"],button[aria-label="Remove image"],button[aria-label="Remove attachment"]').some(visible);
+  }
   function setValue(ed,value){
-    if(site.id==='copilot' && richEditor(ed))copilotWritten.set(ed,String(value));
+    if(site.controlledComposer && richEditor(ed))copilotWritten.set(ed,String(value));
     writingEditor=true;try{return writeValue(ed,value);}finally{writingEditor=false;}
   }
   function writeValue(ed, value) {
+    if(site.id==='meta' && richEditor(ed)){
+      const mirrors=all(strictFrame(ed),'textarea[data-testid="composer-input"]').filter(node=>node!==ed&&!visible(node));
+      if(mirrors.length>1)throw Error('Meta AI: multiple composer mirrors. Nothing was sent.');
+      if(mirrors.length===1){
+        Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype,'value').set.call(mirrors[0],value);
+        mirrors[0].dispatchEvent(new Event('input',{bubbles:true}));return;
+      }
+    }
     if(richEditor(ed)){
       const editable=ed.getAttribute('contenteditable');
       try{
@@ -511,12 +583,12 @@ const RSProvider = (() => {
           range.setStart(first,0);range.setEnd(last,last.childNodes.length-(last.lastChild?.nodeName==='BR'?1:0));
         }
         const selection=window.getSelection();selection.removeAllRanges();selection.addRange(range);
-        if(site.id==='copilot')document.dispatchEvent(new Event('selectionchange'));
-        if(site.id==='copilot' && !value && typeof InputEvent==='function'){
+        if(site.controlledComposer)document.dispatchEvent(new Event('selectionchange'));
+        if(site.controlledComposer && !value && typeof InputEvent==='function'){
           const event=new InputEvent('beforeinput',{inputType:'deleteContentBackward',bubbles:true,cancelable:true,composed:true});
           ed.dispatchEvent(event);if(event.defaultPrevented)return;
         }
-        if(site.id==='copilot' && value && typeof DataTransfer==='function' && typeof ClipboardEvent==='function'){
+        if(site.controlledComposer && value && typeof DataTransfer==='function' && typeof ClipboardEvent==='function'){
           // Controlled editors (e.g. Lexical) discard bare DOM insertHTML.
           // Offer plain text to their paste handler so their model owns the
           // update. This does not read or alter the OS clipboard.
@@ -587,7 +659,7 @@ const RSProvider = (() => {
     return /\b(?:i (?:cannot|can't|won't|will not|do not|don't)|i have no|no (?:actual|real|direct) (?:access|connection))[^\n]{0,180}(?:call|run|execute|tool|command|bridge|extension|studio|plazcode)|(?:nie (?:wyślę|wysle|uruchomię|uruchomie|wykonam)|nie mogę|nie moge|nie mam (?:żadnego|zadnego|dostępu|dostepu|narzędzi|narzedzi))[^\n]{0,180}(?:komend|poleceń|polecen|narzędzi|narzedzi|połączenia|polaczenia|studia|studio|bridge|wtyczk|plazcode|list_commands)|prompt[ -]injection|jailbreak/i.test(text);
   }
   function commandText(value, item) {
-    if(site.id==='copilot'&&item&&!isAssistantItem(item))return '';
+    if(site.strictComposer&&item&&!isAssistantItem(item))return '';
     const text = String(value || '').trim();
     const prose = item ? classifyText(item,site.id==='arcee'?'pre,code,.cm-editor':site.id==='copilot'?'pre,code,'+SCRIPTOR_BLOCK:'pre,code') : text;
     if (!text || isPolicyRefusal(prose)) return '';
@@ -622,7 +694,7 @@ const RSProvider = (() => {
       if(source===null){unavailable=true;diag(site.id+'.codeSourceUnavailable',{kind:pre.matches('.cm-content')?'codemirror':'scriptor'});return '';}
       return candidate(source,true);
     }).filter(Boolean);
-    if(unavailable&&site.id==='copilot')return '';
+    if(unavailable&&site.strictComposer)return '';
     if (code.length) return code.join('\n\n');
     if(site.id==='arcee' && item && !all(item,'pre,.cm-content,blockquote').length){
       const inline=scopes.flatMap(root=>all(root,'code')).filter(node=>!textUIAncestor(node,'blockquote'));
@@ -690,6 +762,7 @@ const RSProvider = (() => {
     lastTransportFailure={stage:/^(?:startup_handshake_failed|startup_send_failed|command_source_unavailable)$/.test(stage)?stage:'unknown',result:{kind:/^(?:tool|text|timeout|stopped|parse_error|busy)$/.test(result.kind||'')?result.kind:'unknown',chars:Number.isSafeInteger(result.chars)?result.chars:0,calls:Number.isSafeInteger(result.calls)?result.calls:0,current_reply:result.currentReply===true,has_reply_item:result.hasItem===true},snapshot:read(transportSnapshot,{unavailable:true})};
   }
   function sourceReadFailure(item){
+    if(site.id==='meta')return isAssistantItem(item)&&!isPolicyRefusal(classifyText(item,'pre,code,.ur-code-block'))&&all(item,'.ur-code-block').some(block=>!textUIAncestor(block,'blockquote')&&metaViewerSource(block)===null&&/"(?:command|tool)"\s*:|###\s*LUA/i.test(block.textContent||''));
     if(!isAssistantItem(item)||isPolicyRefusal(classifyText(item,'pre,code,'+SCRIPTOR_BLOCK)))return false;
     return replyRoots(item).some(root=>[...(matches(root,'.scriptor-component-code-block.scriptor-codeblock-virtualized')?[root]:[]),...sourceAll(root,'.scriptor-component-code-block.scriptor-codeblock-virtualized')].some(block=>!textUIAncestor(block,'blockquote')&&scriptorSource(block)===null&&all(block,'[role="textbox"],textarea').some(box=>box.textContent.trim()||box.value)));
   }
@@ -754,6 +827,7 @@ const RSProvider = (() => {
       ? firstUser.id && token.id ? firstUser.id===token.id : firstUser.node===token.node || firstUser.text===token.text
       : token===firstUser);
     const isSaved=value=>/\/(chat|c|conversation|thread|session)\/[\w-]+/.test(value) ||
+      site.id==='meta' && /\/prompt\/[\w-]+/.test(value) ||
       site.id==='arcee' && /\/playground\/[\w-]+/.test(value) ||
       site.id==='copilot' && /[?&](?:conversationId|chatId|threadId)=[^&#]+/i.test(value);
     const savedRoute=isSaved(route),previousSavedRoute=isSaved(lastRoute||'');
@@ -776,6 +850,7 @@ const RSProvider = (() => {
     let ed = getEditor();
     if (!ed || loginGatePresent()) throw Error(site.name + ': open a signed-in chat first.');
     if (images?.length) throw Error(site.name + ': image delivery is not verified. Use text inspection tools. Nothing was sent.');
+    if(pendingComposerAttachment())throw Error(site.name+': a pending attachment is in the composer. Send or remove it first. Nothing was changed or sent.');
     const text = typeof window.__rsLimitOutgoing === 'function' ? window.__rsLimitOutgoing(String(value)) : String(value);
     const nativeMax = Number(ed.getAttribute('maxlength'));
     const limit = Math.min(nativeMax > 0 ? nativeMax : Infinity, site.max > 0 ? site.max : Infinity);
@@ -837,7 +912,7 @@ const RSProvider = (() => {
     const verifyEditor=(expected,stage,checkText=true)=>{
       if(origin!==conversationKey())throw Error(site.name+': chat changed '+stage+'. Nothing was sent.');
       const current=getEditor();
-      if(!current || current!==ed && (site.id!=='copilot' || ed.isConnected && visible(ed) ||
+      if(!current || current!==ed && (!site.controlledComposer || ed.isConnected && visible(ed) ||
           ![originalParent,originalFrame,replacementBoundary].some(node=>node?.isConnected && node!==document.body && node!==document.documentElement && !node.matches('main,[role="main"]') && node.contains(current))))
         throw Error(site.name+': composer changed '+stage+'. Nothing was sent.');
       if(current!==ed && copilotWritten.has(ed))copilotWritten.set(current,copilotWritten.get(ed));
@@ -851,14 +926,14 @@ const RSProvider = (() => {
         const actualPoints=at===expected.length?[...actual.slice(at)].slice(0,4).map(char=>point(char,0)).join(' '):point(actual,at);
         throw Error(site.name+': prepared text changed '+stage+'. Nothing was sent. Expected '+expected.length+' characters, read '+actual.length+'; difference at '+at+' ('+point(expected,at)+' / '+actualPoints+').');
       }
-      ed=current;if(site.id==='copilot' && copilotInputLocked)lockedEditor=ed;
+      ed=current;if(site.controlledComposer && copilotInputLocked)lockedEditor=ed;
     };
     ed.focus();
-    if(site.id==='copilot'){await sleep(100);checkCancelled();verifyEditor('','after focusing');}
+    if(site.controlledComposer){await sleep(100);checkCancelled();verifyEditor('','after focusing');}
     setValue(ed, text);
     await sleep(100);
     checkCancelled();
-    if(site.id==='copilot'){
+    if(site.controlledComposer){
       // Paste handlers may commit their controlled model asynchronously.
       // Wait for exact, stable source; never rewrite or accept normalized code.
       let exactSince=null;
@@ -901,7 +976,7 @@ const RSProvider = (() => {
       // Some controlled composers retain their old value after a confirmed
       // echo. Clear only our exact submitted text, through the editor model.
       // A different user draft is preserved; the Send button is never retried.
-      if(site.id==='copilot' && editorText()===text && origin===conversationKey()){
+      if(site.controlledComposer && editorText()===text && origin===conversationKey()){
         await writeDraft('',text);checkCancelled();
         if(origin!==conversationKey())throw Error(site.name+': chat changed after confirmed delivery. Nothing was resent.');
         if(editorText()===text)throw Error(site.name+': message was delivered, but its old draft could not be cleared. Nothing was resent.');
@@ -979,7 +1054,7 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r32',
+    build:'r33',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the
@@ -988,7 +1063,7 @@ const RSProvider = (() => {
     startupReplyAsCode:true, startupRequest:site.compact || site.max > 0 ? startupRequest : undefined, startupFeedbackMessages,
     startupCorrection:site.id==='arcee'?'PlazCode startup check: reply with only the plain JSON object {"command":"list_commands","params":{}}, without markdown backticks or any language label. The extension runs it against the connected bridge. Wait for the actual result.':undefined,
     requireConfirmedStartup:true,
-    deterministicBootstrapList:site.id==='arcee',requireLiveStartup:site.id==='arcee',probeEngineOnStartup:site.id==='arcee',
+    deterministicBootstrapList:site.id==='arcee',requireLiveStartup:['arcee','longcat','meta'].includes(site.id),probeEngineOnStartup:['arcee','longcat','meta'].includes(site.id),
     inspectOnReadRequest:!!site.strictComposer,
     promptExtra:site.strictComposer?'When the user asks what is in their connected Studio or whether a named object exists, perform a read-only inspection using the actual command schemas and answer from its result. That question authorizes the read. Do not merely offer to inspect, invent project facts or guess command names. Do not edit the project for an inspection question.':undefined,
     requireFreshResponse:site.id==='motif' || !!site.strictComposer,
@@ -997,7 +1072,7 @@ const RSProvider = (() => {
     // handshake. Restore only when this chat visibly confirms readiness.
     canRestoreSession,
     commandText,isPolicyRefusal,
-    ...(site.id==='copilot'?{transportDiagnostics:providerTransportDiagnostics,captureTransportDiagnostics,sourceReadFailure}:{}),
+    ...(site.strictComposer?{transportDiagnostics:providerTransportDiagnostics,captureTransportDiagnostics,sourceReadFailure}:{}),
     needsToolContinuation:site.id==='motif' ? needsToolContinuation : undefined,
     toolContinuationKind:site.id==='motif' ? toolContinuationKind : undefined,
     mountActivitySummary:site.id==='motif' ? mountMotifActivity : undefined,
