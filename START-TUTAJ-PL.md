@@ -1,3 +1,21 @@
+# PlazCode — rozszerzenie 1.24.34, lokalna poprawka r26
+
+## r26 — wariant Microsoft i jawna odmowa Copilot
+
+Na zrzucie 1.24.33 czytnik nadal zgłasza 0 wpisów, a model odpowiada: „I cannot participate in or control external browser extensions by emitting structured commands for them.” To jawna odmowa protokołu. R26 nie próbuje jej obchodzić ani ponawiać prośby.
+
+Dodano opisany w publicznym czytniku wariant Microsoft: dokładne klasy fai-UserMessage/fai-CopilotMessage wraz z role=article, testid copilot-message, treść chatOutput i markdown-reply. Obsługiwany jest również pełny tekst i kod z otwartego shadow root oznaczonego markdown-reply wewnątrz rozpoznanej odpowiedzi. Nieaktywne fallbacki i sloty nie są wykonywane; inne shadow roots nie ustalają roli.
+
+Po nowej, ustabilizowanej odmowie start kończy się komunikatem **AI declined the connection request**, także gdy nie udało się potwierdzić wpisu użytkownika. Odmowa nie staje się potwierdzeniem dostarczenia. Nie uruchamia się komend, kontekstu ani drugiej prośby. Stara odmowa, cytat i treść w trakcie generowania nie są przypisywane do nowej próby. Raport niepotwierdzonej wysyłki zawiera teraz dodatkowe liczniki struktur DOM, bez treści czatu.
+
+**Aktualizacja:** podmień cały folder rozszerzenia, przeładuj dodatek i odśwież Copilot. Wersja **1.24.34**, raport **core:r26/parser:r13/provider:r26**. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`. EXE bez zmian. Przed świadomą nową próbą zachowaj lub wyczyść szkic; start wymaga pustego pola. Jeśli wybrany model nadal odmawia, agent pozostaje wyłączony.
+
+**Weryfikacja:** 811/811 testów Node i 46 różnych prób Chromium. Wariant Microsoft przechodzi start i odczyt z kontrolowanym modelem, a dokładna odmowa ze zrzutu zatrzymuje pełny interfejs bez ponowienia. Nie przeprowadzono próby na zalogowanym koncie ani w prawdziwym Studio; bieżąca struktura DOM użytkownika nadal nie jest potwierdzona. Wyniki: [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md); źródła i ograniczenia: [ARCEE-COPILOT.md](ARCEE-COPILOT.md); sumy: `WEBCHATS-R26-SHA256SUMS.txt`.
+
+Poniżej historia; do aktualizacji obowiązuje r26 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.33, lokalna poprawka r25
 
 ## r25 — Copilot: „Read user messages: 0”

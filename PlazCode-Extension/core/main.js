@@ -1694,7 +1694,7 @@
   // result, so the model can never claim the local engine is gone.
   function transportDiagnostics() {
     return {
-      transport_build: {core:"r25",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
+      transport_build: {core:"r26",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
       provider: P.id,
       last_parse_failure: A.lastParseFailure || null,
     };
@@ -4091,7 +4091,7 @@ return result`;
         if (res.kind === "parse_error") {
           A.lastParseFailure = {
             reason: res.reason, provider: P.id,
-            core_build: "r25", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
+            core_build: "r26", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
             ...(typeof RSParse.transportInfo === "function" ? RSParse.transportInfo(res.raw) : {chars:String(res.raw || "").length}),
           };
           diag("tool.parseFailure", A.lastParseFailure);
@@ -5082,7 +5082,8 @@ return result`;
         // leave Start available instead of a raw "Startup failed" banner.
         diag("start.sendAborted", {});
       } else if (alive()) {
-        ui.banner("warn", "Startup failed", String((e && e.message) || e));
+        if(e && e.plazcodePolicyRefusal===true)showStartupRefusal();
+        else ui.banner("warn", "Startup failed", String((e && e.message) || e));
       }
     } finally {
       // Only tear down our OWN starting state. If we were superseded (the user

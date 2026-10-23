@@ -1,5 +1,20 @@
 # Raport weryfikacji — 2026-10-23
 
+## r26 — wariant Microsoft i odmowa protokołu
+
+**811/811 testów Node**, bez błędów i pominięć (`npm test --prefix tests`). Nowy copilot-microsoft-dom.test.cjs dodaje 24 przypadki do wcześniejszych 787. Obejmuje natywne artykuły fai-UserMessage/fai-CopilotMessage, chatOutput i klasę treści użytkownika, copilot-message, deduplikację i odrzucenie nieoznaczonych/podobnych elementów. Sprawdza pełny dosłowny JSON/Luau z otwartego markdown-reply, zagnieżdżenie hostów, reakcje, cytaty, odmowę mimo pozornego polecenia, brak roli nieznanego shadow hosta oraz niewykonywanie slotów i nieaktywnej treści light DOM.
+
+Próby odmowy używają dokładnego zdania ze zrzutu. Nowa stabilna odmowa przy nierozpoznanym wpisie użytkownika przerywa wysyłkę z oznaczonym błędem; nie stanowi potwierdzenia odbioru i nie pozwala na ponowienie. Stare odmowy/remounty/duplikaty ID, cytaty, treść w czasie generowania oraz Stop i zmiana czatu zachowują dotychczasowe ograniczenia. Nowe liczniki struktury transkryptu nie zawierają źródła wiadomości.
+
+**46 różnych prób Chromium**: 36 controlled-editors.cjs oraz 10 scenariuszy webchats-startup.cjs. Siedem wariantów Copilot przechodzi Start, kontekst i jeden odczyt (dotychczasowe pięć, Microsoft w light DOM i otwartym shadow root). Dwa kolejne odtwarzają dokładną odmowę, w tym nierozpoznany wpis użytkownika + rozpoznana odpowiedź w shadow root: pokazuje się wyłącznie AI declined the connection request, połączenie nie jest oznaczane jako gotowe, brak korekty i części kontekstu, pojedynczy Send i zero komend projektu. Arcee nadal przechodzi swój scenariusz. Scenariusze odmowy i Arcee uruchamiano również oddzielnie przez PLAZCODE_TEST_HISTORY; liczba 46 dotyczy różnych przypadków, nie sumy powtórzeń. Model, most i Studio są kontrolowane, stabilizację skrócono tylko w fixture.
+
+Adapter r25 w nowych dodatnich przypadkach wariantu Microsoft nie rozpoznaje wpisów; pełna próba microsoft-plain odtwarza brak potwierdzenia. Nie potwierdza to struktury prywatnego konta. Źródłem wariantu jest publiczny browser-ai-chat-exporter, commit 0830aad4488754ba7c6b2cdcf6cfb7ea65841e80, platforms/copilot/content.js. Obsługa otwartego markdown-reply jest sprawdzana na własnym fixture, nie na prywatnym komponencie Microsoft.
+
+Wersja 1.24.34, core/provider r26, parser r13; wszystkie trzy kopie zgodne. Składnia zmienionych JS sprawdzona Node 24 w Linux. Nie powtarzano niezmienionych zestawów geometrii i podstawowej wysyłki. Nie ma próby na zalogowanym koncie lub w rzeczywistym Studio; dostęp do zamkniętych shadow roots nie jest dodany, a slotted reply pozostaje nieobsługiwany. Odmowa modelu nie jest naprawiana zmianą promptu ani lokalnym katalogiem. Sumy: WEBCHATS-R26-SHA256SUMS.txt.
+
+---
+
+
 ## r25 — brakujące znaczniki ról Copilot
 
 **787/787 testów Node**, bez błędów i pominięć (`npm test --prefix tests`). Nowy copilot-role-markers.test.cjs dodaje 20 przypadków. Sprawdza dokładne tokeny nazwanych grup, testid ai-message, artykuł użytkownika z natywnym ID, treść bez dotychczasowych data-content/data-role, deduplikację zagnieżdżonych znaczników, wyłączenie etykiet i reakcji, pojedyncze wysłanie i rozwinięcie, pierwszy zapis rozmowy, remount starego wpisu, zachowany szkic i przywracanie potwierdzonej sesji. Odmienne podciągi klas i group-hover, sama klasa wewnętrznej treści AI, wyrównanie wizualne, znaczniki w nav/aside/pre/code/blockquote/dialog/edytorze oraz sam JSON AI nie stają się wpisami lub dowodem dostarczenia. Suma: wcześniejsze 767 + 20.

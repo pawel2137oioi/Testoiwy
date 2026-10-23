@@ -26,10 +26,10 @@ const RSProvider = (() => {
       frame:'[data-testid="composer"], [data-testid="composer-content"], [data-testid="chat-composer"], form',
       send:'button[data-testid="send-button"], button[data-testid="submit-button"], button[aria-label*="send" i], button[aria-label*="submit" i], button[aria-label*="wyślij" i], button[aria-label*="prześlij" i], button[title*="wyślij" i], button[type="submit"]',
       stop:'button[data-testid="stop-button"], button[aria-label*="stop" i], button[aria-label*="zatrzymaj" i], button[aria-label*="przerwij" i]',
-      user:'[data-message-author-role="user"], [data-message-role="user"], [data-role="user"], [data-content="user-message"], [data-message-author="user"], [data-testid="user-message"], [data-testid="user-message-container"], [data-testid="user-message-content"], [data-testid="user-message-text"], [class~="group/user-message"], [role="article"][id$="-user-message"]',
-      assistant:'[data-message-author-role="assistant"], [data-message-role="assistant"], [data-role="assistant"], [data-content="ai-message"], [data-content="response"], [data-message-author="assistant"], [data-message-author="bot"], [data-testid="assistant-message"], [data-testid="assistant-message-container"], [data-testid="assistant-message-content"], [data-testid="bot-message"], [data-testid="answer"], [data-testid="ai-message"], [class~="group/ai-message"]',
-      body:'[class~="group/ai-message-item"], .markdown, .prose, .markdown-body, .response-text, .text-response, message-content, [data-testid="message-content"]',
-      userBody:'[data-testid="user-message-content"], [data-testid="user-message-text"], [data-content="user-message-text"], [data-content="user-message"], .max-w-user-text-message, .whitespace-pre-wrap',
+      user:'[data-message-author-role="user"], [data-message-role="user"], [data-role="user"], [data-content="user-message"], [data-message-author="user"], [data-testid="user-message"], [data-testid="user-message-container"], [data-testid="user-message-content"], [data-testid="user-message-text"], [class~="group/user-message"], [role="article"][id$="-user-message"], [role="article"][class~="fai-UserMessage"]',
+      assistant:'[data-message-author-role="assistant"], [data-message-role="assistant"], [data-role="assistant"], [data-content="ai-message"], [data-content="response"], [data-message-author="assistant"], [data-message-author="bot"], [data-testid="assistant-message"], [data-testid="assistant-message-container"], [data-testid="assistant-message-content"], [data-testid="bot-message"], [data-testid="answer"], [data-testid="ai-message"], [class~="group/ai-message"], [data-testid="copilot-message"], [role="article"][class~="fai-CopilotMessage"]',
+      body:'[data-testid="markdown-reply"], .fai-CopilotMessage__content, [class~="group/ai-message-item"], .markdown, .prose, .markdown-body, .response-text, .text-response, message-content, [data-testid="message-content"]',
+      userBody:'[data-testid="chatOutput"], .fai-UserMessage__message, [data-testid="user-message-content"], [data-testid="user-message-text"], [data-content="user-message-text"], [data-content="user-message"], .max-w-user-text-message, .whitespace-pre-wrap',
       max:0,page:8000,startupPage:7000,feedbackBudget:9000,
     },
     'aistudio.tencent.ai': {
@@ -228,8 +228,18 @@ const RSProvider = (() => {
   }
   function textUIAncestor(node,exclude=''){
     if(site.id!=='copilot')return !!node.closest(TEXT_UI_SKIP+(exclude?', '+exclude:''));
-    for(let current=node;current?.nodeType===1;current=current.parentElement)if(skippedTextNode(current,exclude))return true;
+    for(let current=node;current?.nodeType===1;current=current.parentElement || current.getRootNode()?.host)if(skippedTextNode(current,exclude))return true;
     return false;
+  }
+  // Only traverse open reply hosts inside an already recognized turn. Shadow
+  // content elsewhere on the page never establishes an assistant role.
+  function sourceAll(root,selector){
+    const inactive=node=>{for(let parent=node.parentElement;parent;parent=parent.parentElement)if(parent.shadowRoot)return true;return false;};
+    const nodes=all(root,selector).filter(node=>site.id!=='copilot'||!inactive(node));
+    if(site.id==='copilot')for(const host of [root,...all(root,'[data-testid="markdown-reply"]')].filter(node=>!inactive(node))){
+      if(matches(host,'[data-testid="markdown-reply"]') && host.shadowRoot)nodes.push(...sourceAll(host.shadowRoot,selector).filter(node=>!node.closest('slot')));
+    }
+    return [...new Set(nodes)];
   }
   const codeSource = pre => {
     const sources = all(pre,'code').filter(node => !textUIAncestor(node));
@@ -263,7 +273,12 @@ const RSProvider = (() => {
       const block = /^(P|DIV|PRE|LI|UL|OL|BLOCKQUOTE|H[1-6]|ARTICLE|SECTION)$/.test(node.tagName);
       if (block && text && !text.endsWith('\n')) text += '\n';
       const before = text.length;
-      for (const child of node.childNodes) walk(child);
+      // A slotted reply needs a separate source contract. Do not combine an
+      // inactive slot fallback with the actual reply or execute that fallback.
+      if(site.id==='copilot' && matches(node,'slot'))return;
+      if(site.id==='copilot' && node.shadowRoot && !matches(node,'[data-testid="markdown-reply"]'))return;
+      const children=site.id==='copilot' && matches(node,'[data-testid="markdown-reply"]') && node.shadowRoot?node.shadowRoot.childNodes:node.childNodes;
+      for (const child of children) walk(child);
       if (block && text.length === before && node.tagName === 'P') text += '\n';
       else if (block && !text.endsWith('\n')) text += '\n';
     }
@@ -477,8 +492,8 @@ const RSProvider = (() => {
       if (lua && lua.index === 0 && (/^[ \t]*(?:\r?\n|$)/.test(source.slice(lua[0].length)) || /###\s*end[_\- ]?lua\s*###\s*$/i.test(source))) return source;
       return '';
     };
-    const scopes=site.id==='arcee'?replyRoots(item):[item];
-    const blocks = item ? scopes.flatMap(root=>all(root,site.id==='arcee'?'pre,.cm-content':'pre')).filter(pre => !textUIAncestor(pre,'blockquote')) : [];
+    const scopes=site.id==='arcee' || site.id==='copilot'?replyRoots(item):[item];
+    const blocks = item ? scopes.flatMap(root=>sourceAll(root,site.id==='arcee'?'pre,.cm-content':'pre')).filter(pre => !textUIAncestor(pre,'blockquote')) : [];
     // Tencent nests pre elements. Read one innermost code body per block.
     const leaves = blocks.filter(pre => !blocks.some(other => other !== pre && pre.contains(other)));
     const code = leaves.map(pre => candidate(pre.matches('.cm-content')?codeMirrorSource(pre):textWithout(codeSource(pre)),true)).filter(Boolean);
@@ -579,6 +594,17 @@ const RSProvider = (() => {
     const matchesSent=item=>isUserItem(item) && presentedValue(normalize(itemText(item)),normalize(text),true)===normalize(text);
     const beforeUsers=allItems().filter(isUserItem);
     const beforeAssistants=assistantCount();
+    const beforeReplies=assistants(),beforeReplyNodes=new Set(beforeReplies),beforeReplyIds=new Set(beforeReplies.map(nativeMessageId).filter(Boolean));
+    const freshRefusal=()=>{
+      if(site.id!=='copilot' || isGenerating())return false;
+      const rows=assistants();
+      return rows.some((item,index)=>{
+        const id=nativeMessageId(item);
+        if(beforeReplyNodes.has(item) || id && beforeReplyIds.has(id))return false;
+        const fresh=rows.length>beforeReplies.length && index>=beforeReplies.length || id && beforeReplyIds.size===beforeReplies.length && !beforeReplyIds.has(id);
+        return fresh && isPolicyRefusal(classifyText(item,'pre,code,blockquote'));
+      });
+    };
     const beforeMatching=beforeUsers.filter(matchesSent).length;
     const beforeAnonymousMatches=beforeUsers.filter(item=>matchesSent(item) && !nativeMessageId(item)).length;
     const beforeIds=new Set(beforeUsers.map(nativeMessageId).filter(Boolean));
@@ -662,12 +688,17 @@ const RSProvider = (() => {
     ambiguous = true;
     b.click();
     const accepted = await waitFor(() => owner !== sendEpoch || conversationKey() !== origin || loginGatePresent() || !!scanError() ||
-      echoPresent(), 12000);
+      echoPresent() || freshRefusal(), 12000);
     checkCancelled();
     if (conversationKey() !== origin) throw Error(site.name + ': chat changed after sending. Check the previous chat before retrying.');
     if (loginGatePresent() || scanError()) {
       failure = scanError() || site.name + ': sign in before sending.';
       diag(site.id + '.send_failed', {reason:failure}); throw Error(failure);
+    }
+    if(freshRefusal()){
+      failure='Copilot declined the connection request. Startup stopped; nothing was resent.';
+      diag('copilot.sendRefused',{users: userCount(),assistants:assistantCount()});
+      const error=Error(failure);error.plazcodePolicyRefusal=true;throw error;
     }
     if (accepted && echoPresent()) {
       ambiguous = false;
@@ -684,7 +715,8 @@ const RSProvider = (() => {
     const usersAfter=allItems().filter(isUserItem),wanted=normalize(text);
     let bestPrefix=0;
     for(const item of usersAfter){const actual=normalize(itemText(item));let at=0;while(at<actual.length && at<wanted.length && actual[at]===wanted[at])at++;bestPrefix=Math.max(bestPrefix,at);}
-    diag(site.id+'.unconfirmedDelivery',{usersBefore:beforeUsers.length,usersAfter:usersAfter.length,assistantsBefore:beforeAssistants,assistantsAfter:assistantCount(),bestPrefixChars:bestPrefix,expectedChars:wanted.length,composerEmpty:!editorText().trim()});
+    const transcriptShape=site.id==='copilot'?{articles:all(document,'[role="article"]').length,microsoftUsers:all(document,'[role="article"][class~="fai-UserMessage"]').length,microsoftAssistants:all(document,'[role="article"][class~="fai-CopilotMessage"]').length,namedUsers:all(document,'[class~="group/user-message"]').length,namedAssistants:all(document,'[class~="group/ai-message"],[data-testid="ai-message"],[data-testid="copilot-message"]').length,replyHosts:all(document,'[data-testid="markdown-reply"]').length}:undefined;
+    diag(site.id+'.unconfirmedDelivery',{usersBefore:beforeUsers.length,usersAfter:usersAfter.length,assistantsBefore:beforeAssistants,assistantsAfter:assistantCount(),bestPrefixChars:bestPrefix,expectedChars:wanted.length,composerEmpty:!editorText().trim(),transcriptShape});
     failure = site.name + ': message was not confirmed; it may have been sent. Check the chat before retrying. Read user messages: '+usersAfter.length+'; closest text '+bestPrefix+'/'+wanted.length+' characters.';
     throw Error(failure);
   }
@@ -749,7 +781,7 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r25',
+    build:'r26',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the

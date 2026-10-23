@@ -1,4 +1,17 @@
-# Arcee i copilot.com — r25, rozszerzenie 1.24.33
+# Arcee i copilot.com — r26, rozszerzenie 1.24.34
+
+## R26 — wariant Microsoft i odmowa modelu
+
+Na zrzucie r25 nadal występuje Read user messages: 0, a odpowiedź modelu jest jawną odmową udziału w protokole. Nie zmieniono prośby startowej ani zasad odmowy. Poprawiono odczyt innego wariantu interfejsu i rozróżnienie odmowy od niepotwierdzonego wysłania.
+
+[Publiczny browser-ai-chat-exporter](https://github.com/TomSchmidtDev/browser-ai-chat-exporter/blob/0830aad4488754ba7c6b2cdcf6cfb7ea65841e80/platforms/copilot/content.js#L161) opisuje artykuły Microsoft z fai-UserMessage i fai-CopilotMessage, testid copilot-message oraz treść chatOutput, fai-UserMessage__message, markdown-reply i fai-CopilotMessage__content. R26 przyjmuje dokładne tokeny tych klas i wymaga role=article dla korzeni fai, bez ogólnego dopasowania dowolnej klasy zawierającej message. Zagnieżdżone znaczniki nadal liczą się raz.
+
+W rozpoznanej odpowiedzi można odczytać otwarty shadow root hosta markdown-reply. Dotyczy to pełnego tekstu, kodu oraz odmowy. Źródło nie obejmuje nagłówków Copy, cytatów, elementów PlazCode ani nieaktywnego light DOM zasłoniętego shadow root. Nie interpretuje się fallbacków slotów; taki wariant wymaga osobnego kontraktu. Inne komponenty i zamknięte shadow roots nie dostarczają wykonywalnych odpowiedzi. Funkcja wykrywania ról nie penetruje dowolnych shadow roots strony.
+
+Jeżeli po Send pojawi się nowa rozpoznana odpowiedź z odmową, adapter czeka na zanik Stop i stabilny tekst. Stara odpowiedź, remount/duplikat starego ID i odmowa tylko w cytacie nie należą do nowej próby. Właściciel wysyłki i rozmowa muszą pozostać aktualne. Odmowa zgłoszona bez potwierdzonego wpisu użytkownika rzuca oznaczony błąd, nie potwierdza wysyłki; core wyświetla AI declined the connection request i pozostawia sesję nieuruchomioną. Nie wysyła korekty, kontekstu ani drugiego Send. Przy poprawnym echu dotychczasowa obsługa odmowy w watcherze nadal obowiązuje.
+
+Niepotwierdzona wysyłka zapisuje dodatkowo jedynie liczniki artykułów, korzeni Microsoft, nazwanych grup i hostów odpowiedzi. Nie zapisuje HTML, klas dowolnych elementów, identyfikatorów konta ani źródła czatu. To diagnostyka, nie dowód przyjęcia prośby. Dokładna struktura zalogowanego konta ze zrzutu pozostaje niepotwierdzona. Model, który nadal odmawia, nie uruchomi agenta; jego zgodności nie można zagwarantować poprawką czytnika. Wyniki: TESTY-TRZY-SERWISY.md.
+
 
 ## R25 — rozpoznawanie nazwanych grup wiadomości Copilot
 
@@ -91,7 +104,7 @@ Pasek obu nowych adapterów znajduje się nad wykrytym kompozytorem, bez dopisyw
 
 1. Podmień cały folder rozszerzenia i przeładuj go. Zachowaj jedną aktywną instalację. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`.
 2. Odśwież kartę Arcee lub dokładnie `https://copilot.com/`. Nie dodano domeny copilot.microsoft.com. EXE pozostaje bez zmian.
-3. Sprawdź wersję **1.24.33**. Raport transportu nowych adapterów: **core:r25/parser:r13/provider:r25**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
+3. Sprawdź wersję **1.24.34**. Raport transportu nowych adapterów: **core:r26/parser:r13/provider:r26**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
 4. Jeżeli aktualny interfejs serwisu nadal nie zostanie rozpoznany, zwykły czat pozostaje dostępny, a agent nie powinien klikać przypadkowych przycisków. Dla innej domeny po przekierowaniu ta rejestracja nie obowiązuje.
 
 Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przeglądarce. Wysyłanie obrazów pozostaje niezweryfikowane. Brak potwierdzenia wiadomości przez nowy wpis użytkownika zatrzymuje wysyłkę bez ponownego kliknięcia; przed ręczną próbą sprawdź historię, ponieważ wiadomość mogła dotrzeć.
@@ -120,7 +133,7 @@ PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-layout.cjs
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-startup.cjs
 ```
 
-Sumy bieżącej paczki: `WEBCHATS-R25-SHA256SUMS.txt`.
+Sumy bieżącej paczki: `WEBCHATS-R26-SHA256SUMS.txt`.
 
 
 ### Dodatkowe testy kontrolowanych bibliotek

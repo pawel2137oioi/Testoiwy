@@ -7,27 +7,31 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.PLAZCODE_CHROMIUM||'/usr/bin/chromium',args:['--no-sandbox']});
  try{let passed=0;
-  for(const [host,historyKind] of [['copilot.com','css-disclosure'],['copilot.com','truncated-disclosure'],['copilot.com','named-groups'],['copilot.com','named-groups-truncated'],['copilot.com','named-ai-group'],['platform.arcee.ai','plain']].filter(([,kind])=>!process.env.PLAZCODE_TEST_HISTORY||kind===process.env.PLAZCODE_TEST_HISTORY)){
+  for(const [host,historyKind] of [['copilot.com','css-disclosure'],['copilot.com','truncated-disclosure'],['copilot.com','named-groups'],['copilot.com','named-groups-truncated'],['copilot.com','named-ai-group'],['copilot.com','microsoft-plain'],['copilot.com','microsoft-shadow'],['copilot.com','microsoft-refusal'],['copilot.com','microsoft-refusal-unknown-user-shadow'],['platform.arcee.ai','plain']].filter(([,kind])=>!process.env.PLAZCODE_TEST_HISTORY||kind===process.env.PLAZCODE_TEST_HISTORY)){
    const copilot=host==='copilot.com',page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',error=>errors.push(error.message));
    try{
     await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><main><section id="thread"></section><form id="native-form">'+(copilot?'<div id="native-editor" contenteditable="true" aria-label="Message Copilot"></div>':'<textarea id="native-editor" placeholder="Send a message"></textarea>')+'<button type="button" id="native-send" aria-label="Send" disabled>Send</button></form></main>'}));
     await page.goto('https://'+host+(copilot?'/chat':'/playground'));
     await page.addStyleTag({content:'body{background:#171717;color:white;margin:0}#native-form{position:fixed;bottom:12px;left:10%;width:80%;display:flex}#native-editor{white-space:pre-wrap;min-height:50px;max-height:150px;overflow:auto;flex:1;background:#333;color:white}#thread{max-height:550px;overflow:auto;padding:10px}'});
     await page.evaluate(({copilot,version,historyKind})=>{
-      const ed=document.querySelector('#native-editor'),send=document.querySelector('#native-send'),thread=document.querySelector('#thread');let model='',serial=0;const named=historyKind.startsWith('named-');thread.dataset.content='conversation';
+      const ed=document.querySelector('#native-editor'),send=document.querySelector('#native-send'),thread=document.querySelector('#thread');let model='',serial=0;const named=historyKind.startsWith('named-'),microsoft=historyKind.startsWith('microsoft-');thread.dataset.content='conversation';
       window.nativeSent=[];window.bridgeCalls=[];window.backgroundMessages=[];window.historyExpands=0;window.copyClicks=0;window.nativeSendClicks=0;
       function add(role,text,code=false){
         const row=document.createElement('div');row.dataset.messageId=role+'-'+(++serial);
         if(copilot){
-          if(named){row.removeAttribute('data-message-id');row.setAttribute('role','article');if(role==='user'){row.className='group/user-message';row.id='turn-'+serial+'-user-message';}else if(historyKind==='named-ai-group')row.className='group/ai-message';else row.dataset.testid='ai-message';}
+          if(microsoft){row.className=role==='user'?'fai-UserMessage':'fai-CopilotMessage';row.setAttribute('role','article');if(role==='user'&&historyKind.includes('unknown-user')){row.className='';row.removeAttribute('role');}}
+          else if(named){row.removeAttribute('data-message-id');row.setAttribute('role','article');if(role==='user'){row.className='group/user-message';row.id='turn-'+serial+'-user-message';}else if(historyKind==='named-ai-group')row.className='group/ai-message';else row.dataset.testid='ai-message';}
           else{row.dataset.content=role==='user'?'user-message':'ai-message';row.setAttribute('role','button');}
         }else row.dataset.role=role;
         if(copilot && role==='user'){
-          const body=document.createElement('p'),meta=document.createElement('span'),actions=document.createElement('div'),copy=document.createElement('button');if(named)body.className='max-w-user-text-message';else body.dataset.testid='user-message-text';
+          const body=document.createElement('p'),meta=document.createElement('span'),actions=document.createElement('div'),copy=document.createElement('button');if(microsoft)body.dataset.testid='chatOutput';else if(named)body.className='max-w-user-text-message';else body.dataset.testid='user-message-text';
           const truncated=(historyKind==='truncated-disclosure'||historyKind==='named-groups-truncated') && text.length>160;body.textContent=truncated?text.slice(0,110)+'…':text;body.style.cssText='max-height:50px;overflow:hidden';row.setAttribute('aria-expanded','false');
-          meta.textContent='You said · 12:00';if(named){meta.setAttribute('data-copy','false');actions.dataset.testid='user-message-reactions';}else actions.className='msg-actions';copy.type='button';copy.textContent='Copy';copy.onclick=event=>{event.stopPropagation();window.copyClicks++;};actions.append(copy);row.append(meta,body,actions);
+          meta.textContent='You said · 12:00';if(named||microsoft){meta.setAttribute('data-copy','false');actions.dataset.testid='user-message-reactions';}else actions.className='msg-actions';copy.type='button';copy.textContent='Copy';copy.onclick=event=>{event.stopPropagation();window.copyClicks++;};actions.append(copy);row.append(meta,body,actions);
           const expand=()=>{window.historyExpands++;body.textContent=text;row.setAttribute('aria-expanded','true');};
           if(named){row.removeAttribute('aria-expanded');if(truncated){body.id='echo-'+serial;const toggle=document.createElement('button');toggle.type='button';toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls',body.id);toggle.textContent='Show more';toggle.onclick=()=>{expand();toggle.setAttribute('aria-expanded','true');};row.append(toggle);}}else row.onclick=expand;
+        }else if(microsoft){
+          const host=document.createElement('div');host.dataset.testid='markdown-reply';row.append(host);const body=historyKind.includes('shadow')?host.attachShadow({mode:'open'}):host;
+          if(code){const pre=document.createElement('pre'),node=document.createElement('code');node.textContent=text;pre.append(node);body.append(pre);}else body.textContent=text;
         }else if(code){const body=document.createElement('div');body.className=named?'group/ai-message-item':'markdown';const node=document.createElement(copilot?'pre':'code');node.textContent=text;body.append(node);row.append(body);}else row.textContent=text;
         thread.append(row);
       }
@@ -37,7 +41,8 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
         window.nativeSendClicks++;
         const text=model;window.nativeSent.push(text);add('user',text+(copilot?'\u200B\u200C':''));model='';if(copilot)ed.textContent='';else ed.value='';send.disabled=true;
         if(!copilot && window.nativeSent.length===1)history.replaceState({},'','/playground/first-saved-chat');
-        if(copilot && named && window.nativeSent.length===1)history.replaceState({},'','/chat/conversation/first-saved-chat?fromcode=example&prompt=login&hasLW=false');
+        if(copilot && (named||microsoft) && window.nativeSent.length===1)history.replaceState({},'','/chat/conversation/first-saved-chat?fromcode=example&prompt=login&hasLW=false');
+        if(historyKind.includes('refusal')){add('assistant','I cannot participate in or control external browser extensions by emitting structured commands for them.');return;}
         const part=text.match(/PlazCode startup context part (\d+)\/(\d+)\./);
         if(part)add('assistant',part[1]===part[2]?'PlazCode is ready.':`PlazCode startup part ${part[1]}/${part[2]} received.`);
         else if(text.includes("Output of 'get_studio_state'"))add('assistant','Odczyt potwierdził Workspace.Solaris.');
@@ -63,6 +68,13 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
     }
     await page.addStyleTag({content:fs.readFileSync(path.join(root,'overlay.css'),'utf8')});
     await page.locator('#rs-action[data-kind="start"]:enabled').waitFor({timeout:15000});await page.locator('#rs-action').click();
+    if(historyKind.includes('refusal')){
+      await page.locator('.rs-banner-t').filter({hasText:'AI declined the connection request'}).waitFor({timeout:20000});
+      await page.waitForFunction(()=>/^(start|restart)$/.test(document.querySelector('#rs-action')?.dataset.kind||'') && !document.querySelector('#rs-action').disabled && /Not connected/.test(document.querySelector('#rs-bar')?.textContent||''));
+      assert.equal(await page.evaluate(()=>RSProvider.canRestoreSession()),false);assert.deepEqual(await page.evaluate(()=>window.bridgeCalls),[]);assert.equal(await page.evaluate(()=>window.nativeSent.length),1);assert.equal(await page.evaluate(()=>window.nativeSendClicks),1);assert.equal(await page.evaluate(()=>RSProvider.editorText()),'');assert.deepEqual(errors,[]);
+      const titles=await page.locator('.rs-banner-t').allTextContents();assert.deepEqual(titles,['AI declined the connection request']);
+      passed++;console.log(host+' '+historyKind+': exact refusal stops startup, no correction, context or tool call');continue;
+    }
     await page.waitForFunction(()=>document.querySelector('#rs-action')?.dataset.kind==='restart',{timeout:30000});
     assert.equal(await page.evaluate(()=>RSProvider.canRestoreSession()),true);
     const bootstrap=await page.evaluate(()=>({sent:window.nativeSent,editor:RSProvider.editorText(),calls:window.bridgeCalls}));
@@ -72,7 +84,7 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
     await page.waitForFunction(()=>window.nativeSent.some(text=>text.includes("Output of 'get_studio_state'")),{timeout:15000});
     await page.waitForFunction(()=>document.querySelector('#rs-action')?.dataset.kind==='restart' && RSProvider.editorText()==='',{timeout:15000});
     assert.deepEqual(await page.evaluate(()=>window.bridgeCalls),['get_studio_state']);assert.deepEqual(errors,[]);
-    const delivery=await page.evaluate(()=>({sendClicks:window.nativeSendClicks,sent:window.nativeSent.length,expands:window.historyExpands,expectedExpands:window.nativeSent.filter(text=>text.length>158).length,copies:window.copyClicks}));assert.equal(delivery.sendClicks,delivery.sent);assert.equal(delivery.copies,0);assert.equal(delivery.expands,historyKind.endsWith('truncated')||historyKind==='truncated-disclosure'?delivery.expectedExpands:0);
+    const delivery=await page.evaluate(()=>({sendClicks:window.nativeSendClicks,sent:window.nativeSent.length,expands:window.historyExpands,expectedExpands:window.nativeSent.filter(text=>text.length>158).length,copies:window.copyClicks,duplicates:window.nativeSent.length-new Set(window.nativeSent).size}));assert.equal(delivery.sendClicks,delivery.sent);assert.equal(delivery.copies,0);assert.equal(delivery.duplicates,0);assert.equal(delivery.expands,historyKind.endsWith('truncated')||historyKind==='truncated-disclosure'?delivery.expectedExpands:0);
     passed++;console.log(host+' '+historyKind+': full UI Start, confirmed context and one native user read passed');
    }catch(error){console.error(await page.evaluate(()=>({bar:document.querySelector('#rs-bar')?.textContent,sent:window.nativeSent?.map(text=>text.slice(0,90)),calls:window.bridgeCalls,messages:window.backgroundMessages,body:document.body.textContent.slice(-1500)})));throw error;}finally{await page.close();}
   }
