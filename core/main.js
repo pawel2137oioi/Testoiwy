@@ -1704,7 +1704,7 @@
     };
   }
   function transportBuildVersions() {
-    return {core:"r29",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"};
+    return {core:"r30",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"};
   }
   function transportBuildLabel() {
     const b = transportBuildVersions();
@@ -4098,7 +4098,7 @@ return result`;
         if (res.kind === "parse_error") {
           A.lastParseFailure = {
             reason: res.reason, provider: P.id,
-            core_build: "r29", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
+            core_build: "r30", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
             ...(typeof RSParse.transportInfo === "function" ? RSParse.transportInfo(res.raw) : {chars:String(res.raw || "").length}),
           };
           diag("tool.parseFailure", A.lastParseFailure);
@@ -4128,6 +4128,11 @@ return result`;
         }
         if (res.kind === "text") {
           const body=String(res.text||"");
+          if(P.sourceReadFailure?.(res.item)){
+            P.captureTransportDiagnostics?.('command_source_unavailable',{kind:'text',chars:body.length,calls:0,currentReply:true,hasItem:!!res.item});
+            ui.banner('warn','Full code source unavailable','Copilot rendered this reply in a virtualized editor, but PlazCode could not read its complete source. No command from this reply ran. Copy the transport report for troubleshooting.',{transportReport:true});
+            break;
+          }
           if(isProviderPolicyRefusal(body)){ui.banner("warn","AI declined the request","The AI declined the instructions. PlazCode did not restart the connection or repeat the request. You can clarify the intended work in this chat.");break;}
           if(P.inspectOnReadRequest && A.started && !A.stop && !A.userStopped && toolsThisLoop===0 && activeEngine()==='roblox' && deferredProjectRead(A.taskRequest,body)){
             if(readReminders>=1){

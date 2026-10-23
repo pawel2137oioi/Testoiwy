@@ -1,3 +1,19 @@
+# PlazCode — rozszerzenie 1.24.38, wirtualizowany edytor Copilot r30
+
+## r30 — pełne źródło zamiast viewportu Scriptor
+
+Nowy raport potwierdził scriptor-codeblock-virtualized: bez paragrafów, z osobnym textboxem i nagłówkiem JSON. R29 nie obsługiwało tego wariantu. R30 dodaje czytnik pełnego modelu działający w MAIN na copilot.com. Kod jest pobierany z natywnego dokumentu lub właściciela komponentu React, bez klikania Copy, zmiany schowka i sklejania brakujących wierszy.
+
+Bez pełnego modelu dopuszczony jest wyłącznie dokładny, bezargumentowy list_commands, który zwraca lokalny katalog. Polecenia projektu wymagają pełnego źródła. Jeśli go zabraknie, pojawia się Full code source unavailable wraz z raportem, a komenda nie jest wykonywana ani automatycznie ponawiana. Niekompletne źródło, odmowy i potwierdzenie gotowości nadal podlegają dotychczasowym regułom.
+
+**Aktualizacja:** podmień cały folder `PlazCode-Extension` (Firefox: `PlazCode-Extension-Firefox`), przeładuj rozszerzenie i odśwież kartę Copilot. Nowy czytnik wymaga również nowego pliku oraz wpisu MAIN w manifeście, więc sama podmiana webchats.js nie wystarczy. Sprawdź **1.24.38** oraz **core:r30/parser:r13/provider:r30**. EXE pozostaje bez zmian.
+
+**Weryfikacja:** 914/914 testów Node. Struktura wirtualizowanego edytora odtwarza błąd na r29 i przechodzi pełny start oraz odczyt na r30. Osobne 12 sprawdzeń Chromium obejmuje prawdziwy React, izolowany świat rozszerzenia i czytnik MAIN, pełny kod ponad 100 tys. znaków, zmiany poza viewportem i brak automatycznych operacji schowka. Modele strony i most są kontrolowane; nie ma testu na zalogowanym koncie. Wyniki: [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md); opis: [ARCEE-COPILOT.md](ARCEE-COPILOT.md); sumy: `WEBCHATS-R30-SHA256SUMS.txt`.
+
+Poniżej historia; do aktualizacji obowiązuje r30 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.37, poprawka odczytu r29
 
 ## r29 — natywny blok JSON bez klas wierszy

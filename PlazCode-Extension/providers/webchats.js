@@ -268,6 +268,37 @@ const RSProvider = (() => {
       return object&&!Array.isArray(object)&&typeof object.command==='string'?source:null;
     }catch{return null;}
   }
+  const scriptorReads=new WeakMap();
+  function scriptorModelSource(block){
+    let response=null;
+    const ready=()=>{
+      const value=block.getAttribute('data-rs-scriptor-source'),length=block.getAttribute('data-rs-scriptor-len');
+      const status=block.getAttribute('data-rs-scriptor-status');
+      const kind=block.getAttribute('data-rs-scriptor-kind');
+      response={status:/^(?:ok|textbox_ambiguous|model_ambiguous|model_unavailable|model_error)$/.test(status||'')?status:'model_error',kind:/^(?:editcontext|textarea|react-(?:code|value|text|children))$/.test(kind||'')?kind:null,value:value!==null&&length!==null&&Number(length)===value.length?value:null};
+    };
+    block.addEventListener('rs-scriptor-ready',ready);
+    try{block.dispatchEvent(new Event('rs-scriptor-sync',{bubbles:true,composed:true}));}
+    finally{block.removeEventListener('rs-scriptor-ready',ready);}
+    const status=response?.status||'tap_missing';
+    scriptorReads.set(block,{model_status:status,model_kind:response?.kind||null,reader:'unavailable'});
+    if(status!=='ok'||!response.kind||response.value===null)return null;
+    scriptorReads.get(block).reader='full_model';return response.value;
+  }
+  function scriptorVisibleHandshake(block){
+    // This stateless local capability request is safe even if a virtual
+    // viewport contains only a subset. No project command or arguments use
+    // this exception; all other virtualized source requires a complete model.
+    const boxes=all(block,'[role="textbox"]').filter(node=>!textUIAncestor(node,'blockquote'));
+    if(boxes.length!==1||boxes[0].shadowRoot||query(boxes[0],'slot'))return null;
+    const source=textWithout(boxes[0],'blockquote',true,{plainScriptor:true}).trim();
+    try{
+      const object=JSON.parse(source);
+      if(!object||object.command!=='list_commands'||Object.keys(object).some(key=>key!=='command'&&key!=='params'))return null;
+      if('params' in object&&(!object.params||Array.isArray(object.params)||typeof object.params!=='object'||Object.keys(object.params).length))return null;
+      return source;
+    }catch{return null;}
+  }
   function scriptorSource(block){
     const family=(node,name)=>[...node.classList].some(token=>token===name||token.startsWith(name+'-')||token.startsWith(name+'_'));
     const paragraphs=sourceAll(block,'[class*="scriptor-paragraph"]').filter(node=>family(node,'scriptor-paragraph')&&!textUIAncestor(node,'blockquote'));
@@ -277,6 +308,14 @@ const RSProvider = (() => {
     // Without a full editor model, a virtualized viewport isn't source. Do not
     // join around missing rows or run a syntactically valid shortened command.
     const containers=[block];for(let parent=block.parentElement;parent&&!isAssistantItem(parent);parent=parent.parentElement)if(matches(parent,SCRIPTOR_BLOCK))containers.push(parent);
+    const virtual=containers.find(node=>matches(node,'.scriptor-component-code-block.scriptor-codeblock-virtualized'));
+    if(virtual){
+      const model=scriptorModelSource(virtual);
+      if(model!==null)return model;
+      const handshake=scriptorVisibleHandshake(virtual);
+      if(handshake!==null)scriptorReads.get(virtual).reader='visible_handshake';
+      return handshake;
+    }
     if(containers.some(node=>matches(node,'[data-virtualized="true"],[data-virtualization="true"]')||query(node,'[data-virtualized="true"],[data-virtualization="true"],.monaco-editor,[data-virtuoso-scroller]')))return null;
     if(!lines.length){
       const source=scriptorJSONSource(block);
@@ -626,7 +665,7 @@ const RSProvider = (() => {
     const codeLeaves=[...new Set(code)].filter(node=>!code.some(other=>other!==node&&node.contains(other)));
     const codeSources=codeLeaves.slice(0,3).map(block=>{
       const source=renderedCodeSource(block);
-      return {kind:matches(block,SCRIPTOR_BLOCK)?'scriptor':'pre',available:source!==null,chars:source?.length||0,paragraphs:sourceAll(block,'[class*="scriptor-paragraph"]').length,runs:sourceAll(block,'[class*="scriptor-textRun"]').length,reader_excludes:textUIAncestor(block,'blockquote')};
+      return {kind:matches(block,SCRIPTOR_BLOCK)?'scriptor':'pre',available:source!==null,chars:source?.length||0,paragraphs:sourceAll(block,'[class*="scriptor-paragraph"]').length,runs:sourceAll(block,'[class*="scriptor-textRun"]').length,reader_excludes:textUIAncestor(block,'blockquote'),...(scriptorReads.get(block)||{})};
     });
     for(const [index,block] of codeLeaves.slice(0,3).entries())walk(block,'code.'+index,0);
     if(item)walk(item,'reply',0);
@@ -634,7 +673,11 @@ const RSProvider = (() => {
     return {counts:{users:items.filter(isUserItem).length,assistants:items.filter(isAssistantItem).length,articles:all(document,'[role="article"]').filter(node=>!node.closest(OWN)).length,reply_roots:roots.length,pre:code.filter(node=>node.tagName==='PRE').length,scriptor:code.filter(node=>matches(node,SCRIPTOR_BLOCK)).length,reply_chars:reply.length,candidate_chars:candidate.length},candidate:{json:!!json&&typeof json==='object',has_command:!!json&&typeof json.command==='string',list_commands:json?.command==='list_commands',has_luau_opener:/^###\s*lua/i.test(candidate)},code_sources:codeSources,shape,omitted};
   }
   function captureTransportDiagnostics(stage,result={}){
-    lastTransportFailure={stage:/^(?:startup_handshake_failed|startup_send_failed)$/.test(stage)?stage:'unknown',result:{kind:/^(?:tool|text|timeout|stopped|parse_error|busy)$/.test(result.kind||'')?result.kind:'unknown',chars:Number.isSafeInteger(result.chars)?result.chars:0,calls:Number.isSafeInteger(result.calls)?result.calls:0,current_reply:result.currentReply===true,has_reply_item:result.hasItem===true},snapshot:read(transportSnapshot,{unavailable:true})};
+    lastTransportFailure={stage:/^(?:startup_handshake_failed|startup_send_failed|command_source_unavailable)$/.test(stage)?stage:'unknown',result:{kind:/^(?:tool|text|timeout|stopped|parse_error|busy)$/.test(result.kind||'')?result.kind:'unknown',chars:Number.isSafeInteger(result.chars)?result.chars:0,calls:Number.isSafeInteger(result.calls)?result.calls:0,current_reply:result.currentReply===true,has_reply_item:result.hasItem===true},snapshot:read(transportSnapshot,{unavailable:true})};
+  }
+  function sourceReadFailure(item){
+    if(!isAssistantItem(item)||isPolicyRefusal(classifyText(item,'pre,code,'+SCRIPTOR_BLOCK)))return false;
+    return replyRoots(item).some(root=>[...(matches(root,'.scriptor-component-code-block.scriptor-codeblock-virtualized')?[root]:[]),...sourceAll(root,'.scriptor-component-code-block.scriptor-codeblock-virtualized')].some(block=>!textUIAncestor(block,'blockquote')&&scriptorSource(block)===null&&all(block,'[role="textbox"],textarea').some(box=>box.textContent.trim()||box.value)));
   }
   const providerTransportDiagnostics=()=>({last_failure:lastTransportFailure,live:read(transportSnapshot,{unavailable:true})});
   function canRestoreSession() {
@@ -891,7 +934,7 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r29',
+    build:'r30',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the
@@ -908,7 +951,7 @@ const RSProvider = (() => {
     // handshake. Restore only when this chat visibly confirms readiness.
     canRestoreSession,
     commandText,isPolicyRefusal,
-    ...(site.id==='copilot'?{transportDiagnostics:providerTransportDiagnostics,captureTransportDiagnostics}:{}),
+    ...(site.id==='copilot'?{transportDiagnostics:providerTransportDiagnostics,captureTransportDiagnostics,sourceReadFailure}:{}),
     needsToolContinuation:site.id==='motif' ? needsToolContinuation : undefined,
     toolContinuationKind:site.id==='motif' ? toolContinuationKind : undefined,
     mountActivitySummary:site.id==='motif' ? mountMotifActivity : undefined,

@@ -30,3 +30,20 @@ window.mountReact=()=>{
   }
   flushSync(()=>createRoot(document.querySelector('#react-root')).render(React.createElement(Composer)));
 };
+// Representative Scriptor viewport with real React owner props. This fixture
+// models the virtualized classes/textbox reported by the user; it is not the
+// private Microsoft editor implementation.
+window.mountScriptorCode=(parent,initial,limit=80)=>{
+  function NativeCode({code}){
+    return React.createElement('div',{className:'scriptor-component-code-block scriptor-codeblock-virtualized'},
+      React.createElement('div',null,React.createElement('div',{'aria-live':'assertive',hidden:true}),React.createElement('div',{'aria-live':'polite',hidden:true})),
+      React.createElement('div',{hidden:true}),
+      React.createElement('div',null,React.createElement('svg',{'aria-hidden':'true'}),React.createElement('span',null,'JSON'),React.createElement('button',{type:'button','aria-label':'Copy code',onClick:()=>{window.copyClicks++;navigator.clipboard.writeText(code);}},'Copy')),
+      React.createElement('div',null,React.createElement('div',{role:'textbox','aria-readonly':'true'},React.createElement('div',{'aria-hidden':'true'}),React.createElement('div',null,code.slice(0,limit)))));
+  }
+  function Preview(){
+    const [code,setCode]=useState(initial);window.setScriptorCode=value=>flushSync(()=>setCode(value));
+    return React.createElement('section',{'aria-label':'Code preview'},React.createElement(NativeCode,{code}));
+  }
+  const mounted=createRoot(parent);flushSync(()=>mounted.render(React.createElement(Preview)));return mounted;
+};

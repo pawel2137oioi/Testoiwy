@@ -1,4 +1,18 @@
-# Arcee i copilot.com — r29, rozszerzenie 1.24.37
+# Arcee i copilot.com — r30, rozszerzenie 1.24.38
+
+## R30 — rzeczywisty wirtualizowany edytor Scriptor
+
+Raport użytkownika z r29 pokazał już wnętrze kodu: scriptor-component-code-block + scriptor-codeblock-virtualized, 0 paragrafów i 0 runów, nagłówek JSON o długości 4 oraz osobny role=textbox z 27 znakami kodu. Wiadomości i korzeń treści były rozpoznane. Czytnik zwracał brak źródła przed parserem. R29 nie obsługiwało tego wirtualizowanego wariantu; ogólny odczyt całego DOM nie wystarcza również z powodu pomocniczych elementów dostępności. Struktura klas, gałęzi i textboxa jest teraz potwierdzona raportem, ale prywatny model Microsoftu nie został odczytany z konta.
+
+Nowy providers/copilot-code.js działa w MAIN wyłącznie na copilot.com. Odczytuje pełny dokument z EditContext, readonly textarea albo jawnych pól źródła właściciela natywnego komponentu React. Nie przeszukuje dowolnego drzewa aplikacji: odczyt React jest ograniczony do właścicieli konkretnego korzenia kodu, do najbliższej granicy DOM i 16 poziomów. Wymaga zgodności z fragmentami widocznego textboxa i jednej zgodnej wartości. Pełny zatwierdzony props kodu ma pierwszeństwo przed EditContext, jeśli jego bufor jest dokładnym fragmentem tego kodu (oknem surrounding text). Sprzeczne rewizje pozostają błędem. Bieżące host props wskazują zatwierdzoną gałąź; przy niejednoznacznych alternatach różniących się kodem wykonanie jest zatrzymane. Nie wybiera się najdłuższego stringa ani losowej podobnej komendy.
+
+Adapter pobiera źródło przez synchroniczne zdarzenie i odpowiedź, sprawdza jego długość oraz znany rodzaj modelu. Brak czytnika, błąd modelu lub utrata właściciela nie pozwalają użyć starego atrybutu. Zmiana źródła o tej samej długości jest odczytywana ponownie. Źródło przekraczające limit 2 097 152 jednostek UTF-16 jest niedostępne, nigdy przycięte. Nie klika się natywnego Copy, nie odczytuje ani nie nadpisuje schowka, nie ustawia inputu i nie zmienia modelu strony. Źródło w DOM jest aktualizowane wyłącznie po jego zmianie; brak cyklicznego skanowania wszystkich bloków historii.
+
+Wyjątek bez pełnego modelu obejmuje tylko dokładny JSON list_commands z nieobecnym lub pustym params, bez innych pól, odczytany z jedynego textboxa tego wirtualizowanego bloku. To lokalny katalog, bez skutków w projekcie. Wyjątek nie obejmuje get_studio_state, execute_luau ani innych poleceń projektu i nie odtwarza brakujących argumentów. Model, jeśli jest dostępny, zawsze ma pierwszeństwo, również gdy jego JSON jest niekompletny. Nadal wymagane są potwierdzony kontekst i gotowość, a odmowa poza kodem zatrzymuje pracę.
+
+Niedostępne pełne źródło polecenia projektu kończy się widocznym Full code source unavailable i przyciskiem raportu zamiast zwykłego zakończenia jako tekst. Nie uruchamia się nic z tej odpowiedzi, nie ponawia automatycznie komendy i nie wysyła korekty. Watcher zachowuje swoje oczekiwanie na ustabilizowanie i koniec generowania, także gdy widoczny fragment wygląda jak niezamknięta komenda. Raport zawiera wyłącznie znany reader/model_status/model_kind i długości; nie kopiuje źródła ani propsów React.
+
+Testy odtwarzają błąd r29 na strukturze wirtualizowanego edytora, a r30 przechodzi start i jeden odczyt. Oddzielna próba używa prawdziwego React i dwóch światów wykonania Chromium: właściwości React są niewidoczne dla adaptera, ale czytnik MAIN przekazuje cały kod ponad 100 tys. znaków mimo viewportu krótszego niż 100 znaków. Nie jest to próba na prywatnym komponencie Microsoftu ani zalogowanym koncie. Szczegóły: TESTY-TRZY-SERWISY.md.
 
 ## R29 — pełny JSON z natywnego bloku bez klas paragrafów
 
@@ -142,7 +156,7 @@ Pasek obu nowych adapterów znajduje się nad wykrytym kompozytorem, bez dopisyw
 
 1. Podmień cały folder rozszerzenia i przeładuj go. Zachowaj jedną aktywną instalację. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`.
 2. Odśwież kartę Arcee lub dokładnie `https://copilot.com/`. Nie dodano domeny copilot.microsoft.com. EXE pozostaje bez zmian.
-3. Sprawdź wersję **1.24.37**. Raport transportu nowych adapterów: **core:r29/parser:r13/provider:r29**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
+3. Sprawdź wersję **1.24.38**. Raport transportu nowych adapterów: **core:r30/parser:r13/provider:r30**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
 4. Jeżeli aktualny interfejs serwisu nadal nie zostanie rozpoznany, zwykły czat pozostaje dostępny, a agent nie powinien klikać przypadkowych przycisków. Dla innej domeny po przekierowaniu ta rejestracja nie obowiązuje.
 
 Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przeglądarce. Wysyłanie obrazów pozostaje niezweryfikowane. Brak potwierdzenia wiadomości przez nowy wpis użytkownika zatrzymuje wysyłkę bez ponownego kliknięcia; przed ręczną próbą sprawdź historię, ponieważ wiadomość mogła dotrzeć.
@@ -171,7 +185,7 @@ PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-layout.cjs
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-startup.cjs
 ```
 
-Sumy bieżącej paczki: `WEBCHATS-R29-SHA256SUMS.txt`.
+Sumy bieżącej paczki: `WEBCHATS-R30-SHA256SUMS.txt`.
 
 
 ### Dodatkowe testy kontrolowanych bibliotek

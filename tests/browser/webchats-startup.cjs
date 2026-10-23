@@ -7,7 +7,7 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.PLAZCODE_CHROMIUM||'/usr/bin/chromium',args:['--no-sandbox']});
  try{let passed=0;
-  for(const [host,historyKind] of [['copilot.com','css-disclosure'],['copilot.com','truncated-disclosure'],['copilot.com','named-groups'],['copilot.com','named-groups-truncated'],['copilot.com','named-ai-group'],['copilot.com','microsoft-plain'],['copilot.com','microsoft-shadow'],['copilot.com','microsoft-scriptor'],['copilot.com','microsoft-scriptor-shadow'],['copilot.com','microsoft-scriptor-multiline'],['copilot.com','microsoft-native-json'],['copilot.com','microsoft-unrecognized-code'],['copilot.com','microsoft-refusal'],['copilot.com','microsoft-refusal-unknown-user-shadow'],['platform.arcee.ai','plain']].filter(([,kind])=>!process.env.PLAZCODE_TEST_HISTORY||kind===process.env.PLAZCODE_TEST_HISTORY)){
+  for(const [host,historyKind] of [['copilot.com','css-disclosure'],['copilot.com','truncated-disclosure'],['copilot.com','named-groups'],['copilot.com','named-groups-truncated'],['copilot.com','named-ai-group'],['copilot.com','microsoft-plain'],['copilot.com','microsoft-shadow'],['copilot.com','microsoft-scriptor'],['copilot.com','microsoft-scriptor-shadow'],['copilot.com','microsoft-scriptor-multiline'],['copilot.com','microsoft-native-json'],['copilot.com','microsoft-virtualized'],['copilot.com','microsoft-virtualized-no-model'],['copilot.com','microsoft-unrecognized-code'],['copilot.com','microsoft-refusal'],['copilot.com','microsoft-refusal-unknown-user-shadow'],['platform.arcee.ai','plain']].filter(([,kind])=>!process.env.PLAZCODE_TEST_HISTORY||kind===process.env.PLAZCODE_TEST_HISTORY)){
    const copilot=host==='copilot.com',page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',error=>errors.push(error.message));
    try{
     await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><main><section id="thread"></section><form id="native-form">'+(copilot?'<div id="native-editor" contenteditable="true" aria-label="Message Copilot"></div>':'<textarea id="native-editor" placeholder="Send a message"></textarea>')+'<button type="button" id="native-send" aria-label="Send" disabled>Send</button></form></main>'}));
@@ -31,7 +31,13 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
           if(named){row.removeAttribute('aria-expanded');if(truncated){body.id='echo-'+serial;const toggle=document.createElement('button');toggle.type='button';toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls',body.id);toggle.textContent='Show more';toggle.onclick=()=>{expand();toggle.setAttribute('aria-expanded','true');};row.append(toggle);}}else row.onclick=expand;
         }else if(microsoft){
           const host=document.createElement('div');host.dataset.testid='markdown-reply';row.append(host);const body=historyKind.includes('shadow')?host.attachShadow({mode:'open'}):host;
-          if(code&&historyKind==='microsoft-native-json'){
+          if(code&&historyKind.startsWith('microsoft-virtualized')){
+            const group=document.createElement('section'),editor=document.createElement('div'),header=document.createElement('div'),box=document.createElement('div'),source=document.createElement('div');group.setAttribute('aria-label','Code preview');editor.className='scriptor-component-code-block scriptor-codeblock-virtualized';
+            header.innerHTML='<svg aria-hidden="true"></svg><span>JSON</span><button type="button" aria-label="Copy code"><svg aria-hidden="true"></svg></button>';header.querySelector('button').onclick=()=>window.copyClicks++;
+            const live=document.createElement('div');live.innerHTML='<div class="fui-AriaLive__assertive" hidden></div><div class="fui-AriaLive__polite" hidden></div>';
+            const value=JSON.parse(text);if(value.command==='list_commands')delete value.params;text=JSON.stringify(value);box.setAttribute('role','textbox');box.setAttribute('aria-readonly','true');source.textContent=value.command==='list_commands'?text:text.slice(0,20);box.append(source);
+            if(!historyKind.endsWith('no-model'))box.editContext=new EditContext({text});editor.append(live,document.createElement('div'),header,box);group.append(editor);body.append(group);
+          }else if(code&&historyKind==='microsoft-native-json'){
             // The user's r28 report confirms FAI content, a lastChatMessage
             // below deep wrappers and two detected code containers. The code
             // descendants were omitted; these are representative native DOM.
@@ -79,6 +85,7 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
       };
       window.chrome={runtime:{id:'plazcode-startup-fixture',getManifest:()=>({version}),getURL:p=>location.origin+'/__extension/'+p,onMessage:{addListener(){}},sendMessage:(message,callback)=>{const value=reply(message);if(callback){queueMicrotask(()=>callback(value));return;}return Promise.resolve(value);}},storage:{local:{get:(key,callback)=>{if(callback)callback({...storage});else return Promise.resolve({...storage});},set:(value,callback)=>{Object.assign(storage,value);callback?.();return Promise.resolve();}},onChanged:{addListener(){}}},i18n:{getMessage:()=>''}};
     },{copilot,version:manifest.version,historyKind});
+    if(copilot)await page.addScriptTag({content:fs.readFileSync(path.join(root,'providers/copilot-code.js'),'utf8')});
     for(const script of scripts){
       await page.addScriptTag({content:fs.readFileSync(script==='providers/webchats.js' && process.env.PLAZCODE_TEST_PROVIDER || path.join(root,script),'utf8')});
       if(script==='providers/webchats.js')await page.evaluate(()=>Object.assign(RSProvider.timings,{GEN_IDLE_MS:20,STABLE_MS:40,REASON_IDLE_MS:100}));
@@ -96,7 +103,7 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
       await page.locator('.rs-banner-t').filter({hasText:'Startup handshake failed'}).waitFor({timeout:30000});
       assert.equal(await page.evaluate(()=>window.reportCopies.length),0);const sent=await page.evaluate(()=>window.nativeSent.length);assert.equal(sent,2);
       await page.locator('.rs-copy-failure-report').click();const report=await page.evaluate(()=>JSON.parse(window.reportCopies[0]));
-      assert.equal(report.transport_build.core,'r29');assert.equal(report.engine,'roblox');assert.equal(report.provider_diagnostics.last_failure.stage,'startup_handshake_failed');assert.equal(report.provider_diagnostics.last_failure.result.kind,'text');assert.equal(report.provider_diagnostics.last_failure.snapshot.counts.candidate_chars,0);assert.ok(report.provider_diagnostics.last_failure.snapshot.shape.some(node=>node.classes?.includes('monaco-editor')));assert.equal(await page.evaluate(()=>RSProvider.canRestoreSession()),false);assert.equal(await page.evaluate(()=>window.nativeSent.length),sent);assert.deepEqual(await page.evaluate(()=>window.bridgeCalls),[]);assert.deepEqual(errors,[]);assert.equal(await page.locator('.rs-failure-report').isVisible(),true);
+      assert.equal(report.transport_build.core,'r30');assert.equal(report.engine,'roblox');assert.equal(report.provider_diagnostics.last_failure.stage,'startup_handshake_failed');assert.equal(report.provider_diagnostics.last_failure.result.kind,'text');assert.equal(report.provider_diagnostics.last_failure.snapshot.counts.candidate_chars,0);assert.ok(report.provider_diagnostics.last_failure.snapshot.shape.some(node=>node.classes?.includes('monaco-editor')));assert.equal(await page.evaluate(()=>RSProvider.canRestoreSession()),false);assert.equal(await page.evaluate(()=>window.nativeSent.length),sent);assert.deepEqual(await page.evaluate(()=>window.bridgeCalls),[]);assert.deepEqual(errors,[]);assert.equal(await page.locator('.rs-failure-report').isVisible(),true);
       passed++;console.log(host+' '+historyKind+': bounded redacted report captures actual reader failure; copying sends no message');continue;
     }
     if(process.env.PLAZCODE_EXPECT_HANDSHAKE_FAILURE==='1'){
@@ -111,6 +118,13 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
     assert.equal(bootstrap.editor,'');assert.deepEqual(bootstrap.calls,[]);assert.equal(bootstrap.sent.filter(text=>text===bootstrap.sent[0]).length,1);
     if(copilot)assert.equal(bootstrap.sent[0].length,552);else assert.ok(bootstrap.sent.some(text=>text.includes('extension fetched this command reference')));
     const ed=page.locator('#native-editor');await ed.fill('Czy widzisz pliki w Studio?');await page.locator('#native-send').click();
+    if(historyKind==='microsoft-virtualized-no-model'){
+      await page.locator('.rs-banner-t').filter({hasText:'Full code source unavailable'}).waitFor({timeout:30000});
+      const sent=await page.evaluate(()=>window.nativeSent.length);assert.deepEqual(await page.evaluate(()=>window.bridgeCalls),[]);
+      await page.locator('.rs-copy-failure-report').click();const report=await page.evaluate(()=>JSON.parse(window.reportCopies[0]));
+      assert.equal(report.provider_diagnostics.last_failure.stage,'command_source_unavailable');assert.equal(report.provider_diagnostics.last_failure.snapshot.code_sources[0].model_status,'model_unavailable');assert.equal(await page.evaluate(()=>window.nativeSent.length),sent);assert.equal(await page.evaluate(()=>window.copyClicks),0);assert.deepEqual(errors,[]);
+      passed++;console.log(host+' '+historyKind+': visible source error after handshake; no project call, automatic retry or silent stop');continue;
+    }
     await page.waitForFunction(()=>window.nativeSent.some(text=>text.includes("Output of 'get_studio_state'")),{timeout:15000});
     await page.waitForFunction(()=>document.querySelector('#rs-action')?.dataset.kind==='restart' && RSProvider.editorText()==='',{timeout:15000});
     assert.deepEqual(await page.evaluate(()=>window.bridgeCalls),['get_studio_state']);assert.deepEqual(errors,[]);
