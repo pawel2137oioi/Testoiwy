@@ -1,4 +1,12 @@
-# Arcee i copilot.com — r30, rozszerzenie 1.24.38
+# Arcee i copilot.com — r31, rozszerzenie 1.24.39
+
+## R31 — dokładny odczyt akapitów przy wysyłaniu kontekstu
+
+Zgłoszony komunikat „Expected 7282 characters, read 7339; difference at 173 (U+0042 / U+000A)” odtworzono na r30. Osobny element p dla każdej linii, w tym pustych, był łączony podwójnym końcem linii. Przy 55 separatorach oraz dwóch znakach kursora odczyt rósł dokładnie o 57 znaków. Nowy odczyt przechodzi ten sam przypadek bez zmiany przesyłanego źródła.
+
+Adapter porównuje dwa strukturalne sposoby odczytu wyłącznie z pełnym tekstem własnego zapisu. Ustala separator tylko wtedy, gdy jeden z odczytów jest dokładnie zgodny, i zachowuje go dla tego edytora. Nie scala dowolnych odstępów. Rzeczywista zmiana końca linii, spacji, kodu lub Unicode nadal blokuje wysyłkę; zaufana edycja użytkownika unieważnia projekcję własnego zapisu. Nowy element edytora może rozpoznać własny sposób zapisu ponownie.
+
+Raport transportu zawiera last_draft_failure z etapem, długościami i pozycją pierwszej różnicy, bez tekstu szkicu i punktów kodowych. Czytnik pełnego źródła Scriptor z r30 pozostaje zachowany. Zweryfikowano 928 testów Node i 43 sprawdzenia Chromium, w tym rzeczywisty ProseMirror z kontrolowanym parserem zachowującym każdą linię oraz pełne starty Copilot i Arcee. To odtworzenie zgłoszonego błędu, nie test prywatnego konta ani potwierdzenie biblioteki używanej obecnie przez Microsoft. Szczegóły: TESTY-TRZY-SERWISY.md.
 
 ## R30 — rzeczywisty wirtualizowany edytor Scriptor
 
@@ -156,7 +164,7 @@ Pasek obu nowych adapterów znajduje się nad wykrytym kompozytorem, bez dopisyw
 
 1. Podmień cały folder rozszerzenia i przeładuj go. Zachowaj jedną aktywną instalację. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`.
 2. Odśwież kartę Arcee lub dokładnie `https://copilot.com/`. Nie dodano domeny copilot.microsoft.com. EXE pozostaje bez zmian.
-3. Sprawdź wersję **1.24.38**. Raport transportu nowych adapterów: **core:r30/parser:r13/provider:r30**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
+3. Sprawdź wersję **1.24.39**. Raport transportu nowych adapterów: **core:r31/parser:r13/provider:r31**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
 4. Jeżeli aktualny interfejs serwisu nadal nie zostanie rozpoznany, zwykły czat pozostaje dostępny, a agent nie powinien klikać przypadkowych przycisków. Dla innej domeny po przekierowaniu ta rejestracja nie obowiązuje.
 
 Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przeglądarce. Wysyłanie obrazów pozostaje niezweryfikowane. Brak potwierdzenia wiadomości przez nowy wpis użytkownika zatrzymuje wysyłkę bez ponownego kliknięcia; przed ręczną próbą sprawdź historię, ponieważ wiadomość mogła dotrzeć.
@@ -185,7 +193,7 @@ PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-layout.cjs
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-startup.cjs
 ```
 
-Sumy bieżącej paczki: `WEBCHATS-R30-SHA256SUMS.txt`.
+Sumy bieżącej paczki: `WEBCHATS-R31-SHA256SUMS.txt`.
 
 
 ### Dodatkowe testy kontrolowanych bibliotek
@@ -195,6 +203,8 @@ To zależności wyłącznie testów przeglądarki; rozszerzenie ich nie potrzebu
 ```sh
 npm install --prefix /tmp/plazcode-ui-r19 --cache /tmp/plazcode-npm-cache --no-audit --no-fund --package-lock=false react@19.2.0 react-dom@19.2.0 lexical@0.38.2 @lexical/plain-text@0.38.2 @codemirror/view@6.38.8 @codemirror/state@6.5.2 esbuild@0.25.11
 PLAZCODE_BROWSER_DEPS=/tmp/plazcode-ui-r19 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/controlled-editors.cjs
+npm install --prefix /tmp/plazcode-pm-r31 --cache /tmp/plazcode-npm-cache --no-audit --no-fund --package-lock=false prosemirror-model@1.25.0 prosemirror-state@1.4.3 prosemirror-view@1.40.0 prosemirror-schema-basic@1.2.4
+PLAZCODE_BROWSER_DEPS=/tmp/plazcode-ui-r19 PLAZCODE_PM_DEPS=/tmp/plazcode-pm-r31 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/copilot-paragraphs.cjs
 ```
 
 Pakiet playwright musi być dostępny dla Node jak w pozostałych próbach przeglądarki. Zestaw buduje fixture w pamięci przez esbuild; nie zmienia plików runtime ani zależności tests/package-lock.json.

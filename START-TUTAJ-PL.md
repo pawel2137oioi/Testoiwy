@@ -1,3 +1,19 @@
+# PlazCode — rozszerzenie 1.24.39, akapity Copilot r31
+
+## r31 — błąd „Expected 7282 characters, read 7339”
+
+Odtworzono dokładnie zgłoszony błąd: różnica na pozycji 173, U+0042 zamiast U+000A. Edytor tworzący osobny akapit dla każdego końca linii był odczytywany z podwójnymi separatorami. Dla 55 końców linii i dwóch znaków kursora dawało to 57 dodatkowych znaków i blokowało wysłanie części kontekstu.
+
+R31 rozpoznaje sposób zapisu akapitów przez porównanie całego własnego tekstu z odczytem struktury edytora. Wybrany sposób pozostaje przypisany do tego edytora. Puste linie, wcięcia, Unicode i kod zachowują dosłowną treść; rzeczywista zmiana tekstu nadal zatrzymuje wysyłkę. Raport błędu zawiera teraz również etap i liczniki różnicy, bez treści szkicu.
+
+**Aktualizacja:** podmień cały folder `PlazCode-Extension` (Firefox: `PlazCode-Extension-Firefox`), przeładuj rozszerzenie i odśwież kartę Copilot. Sprawdź **1.24.39** oraz **core:r31/parser:r13/provider:r31**. Zachowaj lub wyczyść szkic pozostały po wcześniejszej próbie, a następnie uruchom Start Agent na pustym polu. EXE pozostaje bez zmian.
+
+**Weryfikacja:** 928/928 testów Node i 43 sprawdzenia Chromium. Zgłoszony przypadek odtwarza błąd r30 i przechodzi na r31; sprawdzono też rzeczywisty ProseMirror z kontrolowanym parserem wklejania oraz pełny start Copilot i Arcee. Nie przeprowadzono próby na zalogowanym koncie. Wyniki: [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md); opis: [ARCEE-COPILOT.md](ARCEE-COPILOT.md); sumy: `WEBCHATS-R31-SHA256SUMS.txt`.
+
+Poniżej historia; do aktualizacji obowiązuje r31 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.38, wirtualizowany edytor Copilot r30
 
 ## r30 — pełne źródło zamiast viewportu Scriptor

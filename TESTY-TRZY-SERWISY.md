@@ -1,5 +1,19 @@
 # Raport weryfikacji — 2026-10-23
 
+## r31 — akapity kompozytora i błąd 7282/7339 na pozycji 173
+
+**928/928 testów Node**, bez błędów i pominięć (`npm test --prefix tests`, Node v24.19.0, Linux). Nowy copilot-paragraphs.test.cjs dodaje 14 przypadków. Test tworzy pierwszy z dziesięciu rzeczywistych komunikatów startupFeedbackMessages: 7282 znaki, 55 separatorów i U+0042 na pozycji 173. Kompozytor zapisuje każdą linię jako p oraz dodaje znaną parę znaków kursora. Adapter r30 odtwarza dokładnie 7339 znaków i U+000A na pozycji 173; r31 wysyła oryginalny tekst.
+
+Przypadki obejmują dwa sposoby zapisu akapitów, z markerem Lexical i bez niego, dziesięć części bez duplikacji, zmianę edytora, zachowanie obcego szkicu oraz odrzucenie rzeczywistych zmian pustej linii, spacji, kodu i Unicode po ustaleniu separatora. Diagnostyka last_draft_failure ujawnia tylko powód, etap, długości, pozycję różnicy i flagę wymiany edytora; nie zawiera źródła ani punktów kodowych. Wybór separatora wymaga zgodności całego własnego zapisu i pozostaje przypisany do edytora.
+
+**4 sprawdzenia Chromium z rzeczywistym ProseMirror** (`tests/browser/copilot-paragraphs.cjs`): dokładny komunikat 7282 znaków, dosłowny Luau z wcięciami/pustymi liniami/Unicode/znakami niewidocznymi, wszystkie części kontekstu wysłane raz oraz zaufane wpisanie przez klawiaturę po własnym zapisie. Model dokumentu jest niezależnym punktem porównania. Fixture używa kontrolowanego clipboardTextParser zachowującego każdą linię jako osobny p; nie jest to domyślny parser ProseMirror ani pobrany prywatny komponent Copilot. Domyślne wklejanie ProseMirror może scalać kolejne końce linii, więc test nie przypisuje mu zachowania zachowującego źródło.
+
+**36/36 istniejących prób Chromium** bibliotek React/Lexical/CodeMirror (`tests/browser/controlled-editors.cjs`) nadal przechodzi. **3/3 celowane próby pełnego interfejsu** (`tests/browser/webchats-startup.cjs`) obejmują microsoft-line-paragraphs, microsoft-virtualized i Arcee. Każda przechodzi Start, list_commands, odbiór kontekstu, gotowość i jedno natywne pytanie z dokładnie jednym get_studio_state oraz wynikiem. W sumie **43 różne sprawdzenia Chromium**. Oddzielny baseline r30 w pełnym interfejsie zatrzymuje się na rzeczywistym Startup failed przed wysłaniem kontekstu, po jednym handshake, bez komend projektu; nie jest doliczony do 43.
+
+Model, most i Studio w próbach pełnego interfejsu są kontrolowane. Nie przeprowadzono próby na zalogowanym koncie. Nie powtarzano niezmienionej macierzy geometrii ani osobnych 12 prób czytnika MAIN z r30; ten skrypt i CSS pozostają bez zmian. Zgłoszone wartości odtworzono dokładnie, lecz biblioteka i prywatny DOM użytkownika nie zostały odczytane. Kopie runtime, składnię JS, manifesty, integralność ZIP-ów i sumy zweryfikowano przed publikacją. Wersja 1.24.39, core/provider r31, parser r13, EXE bez zmian. Sumy: WEBCHATS-R31-SHA256SUMS.txt.
+
+---
+
 ## r30 — model wirtualizowanego Scriptor i błąd niedostępnego źródła
 
 **914/914 testów Node**, bez błędów i pominięć (`npm test --prefix tests`). Dodano 37 przypadków copilot-virtualized.test.cjs. Zewnętrzne opakowania, klasy scriptor-component-code-block/scriptor-codeblock-virtualized, cztery gałęzie i role=textbox odpowiadają zredagowanej strukturze z raportu r29. Atrybuty dostępności i obiekty modeli niewidoczne w raporcie są kontrolowane. Nie używa się prywatnego HTML, wiadomości ani projektu użytkownika.

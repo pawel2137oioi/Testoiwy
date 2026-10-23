@@ -61,6 +61,7 @@ const RSProvider = (() => {
   if (!site) throw Error('Unsupported PlazCode web chat host');
   const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
   let diag = () => {}, failure = '', ambiguous = false, sendEpoch = 0, sending = false;
+  let lastDraftFailure=null;
   const timings = {GEN_IDLE_MS: 1800, REASON_IDLE_MS: 12000, WARMUP_MS: 45000,
     REASON_NOREPLY_MS: 90000, STABLE_MS: 9000, RESPONSE_TIMEOUT_MS: 600000};
   const OWN = '#rs-root, #rs-input-cover, .rs-chip';
@@ -77,6 +78,7 @@ const RSProvider = (() => {
   let copilotInputLocked=false, writingEditor=false;
   const editorLocks=new WeakMap();
   const copilotWritten=new WeakMap();
+  const copilotParagraphBreak=new WeakMap();
   function presentedValue(actual,expected,echo=false){
     // Copilot may append an invisible caret suffix (the report identified
     // U+200B U+200C). Project ONLY our known write:
@@ -124,12 +126,12 @@ const RSProvider = (() => {
     const candidates=editors.filter(ed=>visible(ed) && !ed.disabled && !ed.closest(OWN+','+transcriptSelector) && strictFrame(ed));
     return candidates.length===1 ? candidates[0] : null;
   };
-  function richEditorText(ed){
+  function richEditorText(ed,paragraphBreak='\n\n'){
     // Lexical adds a DOM-only trailing BR to empty paragraphs and paragraphs
     // ending in a line break. It is not part of the editor's text document.
     if(ed.matches('[data-lexical-editor="true"]') && [...ed.children].every(node=>node.tagName==='P')){
       const inline=node=>node.nodeType===3?node.nodeValue:node.nodeType!==1?'':node.tagName==='BR'?(node===node.parentNode.lastChild?'':'\n'):[...node.childNodes].map(inline).join('');
-      return [...ed.children].map(inline).join('\n\n');
+      return [...ed.children].map(inline).join(paragraphBreak);
     }
     if(site.id==='copilot'){
       // innerText includes CSS text transforms and browser layout. Read the
@@ -145,7 +147,7 @@ const RSProvider = (() => {
         let value='',previous=null;
         for(const child of children){
           const block=child.nodeType===1 && /^(P|DIV|LI|PRE|H[1-6])$/.test(child.tagName);
-          if(previous && (previous.block || block))value+=previous.paragraph || child.nodeName==='P'?'\n\n':'\n';
+          if(previous && (previous.block || block))value+=previous.paragraph || child.nodeName==='P'?paragraphBreak:'\n';
           value+=content(child);previous={block,paragraph:child.nodeName==='P'};
         }
         return value;
@@ -156,8 +158,20 @@ const RSProvider = (() => {
   }
   const editorText = () => read(() => {
     const ed=getEditor();if(!richEditor(ed))return ed.value;
-    const text=richEditorText(ed);
-    return copilotWritten.has(ed)?presentedValue(text,copilotWritten.get(ed)):text;
+    const paragraphBreak=copilotParagraphBreak.get(ed)||'\n\n';
+    const text=richEditorText(ed,paragraphBreak);
+    if(!copilotWritten.has(ed))return text;
+    const expected=copilotWritten.get(ed),actual=presentedValue(text,expected);
+    if(site.id==='copilot'&&!copilotParagraphBreak.has(ed)){
+      // Native paste can render every newline as a P, including empty P nodes
+      // for blank lines. Other editors use one P for a whole paragraph. Only
+      // project our exact known write when ONE complete structural read equals
+      // it. Never collapse whitespace or rewrite unknown/user-edited source.
+      const lines=presentedValue(richEditorText(ed,'\n'),expected);
+      if(lines===expected&&actual!==expected){copilotParagraphBreak.set(ed,'\n');return expected;}
+      if(actual===expected&&lines!==expected)copilotParagraphBreak.set(ed,'\n\n');
+    }
+    return actual;
   }, '');
   document.addEventListener('input',event=>{
     if(site.id==='copilot' && event.isTrusted && !writingEditor){const ed=getEditor();if(ed?.contains(event.target))copilotWritten.delete(ed);}
@@ -679,7 +693,7 @@ const RSProvider = (() => {
     if(!isAssistantItem(item)||isPolicyRefusal(classifyText(item,'pre,code,'+SCRIPTOR_BLOCK)))return false;
     return replyRoots(item).some(root=>[...(matches(root,'.scriptor-component-code-block.scriptor-codeblock-virtualized')?[root]:[]),...sourceAll(root,'.scriptor-component-code-block.scriptor-codeblock-virtualized')].some(block=>!textUIAncestor(block,'blockquote')&&scriptorSource(block)===null&&all(block,'[role="textbox"],textarea').some(box=>box.textContent.trim()||box.value)));
   }
-  const providerTransportDiagnostics=()=>({last_failure:lastTransportFailure,live:read(transportSnapshot,{unavailable:true})});
+  const providerTransportDiagnostics=()=>({last_failure:lastTransportFailure,last_draft_failure:lastDraftFailure,live:read(transportSnapshot,{unavailable:true})});
   function canRestoreSession() {
     const rows=allItems();
     return rows.some((item,index)=>isAssistantItem(item) && /^(?:PlazCode is ready|PLAZCODE_READY)[.!]?$/i.test(itemText(item)) &&
@@ -729,7 +743,7 @@ const RSProvider = (() => {
     return chat;
   }
   async function sendOnce(value, images) {
-    failure = ''; ambiguous = false;
+    failure = ''; ambiguous = false; lastDraftFailure=null;
     const owner = ++sendEpoch;
     const checkCancelled = () => { if (owner !== sendEpoch) throw Error(site.name + ': send stopped.'); };
     let ed = getEditor();
@@ -803,6 +817,8 @@ const RSProvider = (() => {
       const actual=editorText();
       if(checkText && actual!==expected){
         let at=0;while(at<expected.length && at<actual.length && expected[at]===actual[at])at++;
+        const phase={'after focusing':'focus','while preparing':'prepare','before sending':'before_send','before clicking Send':'before_click'}[stage]||'unknown';
+        lastDraftFailure={reason:'prepared_text_changed',phase,expected_chars:expected.length,actual_chars:actual.length,first_difference:at,editor_replaced:current!==ed};
         const point=(value,index)=>index===value.length?'end':'U+'+value.codePointAt(index).toString(16).toUpperCase().padStart(4,'0');
         diag(site.id+'.draft_changed',{stage,expectedChars:expected.length,actualChars:actual.length,firstDifference:at,editorReplaced:current!==ed});
         const actualPoints=at===expected.length?[...actual.slice(at)].slice(0,4).map(char=>point(char,0)).join(' '):point(actual,at);
@@ -934,7 +950,7 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r30',
+    build:'r31',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the

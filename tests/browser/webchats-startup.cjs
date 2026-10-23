@@ -7,7 +7,7 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.PLAZCODE_CHROMIUM||'/usr/bin/chromium',args:['--no-sandbox']});
  try{let passed=0;
-  for(const [host,historyKind] of [['copilot.com','css-disclosure'],['copilot.com','truncated-disclosure'],['copilot.com','named-groups'],['copilot.com','named-groups-truncated'],['copilot.com','named-ai-group'],['copilot.com','microsoft-plain'],['copilot.com','microsoft-shadow'],['copilot.com','microsoft-scriptor'],['copilot.com','microsoft-scriptor-shadow'],['copilot.com','microsoft-scriptor-multiline'],['copilot.com','microsoft-native-json'],['copilot.com','microsoft-virtualized'],['copilot.com','microsoft-virtualized-no-model'],['copilot.com','microsoft-unrecognized-code'],['copilot.com','microsoft-refusal'],['copilot.com','microsoft-refusal-unknown-user-shadow'],['platform.arcee.ai','plain']].filter(([,kind])=>!process.env.PLAZCODE_TEST_HISTORY||kind===process.env.PLAZCODE_TEST_HISTORY)){
+  for(const [host,historyKind] of [['copilot.com','css-disclosure'],['copilot.com','truncated-disclosure'],['copilot.com','named-groups'],['copilot.com','named-groups-truncated'],['copilot.com','named-ai-group'],['copilot.com','microsoft-plain'],['copilot.com','microsoft-line-paragraphs'],['copilot.com','microsoft-shadow'],['copilot.com','microsoft-scriptor'],['copilot.com','microsoft-scriptor-shadow'],['copilot.com','microsoft-scriptor-multiline'],['copilot.com','microsoft-native-json'],['copilot.com','microsoft-virtualized'],['copilot.com','microsoft-virtualized-no-model'],['copilot.com','microsoft-unrecognized-code'],['copilot.com','microsoft-refusal'],['copilot.com','microsoft-refusal-unknown-user-shadow'],['platform.arcee.ai','plain']].filter(([,kind])=>!process.env.PLAZCODE_TEST_HISTORY||kind===process.env.PLAZCODE_TEST_HISTORY)){
    const copilot=host==='copilot.com',page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',error=>errors.push(error.message));
    try{
     await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><main><section id="thread"></section><form id="native-form">'+(copilot?'<div id="native-editor" contenteditable="true" aria-label="Message Copilot"></div>':'<textarea id="native-editor" placeholder="Send a message"></textarea>')+'<button type="button" id="native-send" aria-label="Send" disabled>Send</button></form></main>'}));
@@ -55,7 +55,7 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
         }else if(code){const body=document.createElement('div');body.className=named?'group/ai-message-item':'markdown';const node=document.createElement(copilot?'pre':'code');node.textContent=text;body.append(node);row.append(body);}else row.textContent=text;
         thread.append(row);
       }
-      if(copilot)ed.onpaste=event=>{event.preventDefault();model=event.clipboardData.getData('text/plain');ed.textContent=model+'\u200B\u200C';send.disabled=!model;};
+      if(copilot)ed.onpaste=event=>{event.preventDefault();model=event.clipboardData.getData('text/plain');if(historyKind==='microsoft-line-paragraphs'){ed.replaceChildren(...(model+'\u200B\u200C').split('\n').map(line=>{const p=document.createElement('p');if(line)p.textContent=line;else{const br=document.createElement('br');br.className='ProseMirror-trailingBreak';p.append(br);}return p;}));}else ed.textContent=model+'\u200B\u200C';send.disabled=!model;};
       ed.oninput=event=>{if(!copilot || event.isTrusted){model=copilot?ed.textContent:ed.value;send.disabled=!model;}};
       send.onclick=()=>{
         window.nativeSendClicks++;
@@ -92,6 +92,12 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
     }
     await page.addStyleTag({content:fs.readFileSync(path.join(root,'overlay.css'),'utf8')});
     await page.locator('#rs-action[data-kind="start"]:enabled').waitFor({timeout:15000});await page.locator('#rs-action').click();
+    if(process.env.PLAZCODE_EXPECT_SEND_FAILURE==='1'){
+      assert.ok(process.env.PLAZCODE_TEST_PROVIDER);await page.locator('.rs-banner-t').filter({hasText:'Startup failed'}).waitFor({timeout:15000});
+      assert.match((await page.locator('.rs-banner').allTextContents()).join(' '),/prepared text changed before sending/);assert.equal(await page.evaluate(()=>RSProvider.canRestoreSession()),false);assert.equal(await page.evaluate(()=>window.nativeSent.length),1);assert.deepEqual(await page.evaluate(()=>window.bridgeCalls),[]);
+      passed++;console.log(host+' '+historyKind+': baseline send failure after list_commands; context was not submitted');continue;
+    }
+
     if(historyKind.includes('refusal')){
       await page.locator('.rs-banner-t').filter({hasText:'AI declined the connection request'}).waitFor({timeout:20000});
       await page.waitForFunction(()=>/^(start|restart)$/.test(document.querySelector('#rs-action')?.dataset.kind||'') && !document.querySelector('#rs-action').disabled && /Not connected/.test(document.querySelector('#rs-bar')?.textContent||''));
@@ -103,7 +109,7 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
       await page.locator('.rs-banner-t').filter({hasText:'Startup handshake failed'}).waitFor({timeout:30000});
       assert.equal(await page.evaluate(()=>window.reportCopies.length),0);const sent=await page.evaluate(()=>window.nativeSent.length);assert.equal(sent,2);
       await page.locator('.rs-copy-failure-report').click();const report=await page.evaluate(()=>JSON.parse(window.reportCopies[0]));
-      assert.equal(report.transport_build.core,'r30');assert.equal(report.engine,'roblox');assert.equal(report.provider_diagnostics.last_failure.stage,'startup_handshake_failed');assert.equal(report.provider_diagnostics.last_failure.result.kind,'text');assert.equal(report.provider_diagnostics.last_failure.snapshot.counts.candidate_chars,0);assert.ok(report.provider_diagnostics.last_failure.snapshot.shape.some(node=>node.classes?.includes('monaco-editor')));assert.equal(await page.evaluate(()=>RSProvider.canRestoreSession()),false);assert.equal(await page.evaluate(()=>window.nativeSent.length),sent);assert.deepEqual(await page.evaluate(()=>window.bridgeCalls),[]);assert.deepEqual(errors,[]);assert.equal(await page.locator('.rs-failure-report').isVisible(),true);
+      assert.equal(report.transport_build.core,'r31');assert.equal(report.engine,'roblox');assert.equal(report.provider_diagnostics.last_failure.stage,'startup_handshake_failed');assert.equal(report.provider_diagnostics.last_failure.result.kind,'text');assert.equal(report.provider_diagnostics.last_failure.snapshot.counts.candidate_chars,0);assert.ok(report.provider_diagnostics.last_failure.snapshot.shape.some(node=>node.classes?.includes('monaco-editor')));assert.equal(await page.evaluate(()=>RSProvider.canRestoreSession()),false);assert.equal(await page.evaluate(()=>window.nativeSent.length),sent);assert.deepEqual(await page.evaluate(()=>window.bridgeCalls),[]);assert.deepEqual(errors,[]);assert.equal(await page.locator('.rs-failure-report').isVisible(),true);
       passed++;console.log(host+' '+historyKind+': bounded redacted report captures actual reader failure; copying sends no message');continue;
     }
     if(process.env.PLAZCODE_EXPECT_HANDSHAKE_FAILURE==='1'){
