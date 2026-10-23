@@ -1,3 +1,19 @@
+# PlazCode — rozszerzenie 1.24.28, lokalna poprawka r20
+
+## r20 — pierwsze uruchomienie Arcee i potwierdzenie wysyłki Copilot
+
+Arcee: zapis pierwszej rozmowy pod `/playground/<id>` zachowuje rozpoczętą sesję. Wcześniej zmiana adresu mogła przerwać start, dlatego kolejna próba działała już na zapisanym czacie. Przejście między dwoma zapisanymi czatami nadal przerywa bieżącą sesję.
+
+Copilot: potwierdzenie wysłania obsługuje jawne znaczniki wiadomości, wypełnienie wcześniej pustego wiersza i przebudowę DOM. Sprzątanie parametrów logowania lub nadanie wiadomości identyfikatora przez serwer nie oznacza nowej rozmowy. Po potwierdzonym odbiorze agent czyści własny niezmieniony tekst, jeżeli strona pozostawiła go w edytorze. Nie klika ponownie Send; inny szkic pozostaje zachowany. Stara identyczna wiadomość ani sam JSON asystenta nie potwierdzają nowej wysyłki.
+
+**Aktualizacja:** podmień cały folder rozszerzenia, przeładuj je i odśwież obie strony. Numer **1.24.28**; raport Motif/Arcee/Copilot: **core:r20/parser:r13/provider:r20**. EXE bez zmian. Zachowaj jedną aktywną instalację dodatku.
+
+**Weryfikacja:** 670/670 testów Node i 38/38 prób Chromium. Szczegóły i wyniki w [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md). Nowe testy obejmują pełny start obu adapterów z rzeczywistym watcherem i kontrolowanymi odpowiedziami oraz modelami edytorów React/Lexical. Nie potwierdzono działania na zalogowanych kontach z prawdziwym modelem i Studio. Instrukcja: [ARCEE-COPILOT.md](ARCEE-COPILOT.md); sumy: `WEBCHATS-R20-SHA256SUMS.txt`.
+
+Poniżej historia; do aktualizacji obowiązuje r20 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.27, lokalna poprawka r19
 
 ## r19 — start Copilot i odczyt bloku kodu Arcee

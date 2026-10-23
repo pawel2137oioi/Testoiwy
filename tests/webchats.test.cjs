@@ -278,20 +278,27 @@ test('all packaged copies register each host and preserve valid script paths and
 
 // Run the actual shared startup function and its actual prompt builder. The
 // bridge and model replies are controlled; DOM delivery uses the real adapter.
-function bootstrapFixture(id, {engine='roblox', effort='ultracode', custom='', wrongAck=false, initialReply, contextReply, nativeError, arceeCodeMirror=false, handshakeReplies}={}) {
+function bootstrapFixture(id, {engine='roblox', effort='ultracode', custom='', wrongAck=false, initialReply, contextReply, nativeError, arceeCodeMirror=false, handshakeReplies, transport={}}={}) {
   const sent=[],commands=[],banners=[],covers=[]; let f;
   const cap=id==='motif'?49999:16000;
-  f=fixture(id,{onSend({d,ed,send,add}) {
+  f=fixture(id,{onSend({w,d,ed,send,add}) {
     const text=ed.value;sent.push(text);
     if(text.length>cap){d.body.insertAdjacentHTML('beforeend','<div role="alert">Your message is too long. Please shorten it to under '+(id==='motif'?50000:16000)+' characters.</div>');return;}
-    add('user',text);ed.value='';if(id==='chatwave')send.setAttribute('aria-label','Voice input');
+    const user=add('user',text);
+    if(transport.explicitTestIds){user.removeAttribute('data-message-author-role');user.dataset.testid='user-message';}
+    if(!transport.retainDraft)ed.value='';if(id==='chatwave')send.setAttribute('aria-label','Voice input');
+    if(transport.saveRoute && sent.length===1)w.history.replaceState({},'',transport.saveRoute);
+    if(transport.remountUsers)for(const row of f.P.allItems().filter(f.P.isUserItem))row.replaceWith(row.cloneNode(true));
     if(nativeError){const alert=d.createElement('div');alert.setAttribute('role','alert');alert.textContent=nativeError;d.body.append(alert);return;}
     const part=text.match(/^⟦RS-SYS⟧ PlazCode startup context part (\d+)\/(\d+)\./);
     const response=handshakeReplies?.[sent.length-1] ?? (sent.length===1?(initialReply??'```json\n{"command":"list_commands","params":{}}\n```'):contextReply??(part&&Number(part[1])<Number(part[2])?(wrongAck?'Wrong acknowledgement':`PlazCode startup part ${part[1]}/${part[2]} received.`):'PlazCode is ready.'));
     if(arceeCodeMirror && response.includes('"command"')){
       const row=add('assistant','<div class="chat-response-content"><div class="markdown-content"><div>js</div><div class="cm-editor"><div class="cm-content"><div class="cm-line">partial DOM</div></div></div></div></div>',true);
       const text=response.replace(/^```json\n/,'').replace(/\n```$/,'');row.querySelector('.cm-content').cmView={rootView:{view:{state:{doc:{length:text.length,toString:()=>text}}}}};
-    }else add('assistant',response);
+    }else {
+      const assistant=add('assistant',response);
+      if(transport.explicitTestIds){assistant.removeAttribute('data-message-author-role');assistant.dataset.testid='assistant-message';}
+    }
   }});
   const c=f.dom.getInternalVMContext(),w=f.w;
   if(arceeCodeMirror){w.setInterval=()=>1;vm.runInContext(fs.readFileSync(path.join(root,'providers/chatgpt-cm.js'),'utf8'),c);}
@@ -304,7 +311,7 @@ function bootstrapFixture(id, {engine='roblox', effort='ultracode', custom='', w
     personalMemoryContext:()=> 'SAVED MEMORY: test memory applies to future project tasks only.\n',
     ui:{getCustomPrompt:()=>custom,setStarting(){},updateStartGate(){},inputCover:on=>covers.push(on),banner:(...args)=>banners.push(args),setStarted(){},toast(){},trackCard(){}},
     ensureTools:async()=>{A.toolList=tools;},
-    submitAndGetBase:async text=>{const base=f.P.assistantCount();await f.P.typeAndSend(text);return base;},
+    submitAndGetBase:async text=>{const base=f.P.assistantCount();A.sendToken=f.P.lastAssistantId();await f.P.typeAndSend(text);return base;},
     waitForResponse:async()=>{
       const reply=f.P.readAssistant(),calls=w.RSParser.parseToolCalls(reply.reply);
       return calls.length?{kind:'tool',calls,item:reply.item}:{kind:'text',text:reply.reply,item:reply.item};
@@ -404,10 +411,17 @@ function useActualResponseReader(f) {
   Object.defineProperty(f.d,'hidden',{value:false,configurable:true});
   Object.assign(w,{T:f.P.timings,bgMode:true,sleep:ms=>new Promise(resolve=>w.setTimeout(resolve,ms))});
   f.A.sendToken=null;f.A.toolNames=new Set(['list_commands','plazcode_status']);
-  const start=main.indexOf('  async function waitForResponse(base) {'),end=main.indexOf('\n  const isContextInvalidated',start);
+  const start=main.indexOf('  function verifyResponseOwner(res) {'),end=main.indexOf('\n  const isContextInvalidated',start);
   assert.ok(start>=0&&end>start);vm.runInContext(main.slice(start,end)+'\nwindow.readActualResponse=waitForResponse;',c);
   return ()=>w.readActualResponse(0);
 }
+for(const id of ['arcee','copilot'])test(id+': first startup with real response watcher survives save/remount and leaves no startup draft',async()=>{
+ const f=bootstrapFixture(id,{transport:id==='arcee'?{saveRoute:'/playground/new-conversation',remountUsers:true}:{explicitTestIds:true,retainDraft:true,remountUsers:true}});
+ if(id==='arcee')f.w.history.replaceState({},'','/playground');
+ useActualResponseReader(f);f.w.waitForResponse=f.w.readActualResponse;
+ const result=await f.run();assert.equal(result?.ready,true,JSON.stringify(f.banners));assert.equal(f.A._confirmedStartup,true);assert.deepEqual(f.commands,['list_commands']);assert.equal(f.ed.value,'');
+ assert.equal(f.sent.filter(text=>text===f.sent[0]).length,1);assert.equal(f.clicks(),f.sent.length);assert.deepEqual(f.banners,[]);
+});
 test('actual response reader ignores an earlier cached command when final reply is a refusal',async()=>{
   const f=bootstrapFixture('chatwave');const item=f.add('assistant','Nie wyślę też {"command":"list_commands"}. Nie mam żadnego połączenia ze Studio.');
   const read=useActualResponseReader(f);

@@ -1,5 +1,20 @@
 # Raport weryfikacji — 2026-10-23
 
+## r20 — pierwsza rozmowa Arcee i potwierdzenie wysyłki Copilot
+
+**670/670 testów Node**, bez błędów i pominięć (`cd tests && npm test`). Nowy plik `webchats-r20.test.cjs` ma 17 przypadków: pierwszy zapis Arcee, remount i późny ID pierwszej wiadomości, stopniowe renderowanie jej tekstu, porządkowanie parametrów Copilot, rzeczywista zmiana rozmowy, jawne role, ponowne użycie pustego wiersza, stare identyczne wiadomości, wirtualizacja z nowym natywnym ID, pozostawiony własny szkic, inny szkic i brak dowodu doręczenia. Dodano 2 testy pełnego startu obu adapterów z rzeczywistym watcherem: jedno list_commands, wynik i potwierdzony kontekst, bez powtórzonego żądania i pozostałego tekstu w polu. Suma: wcześniejsze 651 + 17 + 2.
+
+**38/38 prób Chromium**: 15 pełnego interfejsu, 6 podstawowej wysyłki i 17 `controlled-editors.cjs`. Rozszerzone fixture rzeczywistych React 19.2.0 i Lexical 0.38.2 zachowują tekst po wysłaniu; adapter usuwa go z modelu dopiero po potwierdzeniu. Sprawdzono jedno kliknięcie, pusty model, zgodność źródła, blokadę użytkownika i przywrócenie edycji. Dotychczasowe próby pełnego dokumentu CodeMirror i geometrii paska pozostają zaliczone. Zależności i polecenia: ARCEE-COPILOT.md.
+
+Przed ostatnimi dwoma testami renderowania pierwszego wiersza uruchomiono pierwotny zestaw 15 przypadków r20 na samym adapterze r19: 5 zaliczonych, 10 nieudanych. To porównanie adaptera na kontrolowanym DOM, nie wynik działania poprzedniej wersji na kontach użytkownika.
+
+Nie przeprowadzono testu zalogowanego Arcee ani Copilot z prawdziwym modelem/mostem/Studio. Dostęp do /chat Copilot blokował CONNECT 403. Zrzut pokazuje odpowiedź list_commands i pozostawiony tekst, ale nie rozstrzyga dokładnej kolejności zdarzeń; poprawka obejmuje odtworzone przyczyny znalezione w kodzie. Obie integracje pozostają eksperymentalne.
+
+Wersja 1.24.28, core/provider r20, parser r13. Zsynchronizowane trzy kopie rozszerzenia. Sumy: WEBCHATS-R20-SHA256SUMS.txt.
+
+---
+
+
 ## r19 — Copilot composer changed oraz Arcee js/on/CodeMirror
 
 **651/651 testów Node**, bez błędów i pominięć. Nowy plik webchats-r19.test.cjs ma 18 przypadków: wymiana edytora po fokusie/input, inny szkic/kontener/rozmowa, Stop, odczyt CodeMirror ze zrzutu Arcee, pełne długie źródło, niezmienione parametry, aktualizacja dokumentu o tej samej długości, brak tapu, niepełny/niepoprawny artefakt on, cytaty i rozumowanie, format startu oraz MAIN-world rejestracja wszystkich kopii. Dodano też 2 testy rzeczywistego startSession Arcee: list_commands z CodeMirror, wynik, potwierdzane części kontekstu i stan gotowości, także po jednej korekcie formatu. Suma: wcześniejsze 631 + 18 + 2.

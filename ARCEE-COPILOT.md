@@ -1,4 +1,14 @@
-# Arcee i copilot.com — r19, rozszerzenie 1.24.27
+# Arcee i copilot.com — r20, rozszerzenie 1.24.28
+
+## R20 — pierwsza sesja i potwierdzenie odbioru
+
+Zapis pierwszej rozmowy Arcee z `/` lub `/playground` pod `/playground/<id>` nie unieważnia już sesji startowej. Nowy zapisany identyfikator po poprzednim zapisanym czacie nadal oznacza zmianę rozmowy. Przebudowanie pierwszej wiadomości lub późne nadanie jej ID nie przerywa startu. Copilot pomija wyłącznie metadane fromcode/hasLW i prompt=login przy identyfikacji rozmowy; inne wartości prompt nadal mają znaczenie.
+
+Potwierdzenie wysyłki wymaga nowego pasującego wpisu użytkownika albo nowego natywnego ID przy braku wcześniejszego identycznego wpisu bez ID. Obsługuje wypełnienie pustego wiersza zamontowanego przed Send. Sam remount starego identycznego tekstu, nadanie mu późnego ID lub odpowiedź asystenta nie wystarczają. Dodano jawne znaczniki ról Copilot; nie zgaduje się roli na podstawie treści JSON.
+
+Jeśli po potwierdzonym odbiorze Copilot pozostawił dokładnie wysłany tekst w polu, adapter usuwa go przez model edytora przed kolejnym krokiem. Inny szkic pozostaje nietknięty. Nie ma ponownego kliknięcia Send. Testy pełnego startu obu serwisów używają rzeczywistego startSession, watchera, adaptera i parsera; odpowiedzi modelu i mostu są kontrolowane. Dodatkowe próby React i Lexical sprawdzają też pozostawiony szkic i jego usunięcie z modelu.
+
+Bieżący odczyt Copilot z tego środowiska blokował CONNECT 403. Nie wykonano próby na zalogowanych kontach ani w rzeczywistym Studio; zgodność z ich aktualnym DOM pozostaje do potwierdzenia. Wyniki: TESTY-TRZY-SERWISY.md.
 
 ## R19 — przygotowanie wiadomości Copilot i rzeczywiste bloki Arcee
 
@@ -30,7 +40,7 @@ Pasek obu nowych adapterów znajduje się nad wykrytym kompozytorem, bez dopisyw
 
 1. Podmień cały folder rozszerzenia i przeładuj go. Zachowaj jedną aktywną instalację. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`.
 2. Odśwież kartę Arcee lub dokładnie `https://copilot.com/`. Nie dodano domeny copilot.microsoft.com. EXE pozostaje bez zmian.
-3. Sprawdź wersję **1.24.27**. Raport transportu nowych adapterów: **core:r19/parser:r13/provider:r19**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
+3. Sprawdź wersję **1.24.28**. Raport transportu nowych adapterów: **core:r20/parser:r13/provider:r20**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
 4. Jeżeli aktualny interfejs serwisu nadal nie zostanie rozpoznany, zwykły czat pozostaje dostępny, a agent nie powinien klikać przypadkowych przycisków. Dla innej domeny po przekierowaniu ta rejestracja nie obowiązuje.
 
 Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przeglądarce. Wysyłanie obrazów pozostaje niezweryfikowane. Brak potwierdzenia wiadomości przez nowy wpis użytkownika zatrzymuje wysyłkę bez ponownego kliknięcia; przed ręczną próbą sprawdź historię, ponieważ wiadomość mogła dotrzeć.
@@ -58,7 +68,7 @@ PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-smoke.cjs
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-layout.cjs
 ```
 
-Sumy bieżącej paczki: `WEBCHATS-R19-SHA256SUMS.txt`.
+Sumy bieżącej paczki: `WEBCHATS-R20-SHA256SUMS.txt`.
 
 
 ### Dodatkowe testy kontrolowanych bibliotek

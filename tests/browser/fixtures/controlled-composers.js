@@ -21,7 +21,7 @@ window.mountReact=()=>{
   function Composer(){
     const [stage,setStage]=useState(0),[text,setText]=useState('');
     window.modelText=()=>text;
-    const submit=()=>{window.nativeSent.push(text);const row=document.createElement('div');row.dataset.role='user';row.textContent=text;document.querySelector('#thread').append(row);setText('');};
+    const submit=()=>{window.nativeSent.push(text);const row=document.createElement('div');if(window.retainDraft)row.dataset.testid='user-message';else row.dataset.role='user';row.textContent=text;document.querySelector('#thread').append(row);if(!window.retainDraft)setText('');};
     return React.createElement('form',{onSubmit:event=>event.preventDefault()},
       React.createElement('textarea',{key:stage,value:text,placeholder:'Message Copilot',
         onFocus:()=>{if(stage===0)flushSync(()=>setStage(1));},

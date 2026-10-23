@@ -9,18 +9,20 @@ const provider=fs.readFileSync(process.env.PLAZCODE_TEST_PROVIDER||path.join(roo
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.PLAZCODE_CHROMIUM||'/usr/bin/chromium',args:['--no-sandbox']});let passed=0;
  try{
-  for(const kind of ['lexical','react-remount']){
+  for(const kind of ['lexical','lexical-retained','react-remount','react-retained']){
+   const lexical=kind.startsWith('lexical');
    const page=await browser.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
    try{
-    await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><main>'+(kind==='lexical'?'<form><div contenteditable="true" aria-label="Message Copilot" style="white-space:pre-wrap;min-height:60px"></div><button type="button" aria-label="Send message">Send</button></form>':'<div id="react-root"></div>')+'<div id="thread"><div data-role="user" data-message-id="u1">aa</div><div data-role="assistant" data-message-id="a1">Cześć! Wysłałeś tylko aa.</div></div></main>'}));
+    await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><main>'+(lexical?'<form><div contenteditable="true" aria-label="Message Copilot" style="white-space:pre-wrap;min-height:60px"></div><button type="button" aria-label="Send message">Send</button></form>':'<div id="react-root"></div>')+'<div id="thread"><div data-role="user" data-message-id="u1">aa</div><div data-role="assistant" data-message-id="a1">Cześć! Wysłałeś tylko aa.</div></div></main>'}));
     await page.goto('https://copilot.com/chat');await page.addScriptTag({content:fixture});
-    await page.evaluate(kind=>{window.nativeSent=[];if(kind==='lexical'){
-      mountLexical();document.querySelector('button').onclick=()=>{const text=modelText();window.nativeSent.push(text);const row=document.createElement('div');row.dataset.role='user';row.textContent=text;document.querySelector('#thread').append(row);modelClear();};
+    await page.evaluate(kind=>{window.nativeSent=[];window.retainDraft=kind.endsWith('retained');if(kind.startsWith('lexical')){
+      mountLexical();document.querySelector('button').onclick=()=>{const text=modelText();window.nativeSent.push(text);const row=document.createElement('div');if(window.retainDraft)row.dataset.testid='user-message';else row.dataset.role='user';row.textContent=text;document.querySelector('#thread').append(row);if(!window.retainDraft)modelClear();};
     }else mountReact();},kind);
     await page.addScriptTag({content:provider+'\nwindow.P=RSProvider;'});
     const expected='First handshake {"command":"list_commands"}';
     const sent=await page.evaluate(async expected=>{P.setInputLock(true);try{await P.typeAndSend(expected);}finally{P.setInputLock(false);}return [...window.nativeSent];},expected);
     assert.deepEqual(sent,[expected]);passed++;
+    assert.equal(await page.evaluate(()=>P.editorText()),'');assert.equal(await page.evaluate(()=>modelText()),'');
     if(kind==='lexical')for(const ending of ['', '\n', '\n\n']){
       const value='local p = Instance.new("Part")\n\nlocal text = "Zażółć 🦊 <script> &lt;"'+ending;
       const actual=await page.evaluate(async value=>{P.setInputLock(true);try{await P.typeAndSend(value);}finally{P.setInputLock(false);}return window.nativeSent.at(-1);},value);
@@ -31,7 +33,7 @@ const provider=fs.readFileSync(process.env.PLAZCODE_TEST_PROVIDER||path.join(roo
     await page.evaluate(()=>P.setInputLock(true));
     const ed=page.locator('textarea,[contenteditable]').first();await ed.focus();await ed.press('x');
     assert.equal(await page.evaluate(()=>modelText()),'');
-    assert.equal(await ed.getAttribute('contenteditable'),kind==='lexical'?'true':null);
+    assert.equal(await ed.getAttribute('contenteditable'),lexical?'true':null);
     assert.equal(await ed.evaluate(ed=>!!ed.readOnly),false);
     await page.evaluate(()=>P.setInputLock(false));await ed.press('x');
     await page.waitForTimeout(80);assert.equal(await page.evaluate(()=>modelText()),'x');passed++;

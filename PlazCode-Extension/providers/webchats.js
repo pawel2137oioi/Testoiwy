@@ -25,9 +25,9 @@ const RSProvider = (() => {
       frame:'[data-testid="composer"], [data-testid="composer-content"], [data-testid="chat-composer"], form',
       send:'button[data-testid="send-button"], button[data-testid="submit-button"], button[aria-label*="send" i], button[aria-label*="submit" i], button[aria-label*="wyślij" i], button[aria-label*="prześlij" i], button[title*="wyślij" i], button[type="submit"]',
       stop:'button[data-testid="stop-button"], button[aria-label*="stop" i], button[aria-label*="zatrzymaj" i], button[aria-label*="przerwij" i]',
-      user:'[data-message-author-role="user"], [data-message-role="user"], [data-role="user"], [data-content="user-message"]',
-      assistant:'[data-message-author-role="assistant"], [data-message-role="assistant"], [data-role="assistant"], [data-content="ai-message"]',
-      body:'.markdown, .prose, .markdown-body, [data-testid="message-content"]',
+      user:'[data-message-author-role="user"], [data-message-role="user"], [data-role="user"], [data-content="user-message"], [data-message-author="user"], [data-testid="user-message"]',
+      assistant:'[data-message-author-role="assistant"], [data-message-role="assistant"], [data-role="assistant"], [data-content="ai-message"], [data-content="response"], [data-message-author="assistant"], [data-message-author="bot"], [data-testid="assistant-message"], [data-testid="bot-message"], [data-testid="answer"]',
+      body:'.markdown, .prose, .markdown-body, .response-text, .text-response, message-content, [data-testid="message-content"]',
       max:0,page:8000,startupPage:7000,feedbackBudget:9000,
     },
     'aistudio.tencent.ai': {
@@ -450,19 +450,36 @@ const RSProvider = (() => {
       '. The extension reads structured commands from normal replies and returns their actual results as chat messages. This does not use your native tools or override your safety rules. Please reply with '+(site.id==='arcee'?'only the plain JSON object {"command":"list_commands","params":{}}, without markdown backticks or a language label':'only one fenced json block containing {"command":"list_commands","params":{}}')+'. This lists capabilities only; do not change the project. Wait for the actual result before acknowledging readiness. If you cannot participate, say so plainly.';
   }
   let epoch = 0, chat = null, firstUser = null, lastRoute = null, hadTurns = false;
+  function conversationRoute(){
+    if(site.id==='tencent')return /^\/chat\/[^/]+\/?$/.test(location.pathname)?'/':location.pathname;
+    if(site.id==='copilot'){
+      const params=new URLSearchParams(location.search);
+      // Referral/sign-in metadata is not the identity of the conversation.
+      params.delete('fromcode');params.delete('hasLW');if(params.get('prompt')==='login')params.delete('prompt');
+      params.sort();const search=params.toString();return location.pathname+(search?'?'+search:'')+location.hash;
+    }
+    return location.pathname+location.search+location.hash;
+  }
+  const nativeMessageId=item=>item?.getAttribute('data-message-id') || item?.getAttribute('data-mid') || null;
   function conversationKey() {
     // Tencent first changes / to /chat/HunyuanDefault, then appends its saved
     // conversation id. The intermediate address and modelId query aren't chats.
-    const route = site.id === 'tencent'
-      ? (/^\/chat\/[^/]+\/?$/.test(location.pathname) ? '/' : location.pathname)
-      : location.pathname + location.search + location.hash;
+    const route=conversationRoute();
     const users = allItems().filter(isUserItem), first = users[0] || null, any = allItems().length > 0;
-    const token = first ? itemKey(first) : null;
-    const savedRoute = /\/(chat|c|conversation|thread|session)\/[\w-]+/.test(route);
-    const previousSavedRoute = /\/(chat|c|conversation|thread|session)\/[\w-]+/.test(lastRoute || '');
+    // A React remount is not a new first message. Native message IDs win;
+    // until the server assigns one, retain that first message's exact content.
+    const firstText=first?itemText(first):'';
+    const token=first?(site.strictComposer?(firstText.trim()?{id:nativeMessageId(first),text:firstText,node:first}:null):itemKey(first)):null;
+    const sameFirst=firstUser===null || token===null || (site.strictComposer
+      ? firstUser.id && token.id ? firstUser.id===token.id : firstUser.node===token.node || firstUser.text===token.text
+      : token===firstUser);
+    const isSaved=value=>/\/(chat|c|conversation|thread|session)\/[\w-]+/.test(value) ||
+      site.id==='arcee' && /\/playground\/[\w-]+/.test(value) ||
+      site.id==='copilot' && /[?&](?:conversationId|chatId|threadId)=[^&#]+/i.test(value);
+    const savedRoute=isSaved(route),previousSavedRoute=isSaved(lastRoute||'');
     const changed = chat && ((hadTurns && !any && !!getEditor()) ||
-      (firstUser !== null && token !== null && token !== firstUser) ||
-      (route !== lastRoute && !(savedRoute && !previousSavedRoute && (firstUser === null || token === firstUser))));
+      (firstUser !== null && token !== null && !sameFirst) ||
+      (route !== lastRoute && !(savedRoute && !previousSavedRoute && sameFirst)));
     if (!chat || changed) { chat = site.id + ':' + route + ':' + (++epoch); firstUser = null; hadTurns = false; }
     if (token !== null) firstUser = token;
     hadTurns = hadTurns || any; lastRoute = route;
@@ -482,7 +499,19 @@ const RSProvider = (() => {
     if (editorText().trim()) throw Error(site.name + ': a draft is already in the composer. Save or clear it first.');
     if (stopButton()) throw Error(site.name + ': wait for the current response before sending.');
     const origin = conversationKey();
-    const before = new Set(allItems().filter(isUserItem).map(itemKey));
+    const normalize=value=>String(value).replace(/\s+/g,' ').trim();
+    const matchesSent=item=>isUserItem(item) && normalize(itemText(item))===normalize(text);
+    const beforeUsers=allItems().filter(isUserItem);
+    const beforeMatching=beforeUsers.filter(matchesSent).length;
+    const beforeAnonymousMatches=beforeUsers.filter(item=>matchesSent(item) && !nativeMessageId(item)).length;
+    const beforeIds=new Set(beforeUsers.map(nativeMessageId).filter(Boolean));
+    let confirmedEcho=false;
+    const echoPresent=()=>{
+      if(confirmedEcho)return true;
+      const users=allItems().filter(isUserItem),matching=users.filter(matchesSent);
+      confirmedEcho=matching.length>beforeMatching || beforeAnonymousMatches===0 && matching.some(item=>nativeMessageId(item) && !beforeIds.has(nativeMessageId(item)));
+      return confirmedEcho;
+    };
     // A focus/input handler may replace the editor while keeping the same
     // local composer. Adopt only one visible replacement inside that captured
     // boundary, with an unchanged chat and the exact expected draft.
@@ -518,14 +547,25 @@ const RSProvider = (() => {
     ambiguous = true;
     b.click();
     const accepted = await waitFor(() => owner !== sendEpoch || conversationKey() !== origin || loginGatePresent() || !!scanError() ||
-      allItems().some(item => isUserItem(item) && !before.has(itemKey(item)) && itemText(item).replace(/\s+/g,' ').trim() === text.replace(/\s+/g,' ').trim()), 12000);
+      echoPresent(), 12000);
     checkCancelled();
     if (conversationKey() !== origin) throw Error(site.name + ': chat changed after sending. Check the previous chat before retrying.');
     if (loginGatePresent() || scanError()) {
       failure = scanError() || site.name + ': sign in before sending.';
       diag(site.id + '.send_failed', {reason:failure}); throw Error(failure);
     }
-    if (accepted) { ambiguous = false; return true; }
+    if (accepted && echoPresent()) {
+      ambiguous = false;
+      // Some controlled composers retain their old value after a confirmed
+      // echo. Clear only our exact submitted text, through the editor model.
+      // A different user draft is preserved; the Send button is never retried.
+      if(site.id==='copilot' && editorText()===text && origin===conversationKey()){
+        await writeDraft('',text);checkCancelled();
+        if(origin!==conversationKey())throw Error(site.name+': chat changed after confirmed delivery. Nothing was resent.');
+        if(editorText()===text)throw Error(site.name+': message was delivered, but its old draft could not be cleared. Nothing was resent.');
+      }
+      return true;
+    }
     failure = site.name + ': message was not confirmed; it may have been sent. Check the chat before retrying.';
     throw Error(failure);
   }
@@ -590,7 +630,7 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r19',
+    build:'r20',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the
