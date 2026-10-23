@@ -7,7 +7,7 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
 (async()=>{
  const browser=await chromium.launch({headless:true,executablePath:process.env.PLAZCODE_CHROMIUM||'/usr/bin/chromium',args:['--no-sandbox']});
  try{let passed=0;
-  for(const [host,historyKind] of [['copilot.com','css-disclosure'],['copilot.com','truncated-disclosure'],['copilot.com','named-groups'],['copilot.com','named-groups-truncated'],['copilot.com','named-ai-group'],['copilot.com','microsoft-plain'],['copilot.com','microsoft-shadow'],['copilot.com','microsoft-refusal'],['copilot.com','microsoft-refusal-unknown-user-shadow'],['platform.arcee.ai','plain']].filter(([,kind])=>!process.env.PLAZCODE_TEST_HISTORY||kind===process.env.PLAZCODE_TEST_HISTORY)){
+  for(const [host,historyKind] of [['copilot.com','css-disclosure'],['copilot.com','truncated-disclosure'],['copilot.com','named-groups'],['copilot.com','named-groups-truncated'],['copilot.com','named-ai-group'],['copilot.com','microsoft-plain'],['copilot.com','microsoft-shadow'],['copilot.com','microsoft-scriptor'],['copilot.com','microsoft-scriptor-shadow'],['copilot.com','microsoft-scriptor-multiline'],['copilot.com','microsoft-refusal'],['copilot.com','microsoft-refusal-unknown-user-shadow'],['platform.arcee.ai','plain']].filter(([,kind])=>!process.env.PLAZCODE_TEST_HISTORY||kind===process.env.PLAZCODE_TEST_HISTORY)){
    const copilot=host==='copilot.com',page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',error=>errors.push(error.message));
    try{
     await page.route('**/*',route=>route.fulfill({contentType:'text/html',body:'<!doctype html><main><section id="thread"></section><form id="native-form">'+(copilot?'<div id="native-editor" contenteditable="true" aria-label="Message Copilot"></div>':'<textarea id="native-editor" placeholder="Send a message"></textarea>')+'<button type="button" id="native-send" aria-label="Send" disabled>Send</button></form></main>'}));
@@ -31,7 +31,11 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
           if(named){row.removeAttribute('aria-expanded');if(truncated){body.id='echo-'+serial;const toggle=document.createElement('button');toggle.type='button';toggle.setAttribute('aria-expanded','false');toggle.setAttribute('aria-controls',body.id);toggle.textContent='Show more';toggle.onclick=()=>{expand();toggle.setAttribute('aria-expanded','true');};row.append(toggle);}}else row.onclick=expand;
         }else if(microsoft){
           const host=document.createElement('div');host.dataset.testid='markdown-reply';row.append(host);const body=historyKind.includes('shadow')?host.attachShadow({mode:'open'}):host;
-          if(code){const pre=document.createElement('pre'),node=document.createElement('code');node.textContent=text;pre.append(node);body.append(pre);}else body.textContent=text;
+          if(code&&historyKind.includes('scriptor')){
+            if(historyKind.endsWith('multiline')){const value=JSON.parse(text);if(value.command==='list_commands')delete value.params;text=JSON.stringify(value,null,2);}
+            const group=document.createElement('section'),editor=document.createElement('div'),header=document.createElement('span'),copy=document.createElement('button');group.setAttribute('aria-label','Code preview');header.textContent='JSON';copy.type='button';copy.textContent='Copy code';copy.onclick=()=>window.copyClicks++;group.append(header,copy,editor);editor.className='scriptor-component-code-block';editor.dataset.lineCount=String(text.split('\n').length);
+            for(const [index,line] of text.split('\n').entries()){const paragraph=document.createElement('div'),number=document.createElement('span');paragraph.className='scriptor-paragraph';paragraph.dataset.lineNumber=String(index+1);number.className='line-number';number.textContent=String(index+1);paragraph.append(number);for(const part of [line.slice(0,Math.floor(line.length/2)),line.slice(Math.floor(line.length/2))]){const run=document.createElement('span');run.className='scriptor-textRun';run.textContent=part;paragraph.append(run);}editor.append(paragraph);}body.append(group);
+          }else if(code){const pre=document.createElement('pre'),node=document.createElement('code');node.textContent=text;pre.append(node);body.append(pre);}else body.textContent=text;
         }else if(code){const body=document.createElement('div');body.className=named?'group/ai-message-item':'markdown';const node=document.createElement(copilot?'pre':'code');node.textContent=text;body.append(node);row.append(body);}else row.textContent=text;
         thread.append(row);
       }
@@ -75,7 +79,13 @@ const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/
       const titles=await page.locator('.rs-banner-t').allTextContents();assert.deepEqual(titles,['AI declined the connection request']);
       passed++;console.log(host+' '+historyKind+': exact refusal stops startup, no correction, context or tool call');continue;
     }
-    await page.waitForFunction(()=>document.querySelector('#rs-action')?.dataset.kind==='restart',{timeout:30000});
+    if(process.env.PLAZCODE_EXPECT_HANDSHAKE_FAILURE==='1'){
+      assert.ok(process.env.PLAZCODE_TEST_PROVIDER,'Baseline source must be supplied explicitly');
+      await page.locator('.rs-banner-t').filter({hasText:'Startup handshake failed'}).waitFor({timeout:30000});
+      assert.equal(await page.evaluate(()=>RSProvider.canRestoreSession()),false);assert.deepEqual(await page.evaluate(()=>window.bridgeCalls),[]);assert.equal(await page.evaluate(()=>window.nativeSent.length),2);
+      passed++;console.log(host+' '+historyKind+': expected baseline handshake failure reproduced after one correction');continue;
+    }
+    await page.waitForFunction(()=>document.querySelector('#rs-action')?.dataset.kind==='restart' && RSProvider.canRestoreSession(),{timeout:30000});
     assert.equal(await page.evaluate(()=>RSProvider.canRestoreSession()),true);
     const bootstrap=await page.evaluate(()=>({sent:window.nativeSent,editor:RSProvider.editorText(),calls:window.bridgeCalls}));
     assert.equal(bootstrap.editor,'');assert.deepEqual(bootstrap.calls,[]);assert.equal(bootstrap.sent.filter(text=>text===bootstrap.sent[0]).length,1);

@@ -1,5 +1,22 @@
 # Raport weryfikacji — 2026-10-23
 
+## r27 — kod Scriptor w rozpoznanej odpowiedzi Microsoftu
+
+**840/840 testów Node**, bez błędów i pominięć (`npm test --prefix tests`). Nowy copilot-scriptor.test.cjs dodaje 29 przypadków do wcześniejszych 811. Obejmuje dokładne JSON-y list_commands z params i bez, odwróconą kolejność pól, kilka logicznych linii, brak markerów textRun, zagnieżdżone runy i ich warianty nazw klas, angielski/niemiecki/polski podgląd kodu, długą dosłowną treść Luau w JSON oraz 800 zamontowanych logicznych linii surowego Luau. Sprawdza Instance.new, UDim2.fromOffset, Color3.fromRGB, Unicode, znaki niewidoczne, whitespace i puste wiersze bez skracania źródła.
+
+Pozostałe przypadki obejmują open shadow markdown-reply, cytaty/Copy/karty PlazCode, nieznane role, brak natywnego kontenera kodu, odmowę poza blokiem, niekompletny JSON, jawnie wirtualizowany viewport, brakującą i zdublowaną linię, sprzeczną liczbę linii oraz reakcję na nieczytelny blok obok poprawnego. Czytnik nie zwraca starej komendy po edycji. Karta narzędzia jest mocowana przy rzeczywistej grupie kodu, poza źródłem. Nie zmieniono zachowania odmów.
+
+**49 różnych prób Chromium**: 36 controlled-editors.cjs i 13 webchats-startup.cjs. Trzy nowe warianty to microsoft-scriptor, microsoft-scriptor-shadow oraz microsoft-scriptor-multiline. Kod nie używa pre: zawiera nagłówek JSON, Copy, numerację, logiczne paragrafy i podzielone textRun. Wariant wielowierszowy pomija params przy list_commands. Każdy przechodzi rzeczywisty kod startu, odbiór kontekstu, gotowość i jedno natywne pytanie z jednym get_studio_state oraz wynikiem. Liczniki kontrolują brak powtórzonych wiadomości i kliknięć Copy. Dotychczasowe odmowy i Arcee nadal przechodzą. Model/background/Studio są kontrolowane, czasy stabilizacji skrócone tylko w fixture.
+
+Na r26 nowe dodatnie próby czytnika nie przechodzą. Osobna próba pełnego interfejsu z tym adapterem czeka na rzeczywisty Startup handshake failed po jednej korekcie, zamiast uznawać sam przycisk Restart za zakończenie startu. Poprawiony wariant przechodzi protokół. W testach sukcesu oczekuje się również canRestoreSession(), nie tylko zmiany etykiety przycisku. Odpowiedzi i źródło DOM nie pochodzą z zalogowanego konta użytkownika.
+
+Źródło kontraktu: TomSchmidtDev/browser-ai-chat-exporter, commit 0830aad4488754ba7c6b2cdcf6cfb7ea65841e80, platforms/copilot/content.js, obsługa scriptor-component-code-block. Są to publiczne przykłady i własne fixture. Wirtualizowany edytor bez pełnego modelu nie jest wspierany; sprawdza się dostępne deklaracje liczby/indeksów i jawne znaczniki wirtualizacji, bez obietnicy wykrycia każdej nieoznaczonej zmiany interfejsu.
+
+Wersja 1.24.35, core/provider r27, parser r13; wszystkie trzy kopie zgodne. Zmienione JS sprawdzone Node 24 w Linux. Nie powtarzano niezmienionych zestawów geometrii i podstawowej wysyłki. Nie przeprowadzono testu na zalogowanym koncie ani w rzeczywistym Studio. Sumy: WEBCHATS-R27-SHA256SUMS.txt.
+
+---
+
+
 ## r26 — wariant Microsoft i odmowa protokołu
 
 **811/811 testów Node**, bez błędów i pominięć (`npm test --prefix tests`). Nowy copilot-microsoft-dom.test.cjs dodaje 24 przypadki do wcześniejszych 787. Obejmuje natywne artykuły fai-UserMessage/fai-CopilotMessage, chatOutput i klasę treści użytkownika, copilot-message, deduplikację i odrzucenie nieoznaczonych/podobnych elementów. Sprawdza pełny dosłowny JSON/Luau z otwartego markdown-reply, zagnieżdżenie hostów, reakcje, cytaty, odmowę mimo pozornego polecenia, brak roli nieznanego shadow hosta oraz niewykonywanie slotów i nieaktywnej treści light DOM.

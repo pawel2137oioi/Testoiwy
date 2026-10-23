@@ -1,4 +1,17 @@
-# Arcee i copilot.com — r26, rozszerzenie 1.24.34
+# Arcee i copilot.com — r27, rozszerzenie 1.24.35
+
+## R27 — natywny blok kodu Scriptor
+
+Nowy zrzut r26 pokazuje poprawne JSON-y list_commands, lecz handshake nadal ich nie rozpoznaje. [Publiczny czytnik Microsoftu](https://github.com/TomSchmidtDev/browser-ai-chat-exporter/blob/0830aad4488754ba7c6b2cdcf6cfb7ea65841e80/platforms/copilot/content.js#L29) opisuje scriptor-component-code-block oraz podgląd kodu z logicznymi scriptor-paragraph i fragmentami scriptor-textRun. Dotychczasowe szukanie tylko pre nie obejmowało tej struktury.
+
+R27 przyjmuje taki blok wyłącznie w rozpoznanej odpowiedzi AI. W obrębie każdej logicznej linii skleja fragmenty tekstu, a linie łączy pojedynczym newline. Zagnieżdżone fragmenty nie dublują tekstu. Zachowuje dosłowne znaki, w tym whitespace i niewidoczne znaki w źródle; nie bierze nagłówka języka, gutterów i Copy. Puste linie pozostają w źródle. Kontener może mieć dokładny znacznik scriptor-component-code-block albo etykietę podglądu kodu w EN/DE/PL, ale musi zawierać rozpoznane paragrafy. Kod w cytacie, kontrolce i UI PlazCode nie jest wykonywany. Nieznana rola nie staje się AI na podstawie JSON.
+
+Brak paragrafów lub pełnego modelu jawnie wirtualizowanego edytora oznacza brak źródła. Jeśli dostępne są data-line-count, aria-rowcount/aria-setsize lub indeksy linii, muszą być spójne i ciągłe. Luki, duplikaty, inny deklarowany rozmiar lub jawna wirtualizacja zatrzymują wykonanie; nie skleja się tekstu wokół brakujących wierszy. Nieczytelny blok blokuje także wykonanie pozostałej części odpowiedzi. Diagnostyka codeSourceUnavailable zawiera wyłącznie rodzaj edytora. Niewidoczna wirtualizacja bez metadanych i zamknięte modele edytora nie mają osobnego źródła w tej wersji.
+
+Aktualizuje się także czytnik całej odpowiedzi i kotwicę karty narzędzia, więc nagłówki i numery nie wracają do parsera po dekorowaniu. Faktyczna odmowa poza blokiem nadal ma pierwszeństwo; tekst przypominający odmowę wewnątrz literalnego parametru kodu nie jest odpowiedzią modelu. Prośba startowa, brak ponowienia Send i wymaganie potwierdzonego kontekstu pozostają zachowane. Komunikat nieodczytanego handshake Copilot mówi teraz o braku odczytu po stronie PlazCode; nie twierdzi, że model nie zwrócił widocznej komendy, i nie zaleca ponowienia Start.
+
+Testy odtwarzają wariant na r26 i przejście pełnego protokołu na r27. Nie potwierdzono struktury prywatnego DOM ze zrzutu; jest to poprawka luki znalezionej w czytniku na podstawie publicznie opisanego formatu. Model, most i Studio są kontrolowane. Wyniki: TESTY-TRZY-SERWISY.md.
+
 
 ## R26 — wariant Microsoft i odmowa modelu
 
@@ -104,7 +117,7 @@ Pasek obu nowych adapterów znajduje się nad wykrytym kompozytorem, bez dopisyw
 
 1. Podmień cały folder rozszerzenia i przeładuj go. Zachowaj jedną aktywną instalację. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`.
 2. Odśwież kartę Arcee lub dokładnie `https://copilot.com/`. Nie dodano domeny copilot.microsoft.com. EXE pozostaje bez zmian.
-3. Sprawdź wersję **1.24.34**. Raport transportu nowych adapterów: **core:r26/parser:r13/provider:r26**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
+3. Sprawdź wersję **1.24.35**. Raport transportu nowych adapterów: **core:r27/parser:r13/provider:r27**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
 4. Jeżeli aktualny interfejs serwisu nadal nie zostanie rozpoznany, zwykły czat pozostaje dostępny, a agent nie powinien klikać przypadkowych przycisków. Dla innej domeny po przekierowaniu ta rejestracja nie obowiązuje.
 
 Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przeglądarce. Wysyłanie obrazów pozostaje niezweryfikowane. Brak potwierdzenia wiadomości przez nowy wpis użytkownika zatrzymuje wysyłkę bez ponownego kliknięcia; przed ręczną próbą sprawdź historię, ponieważ wiadomość mogła dotrzeć.
@@ -133,7 +146,7 @@ PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-layout.cjs
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-startup.cjs
 ```
 
-Sumy bieżącej paczki: `WEBCHATS-R26-SHA256SUMS.txt`.
+Sumy bieżącej paczki: `WEBCHATS-R27-SHA256SUMS.txt`.
 
 
 ### Dodatkowe testy kontrolowanych bibliotek

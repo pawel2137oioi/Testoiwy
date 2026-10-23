@@ -1694,7 +1694,7 @@
   // result, so the model can never claim the local engine is gone.
   function transportDiagnostics() {
     return {
-      transport_build: {core:"r26",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
+      transport_build: {core:"r27",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
       provider: P.id,
       last_parse_failure: A.lastParseFailure || null,
     };
@@ -4091,7 +4091,7 @@ return result`;
         if (res.kind === "parse_error") {
           A.lastParseFailure = {
             reason: res.reason, provider: P.id,
-            core_build: "r26", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
+            core_build: "r27", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
             ...(typeof RSParse.transportInfo === "function" ? RSParse.transportInfo(res.raw) : {chars:String(res.raw || "").length}),
           };
           diag("tool.parseFailure", A.lastParseFailure);
@@ -4955,7 +4955,9 @@ return result`;
         diag("start.handshakeFailed", { kind: listRes.kind, chars: String(listRes.text || "").length });
         if(isProviderPolicyRefusal(listRes.text)){showStartupRefusal();return;}
         ui.banner("warn", "Startup handshake failed",
-          `${P.displayName} did not produce the required list_commands tool call. PlazCode stayed stopped instead of pretending it was ready. Try Start again.`);
+          P.id==='copilot'
+            ? 'PlazCode could not read a complete list_commands request from this Copilot reply. Startup stayed stopped.'
+            : `${P.displayName} did not produce the required list_commands tool call. PlazCode stayed stopped instead of pretending it was ready. Try Start again.`);
         return;
       }
 

@@ -1,3 +1,19 @@
+# PlazCode — rozszerzenie 1.24.35, lokalna poprawka r27
+
+## r27 — poprawny list_commands w bloku kodu Microsoftu
+
+Na nowym zrzucie model zwraca poprawny JSON, a start mimo tego zgłasza brak list_commands. Wariant czytnika r26 rozpoznaje role, ale szuka kodu w pre. Publiczny eksporter Microsoftu opisuje również scriptor-component-code-block z logicznymi wierszami scriptor-paragraph i fragmentami scriptor-textRun. R27 czyta te fragmenty jako źródło, bez nagłówka JSON, numerów linii i Copy. Nie zmienia prośby startowej ani nie zastępuje komendy lokalnym katalogiem.
+
+Obsługiwane są oba JSON-y ze zrzutu: z params i bez params, format wielowierszowy, otwarty markdown-reply oraz surowy protokół Luau. Znaki, odstępy, puste linie i treść parametrów pozostają zachowane. Luki/duplikaty numeracji, sprzeczna deklaracja liczby linii i jawna wirtualizacja blokują wykonanie; nie odtwarza się brakujących fragmentów. Jeden nieczytelny blok nie pozwala wykonać części odpowiedzi. Zwykła odmowa poza blokiem nadal zatrzymuje start.
+
+**Aktualizacja:** podmień cały folder rozszerzenia, przeładuj dodatek i odśwież kartę Copilot. Wersja **1.24.35**, raport **core:r27/parser:r13/provider:r27**. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`. EXE bez zmian. Start wymaga pustego pola; nowy pusty czat usuwa wpływ starego niepełnego startu.
+
+**Weryfikacja:** 840/840 testów Node i 49 różnych prób Chromium. Nowe scenariusze przechodzą list_commands, kontekst i jeden get_studio_state; r26 na tym samym formacie odtwarza błąd handshake po jednej korekcie. Model, most i Studio są kontrolowane. Nie ma próby na zalogowanym koncie użytkownika, więc dokładna struktura jego DOM pozostaje niepotwierdzona. Wyniki: [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md); źródło formatu: [ARCEE-COPILOT.md](ARCEE-COPILOT.md); sumy: `WEBCHATS-R27-SHA256SUMS.txt`.
+
+Poniżej historia; do aktualizacji obowiązuje r27 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.34, lokalna poprawka r26
 
 ## r26 — wariant Microsoft i jawna odmowa Copilot

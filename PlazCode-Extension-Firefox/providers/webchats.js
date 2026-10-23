@@ -215,6 +215,8 @@ const RSProvider = (() => {
   }
   const TEXT_UI_DECORATION = '.rs-chip, .rs-chat-activity, .msg-actions, .msg-err, .reasoning, [data-testid*="reasoning"], [data-variant="Thoughts"], .hy-think, .code-block-header, .md-code-block-banner-wrap, .markdown-viewer-code-block-header, .hyc-common-markdown__code__hd-container, .linenumber, .line-number, .react-syntax-highlighter-line-number';
   const TEXT_UI_SKIP=TEXT_UI_DECORATION+', button, [role="button"]';
+  const SCRIPTOR_BLOCK='.scriptor-component-code-block,[aria-label="Code preview" i],[aria-label="Codevorschau" i],[aria-label="Podgląd kodu" i]';
+  const replyCodeSelector=()=>site.id==='arcee'?'pre,.cm-content':site.id==='copilot'?'pre,'+SCRIPTOR_BLOCK:'pre';
   function skippedTextNode(node,exclude=''){
     if(site.id!=='copilot')return matches(node,TEXT_UI_SKIP+(exclude?', '+exclude:''));
     if(matches(node,'[data-copy="false"],.sr-only,[data-testid="user-message-reactions"],[data-testid="message-item-reactions"]'))return true;
@@ -241,6 +243,36 @@ const RSProvider = (() => {
     }
     return [...new Set(nodes)];
   }
+  function scriptorSource(block){
+    const family=(node,name)=>[...node.classList].some(token=>token===name||token.startsWith(name+'-')||token.startsWith(name+'_'));
+    const paragraphs=sourceAll(block,'[class*="scriptor-paragraph"]').filter(node=>family(node,'scriptor-paragraph')&&!textUIAncestor(node,'blockquote'));
+    const paragraphSet=new Set(paragraphs),parents=new Set();
+    for(const node of paragraphs)for(let parent=node.parentElement;parent&&parent!==block;parent=parent.parentElement)if(paragraphSet.has(parent))parents.add(parent);
+    const lines=paragraphs.filter(node=>!parents.has(node));
+    if(!lines.length)return null;
+    // Without a full editor model, a virtualized viewport isn't source. Do not
+    // join around missing rows or run a syntactically valid shortened command.
+    const containers=[block];for(let parent=block.parentElement;parent&&!isAssistantItem(parent);parent=parent.parentElement)if(matches(parent,SCRIPTOR_BLOCK))containers.push(parent);
+    if(containers.some(node=>matches(node,'[data-virtualized="true"],[data-virtualization="true"]')||query(node,'[data-virtualized="true"],[data-virtualization="true"],.monaco-editor,[data-virtuoso-scroller]')))return null;
+    for(const container of containers)for(const name of ['data-line-count','aria-rowcount','aria-setsize']){
+      const total=container.getAttribute(name);if(total!==null&&(!/^\d+$/.test(total)||Number(total)!==lines.length))return null;
+    }
+    for(const [name,base] of [['data-line-number',1],['data-line-index',0],['aria-posinset',1]]){
+      if(lines.some(node=>node.hasAttribute(name))&&lines.some((node,index)=>node.getAttribute(name)!==String(index+base)))return null;
+    }
+    for(const line of lines){const total=line.getAttribute('aria-setsize');if(total!==null&&Number(total)!==lines.length)return null;}
+    return lines.map(line=>{
+      const runs=sourceAll(line,'[class*="scriptor-textRun"]').filter(node=>family(node,'scriptor-textRun')&&!textUIAncestor(node));
+      const runSet=new Set(runs),top=runs.filter(node=>{for(let parent=node.parentElement;parent&&parent!==line;parent=parent.parentElement)if(runSet.has(parent))return false;return true;});
+      if(top.length)return top.map(run=>textWithout(run,'',true)).join('');
+      if(!line.textContent&&[...line.children].every(node=>node.tagName==='BR'))return '';
+      return [...line.childNodes].map(node=>node.nodeType===3?node.nodeValue:textWithout(node,'',true)).join('');
+    }).join('\n');
+  }
+  function renderedCodeSource(block){
+    if(site.id==='copilot'&&matches(block,SCRIPTOR_BLOCK))return scriptorSource(block);
+    return block.matches('.cm-content')?codeMirrorSource(block):textWithout(codeSource(block));
+  }
   const codeSource = pre => {
     const sources = all(pre,'code').filter(node => !textUIAncestor(node));
     return sources.length === 1 ? sources[0] : pre;
@@ -261,6 +293,10 @@ const RSProvider = (() => {
         const source=codeMirrorSource(node);
         if(source!==null){if(text && !text.endsWith('\n'))text+='\n';text+=source;}
         return;
+      }
+      if(site.id==='copilot'&&matches(node,SCRIPTOR_BLOCK)){
+        const source=scriptorSource(node);
+        if(source!==null){if(text&&!text.endsWith('\n'))text+='\n';text+=source;return;}
       }
       if (node.tagName === 'BR') { text += '\n'; return; }
       if (node.tagName === 'PRE') {
@@ -468,8 +504,9 @@ const RSProvider = (() => {
     return /\b(?:i (?:cannot|can't|won't|will not|do not|don't)|i have no|no (?:actual|real|direct) (?:access|connection))[^\n]{0,180}(?:call|run|execute|tool|command|bridge|extension|studio|plazcode)|(?:nie (?:wyślę|wysle|uruchomię|uruchomie|wykonam)|nie mogę|nie moge|nie mam (?:żadnego|zadnego|dostępu|dostepu|narzędzi|narzedzi))[^\n]{0,180}(?:komend|poleceń|polecen|narzędzi|narzedzi|połączenia|polaczenia|studia|studio|bridge|wtyczk|plazcode|list_commands)|prompt[ -]injection|jailbreak/i.test(text);
   }
   function commandText(value, item) {
+    if(site.id==='copilot'&&item&&!isAssistantItem(item))return '';
     const text = String(value || '').trim();
-    const prose = item ? classifyText(item,site.id==='arcee'?'pre,code,.cm-editor':'pre,code') : text;
+    const prose = item ? classifyText(item,site.id==='arcee'?'pre,code,.cm-editor':site.id==='copilot'?'pre,code,'+SCRIPTOR_BLOCK:'pre,code') : text;
     if (!text || isPolicyRefusal(prose)) return '';
     const candidate = (value,renderedBlock=false) => {
       const source=String(value || '').trim();
@@ -493,10 +530,16 @@ const RSProvider = (() => {
       return '';
     };
     const scopes=site.id==='arcee' || site.id==='copilot'?replyRoots(item):[item];
-    const blocks = item ? scopes.flatMap(root=>sourceAll(root,site.id==='arcee'?'pre,.cm-content':'pre')).filter(pre => !textUIAncestor(pre,'blockquote')) : [];
+    const blocks = item ? scopes.flatMap(root=>[...(matches(root,replyCodeSelector())?[root]:[]),...sourceAll(root,replyCodeSelector())]).filter(pre => !textUIAncestor(pre,'blockquote')) : [];
     // Tencent nests pre elements. Read one innermost code body per block.
     const leaves = blocks.filter(pre => !blocks.some(other => other !== pre && pre.contains(other)));
-    const code = leaves.map(pre => candidate(pre.matches('.cm-content')?codeMirrorSource(pre):textWithout(codeSource(pre)),true)).filter(Boolean);
+    let unavailable=false;
+    const code = leaves.map(pre => {
+      const source=renderedCodeSource(pre);
+      if(source===null){unavailable=true;diag(site.id+'.codeSourceUnavailable',{kind:pre.matches('.cm-content')?'codemirror':'scriptor'});return '';}
+      return candidate(source,true);
+    }).filter(Boolean);
+    if(unavailable&&site.id==='copilot')return '';
     if (code.length) return code.join('\n\n');
     if(site.id==='arcee' && item && !all(item,'pre,.cm-content,blockquote').length){
       const inline=scopes.flatMap(root=>all(root,'code')).filter(node=>!textUIAncestor(node,'blockquote'));
@@ -507,7 +550,7 @@ const RSProvider = (() => {
         if(source===text && /^\{\s*"command"\s*:/.test(source))return candidate(source);
       }
     }
-    if (item && (all(item,'pre,.cm-content').length || query(item,'blockquote,code'))) return '';
+    if (item && (blocks.length || all(item,'pre,.cm-content').length || query(item,'blockquote,code'))) return '';
     const fenced = text.match(/^```(?:json|text|txt|lua|luau)?\s*\n([\s\S]*?)\n```\s*$/i);
     if (fenced) return candidate(fenced[1]);
     // Plain JSON is accepted only as an entire response, never as an inline
@@ -748,9 +791,10 @@ const RSProvider = (() => {
   function findToolBlockSpot(item) {
     if (!isAssistantItem(item)) return null;
     let ref = null;
-    const scopes=site.id==='arcee'?replyRoots(item):[item];
-    for (const pre of scopes.flatMap(root=>all(root,site.id==='arcee'?'pre,.cm-editor':'pre'))) {
-      if (textUIAncestor(pre,'blockquote') || !/"(?:command|tool)"\s*:|###\s*LUA|###mcp_tool###/i.test(query(pre,'.cm-content')?codeMirrorSource(query(pre,'.cm-content'))||'':pre.textContent || '')) continue;
+    const scopes=site.id==='arcee'||site.id==='copilot'?replyRoots(item):[item];
+    const selector=site.id==='arcee'?'pre,.cm-editor':replyCodeSelector();
+    for (const pre of scopes.flatMap(root=>[...(matches(root,selector)?[root]:[]),...sourceAll(root,selector)])) {
+      if (textUIAncestor(pre,'blockquote') || !/"(?:command|tool)"\s*:|###\s*LUA|###mcp_tool###/i.test(site.id==='copilot'?renderedCodeSource(pre)||'':query(pre,'.cm-content')?codeMirrorSource(query(pre,'.cm-content'))||'':pre.textContent || '')) continue;
       pre.classList.add('rs-tool-hide'); item.classList.add('rs-cmd-mask'); ref ||= pre;
     }
     return ref?.parentElement ? {parent:ref.parentElement,ref} : null;
@@ -781,7 +825,7 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r26',
+    build:'r27',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the
