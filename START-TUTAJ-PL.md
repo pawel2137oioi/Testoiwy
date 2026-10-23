@@ -1,3 +1,19 @@
+# PlazCode — rozszerzenie 1.24.30, lokalna poprawka r22
+
+## r22 — niewidoczna końcówka Copilot i start Arcee po odpowiedzi opisowej
+
+Nowy zrzut Copilot wskazuje dokładnie **552 oczekiwane / 554 odczytane znaki, różnica od U+200B na pozycji 552**. Odtworzono ten sam komunikat na r21 w Chromium. R22 porównuje własny znany tekst z prezentacją edytora: dopuszcza wyłącznie krótką końcówkę od U+200B, dodaną za całym niezmienionym źródłem. Nie usuwa znaków z DOM ani z dowolnego szkicu. Znaki niewidoczne celowo podane w treści, także na jej końcu, pozostają częścią źródła. Zwykła edycja użytkownika unieważnia zapamiętany własny zapis. Uwzględniono tę samą końcówkę w potwierdzeniu wiadomości, bez ponownego Send.
+
+Arcee: po jednej nieskutecznej korekcie odpowiedzi opisowej rozszerzenie może pobrać katalog poleceń lokalnie przez list_commands. Jest to rzeczywisty odczyt katalogu, a nie udawane polecenie modelu: nie oznacza się odpowiedzi opisowej jako wykonanej komendy. Start wymaga poprawnego wyniku, świeżego potwierdzenia wybranego silnika, odbioru wszystkich części kontekstu i końcowego potwierdzenia modelu. Odmowa, błędna komenda, błąd mostu i Stop nadal zatrzymują start. Pełny JSON jako jedyny inline code odpowiedzi jest teraz odczytywany; przykłady w opisie i cytaty pozostają wyłączone.
+
+**Aktualizacja:** podmień cały folder rozszerzenia, przeładuj je i odśwież strony. Wersja **1.24.30**; raport Arcee/Copilot/Motif: **core:r22/parser:r13/provider:r22**. Uruchom Start Agent w nowym pustym czacie; w istniejącym Arcee użyj Restart Agent. Szkic pozostały po starej próbie należy wcześniej zachować lub wyczyścić. EXE bez zmian; jedna aktywna instalacja dodatku.
+
+**Weryfikacja:** 742/742 testy Node i 57/57 prób Chromium, w tym 2 próby pełnego startu i komendy odczytu. Wyniki: [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md). Pełny interfejs sprawdzany jest z kontrolowanym modelem i mostem, bez zalogowanych kont ani prawdziwego Studio. Instrukcja: [ARCEE-COPILOT.md](ARCEE-COPILOT.md); sumy: `WEBCHATS-R22-SHA256SUMS.txt`.
+
+Poniżej historia; do aktualizacji obowiązuje r22 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.29, lokalna poprawka r21
 
 ## r21 — Copilot „prepared text changed” i Arcee bez inspekcji

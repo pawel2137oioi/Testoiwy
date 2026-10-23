@@ -1,5 +1,22 @@
 # Raport weryfikacji — 2026-10-23
 
+## r22 — dokładny błąd 552/554/U+200B i lokalny katalog Arcee
+
+**742/742 testy Node**, bez błędów i pominięć (`cd tests && npm test`). Nowy webchats-r22.test.cjs zawiera 26 przypadków: niewidoczna końcówka po pełnym znanym zapisie Copilot, znaki literalne wewnątrz i na końcu źródła, własność szkicu, remount, echo i czyszczenie własnego zapisu, inny szkic i nieznana końcówka, Arcee inline JSON oraz odrzucenie opisów/cytatów/odmów/przykładów. Dodano 16 przypadków rzeczywistego startSession: dwie odpowiedzi opisowe w istniejącym czacie, pełny watcher i kontekst, poprawny inline JSON, odmowa, uszkodzone/inne polecenie, błędy katalogu, brak odbioru kontekstu, Stop/zmiana rozmowy/generacji i świeży live-status zamiast wnioskowania o połączeniu z samych schematów. Suma: wcześniejsze 700 + 26 + 16.
+
+**57/57 prób Chromium**: 15 układu pełnego interfejsu, 6 podstawowej wysyłki, 34 controlled-editors.cjs oraz 2 nowe webchats-startup.cjs. Kontrolowany contenteditable z tą samą wiadomością startową i końcówką od U+200B na adapterze r21 odtwarza dokładnie: „Expected 552 characters, read 554; difference at 552 (end / U+200B)”. R22 wysyła ją raz. Rzeczywiste React/Lexical/CodeMirror nadal sprawdzają zgodność wewnętrznego modelu, dosłowny kod z Unicode, blokadę i zwolnienie edycji. Dodatkowe próby obejmują literalny U+200B/FEFF w kodzie i zaufany input użytkownika po własnym zapisie.
+
+Nowy zestaw pełnego startu ładuje wszystkie skrypty grupy manifestu i overlay.css. Klika Start Agent i czeka na gotowość. Dla Copilot pole zawiera dokładne 552 znaki plus dwa znaki prezentacji, także w echu. Dla Arcee dwie zwykłe odpowiedzi uruchamiają rzeczywisty kod lokalnego list_commands i odbiór kontekstu. Następnie użytkownik wysyła pytanie natywnym polem i przyciskiem. W obu przypadkach cały agent wysyła dokładnie jedno get_studio_state do kontrolowanego backgroundu, odbiera wynik i przekazuje go modelowi. Nie ma ponowionej wiadomości startowej ani pozostawionego szkicu. Zegar stabilizacji jest skrócony wyłącznie w fixture.
+
+W nowej weryfikacji katalogu rozdzielono opt-in świeżego live-status od wcześniejszych wymagań innych adapterów. Dotychczasowy ChatWave API przechodzi wszystkie 40 testów, w tym natywne wywołania funkcji, start i pętlę z wynikami.
+
+To testy pełnego kodu z kontrolowaną stroną, modelem i mostem, a nie zalogowanych usług ani rzeczywistego Roblox Studio. Pierwszy dodatkowy znak Copilot wynika z komunikatu użytkownika; drugi nie był widoczny w r21, dlatego testy obejmują krótkie warianty końcówki. Nie ustalono pełnego źródła ostatniej odpowiedzi Arcee ze zrzutu. Nie zmieniano danych kont ani natywnego EXE.
+
+Wersja 1.24.30, core/provider r22, parser r13. Zsynchronizowane trzy kopie. Sumy: WEBCHATS-R22-SHA256SUMS.txt. Polecenia prób Chromium i zależności: ARCEE-COPILOT.md.
+
+---
+
+
 ## r21 — Copilot przed Send i Arcee bez odczytu projektu
 
 **700/700 testów Node**, bez błędów i pominięć (`cd tests && npm test`). Nowy `webchats-r21.test.cjs` ma 12 przypadków źródła contenteditable, rzeczywistych/technicznych BR, odstępów/Unicode, opóźnionego zatwierdzenia, zmienionego szkicu, stabilności, Stop i przełączenia rozmowy. Wspólny fixture rzeczywistej pętli `motif-continuation.test.cjs` rozszerzono o 18 przypadków obu nowych adapterów: pytanie ze zrzutu, jeden odczyt i wynik, pobranie schematów przed inspekcją, ograniczenie powtarzanej zapowiedzi, pytania teoretyczne, zakaz narzędzi, doprecyzowanie celu, odmowa, odpowiedź końcowa, odłączony most, Stop/zmiana czatu/generacji oraz blokada zapisu po przypomnieniu. Model i most są kontrolowane. Suma: wcześniejsze 670 + 12 + 18.

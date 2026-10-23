@@ -1,4 +1,16 @@
-# Arcee i copilot.com — r21, rozszerzenie 1.24.29
+# Arcee i copilot.com — r22, rozszerzenie 1.24.30
+
+## R22 — U+200B po tekście i katalog Arcee bez powtarzania Start
+
+Zrzut 1.24.29 wykazuje 552 oczekiwane i 554 odczytane jednostki UTF-16; pierwsza dodatkowa to U+200B. R22 nie wykonuje ogólnego usuwania znaków niewidocznych. Zapamiętuje dokładny własny zapis w WeakMap edytora i tylko wtedy porównuje prezentację z tym pełnym prefiksem oraz krótką dozwoloną końcówką od U+200B. Nie modyfikuje treści DOM. Literalne U+200B/FEFF w oczekiwanym źródle pozostają zachowane, również na końcu. Inny szkic, różnica wewnątrz źródła i nieznana końcówka nadal blokują Send. Zaufany input użytkownika usuwa własność zapisu. Transfer do nowego edytora następuje dopiero po sprawdzeniu granicy kompozytora i rozmowy. Echo użytkownika może mieć to samo opakowanie; nie wystarcza samo przerysowanie starej identycznej wiadomości.
+
+Arcee ma teraz lokalną ścieżkę katalogu po jednej nieudanej korekcie odpowiedzi opisowej. Wykonywane jest wyłącznie rzeczywiste list_commands przez rozszerzenie. Odmowa modelu oraz sklasyfikowane uszkodzone lub inne polecenie nie są zastępowane katalogiem. Brak komend, błąd odpowiedzi (w tym ERROR wewnątrz Output), niepotwierdzony live-status wybranego silnika i zmiana rozmowy/silnika/Stop zatrzymują przekazanie kontekstu. Nie przypisuje się wykonania do zwykłej odpowiedzi modelu. Kontekst jawnie wyjaśnia, że katalog pobrało rozszerzenie; wszystkie części i gotowość muszą zostać potwierdzone. Ta ścieżka dowodzi dostarczenia katalogu, a nie poprawności przyszłej składni modelu.
+
+Czytnik Arcee obsługuje też kompletny JSON będący jedyną zawartością pojedynczego inline code. Nie wykonuje inline przykładu otoczonego opisem, cytatu, odmowy ani kilku sąsiadujących przykładów. Naprawiono dodatkowo granicę wyrażenia regularnego rozpoznającego błąd `ERROR:` wewnątrz wyniku narzędzia.
+
+Test controlled-editors.cjs na r21 odtwarza w kontrolowanym contenteditable Chromium dokładnie komunikat 552/554/end/U+200B; r22 przechodzi. Rzeczywiste React/Lexical/CodeMirror pozostają osobnymi próbami modeli edytora. Nowy webchats-startup.cjs ładuje cały zestaw content scripts i overlay.css, klika natywny Start Agent i po gotowości wysyła pytanie przez czat. Sprawdza jedną komendę get_studio_state, jej wynik i brak duplikacji. Dla Copilot obejmuje niewidoczną końcówkę; dla Arcee dwie odpowiedzi opisowe i lokalny katalog. Zegar stabilizacji odpowiedzi jest skrócony w fixture, odpowiedzi modelu i mostu są kontrolowane. Wyniki: TESTY-TRZY-SERWISY.md.
+
+Nie przeprowadzono testu na zalogowanych kontach ani w prawdziwym Studio. Ustalono znak z komunikatu Copilot; zrzut Arcee nie dostarcza pełnego źródła ostatniej odpowiedzi. Obsługa inline code i lokalnego katalogu obejmuje warianty znalezione w kodzie, bez przypisywania ich jako pewnej przyczyny konkretnego DOM konta.
 
 ## R21 — stabilne źródło i faktyczna inspekcja
 
@@ -50,7 +62,7 @@ Pasek obu nowych adapterów znajduje się nad wykrytym kompozytorem, bez dopisyw
 
 1. Podmień cały folder rozszerzenia i przeładuj go. Zachowaj jedną aktywną instalację. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`.
 2. Odśwież kartę Arcee lub dokładnie `https://copilot.com/`. Nie dodano domeny copilot.microsoft.com. EXE pozostaje bez zmian.
-3. Sprawdź wersję **1.24.29**. Raport transportu nowych adapterów: **core:r21/parser:r13/provider:r21**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
+3. Sprawdź wersję **1.24.30**. Raport transportu nowych adapterów: **core:r22/parser:r13/provider:r22**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
 4. Jeżeli aktualny interfejs serwisu nadal nie zostanie rozpoznany, zwykły czat pozostaje dostępny, a agent nie powinien klikać przypadkowych przycisków. Dla innej domeny po przekierowaniu ta rejestracja nie obowiązuje.
 
 Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przeglądarce. Wysyłanie obrazów pozostaje niezweryfikowane. Brak potwierdzenia wiadomości przez nowy wpis użytkownika zatrzymuje wysyłkę bez ponownego kliknięcia; przed ręczną próbą sprawdź historię, ponieważ wiadomość mogła dotrzeć.
@@ -76,9 +88,10 @@ Testy przeglądarki wymagają pakietu playwright dostępnego dla Node i Chromium
 ```sh
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-smoke.cjs
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-layout.cjs
+PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-startup.cjs
 ```
 
-Sumy bieżącej paczki: `WEBCHATS-R21-SHA256SUMS.txt`.
+Sumy bieżącej paczki: `WEBCHATS-R22-SHA256SUMS.txt`.
 
 
 ### Dodatkowe testy kontrolowanych bibliotek

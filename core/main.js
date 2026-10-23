@@ -1694,7 +1694,7 @@
   // result, so the model can never claim the local engine is gone.
   function transportDiagnostics() {
     return {
-      transport_build: {core:"r21",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
+      transport_build: {core:"r22",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"},
       provider: P.id,
       last_parse_failure: A.lastParseFailure || null,
     };
@@ -3478,7 +3478,7 @@ return result`;
   // not the bare words "error"/"failed", so a genuine success line like
   // "Failed: 0" / "Error count: 0" is NOT misread as a failure.
   const BODY_ERR_RE =
-    /^\s*(error executing|error:|erreur|exception|traceback|communication error|failed to|could — not|cannot |unable to|fatal)\b/i;
+    /^\s*(?:error:|(?:error executing|erreur|exception|traceback|communication error|failed to|could — not|cannot |unable to|fatal)\b)/i;
   const stripOutputPrefix = (feedback) => feedback.replace(/^Output of '[^']*':\n?/, "");
   function bodyLooksFailed(feedback) {
     if (!feedback || feedback.startsWith("ERROR")) return false; // wrapper already flags it
@@ -4091,7 +4091,7 @@ return result`;
         if (res.kind === "parse_error") {
           A.lastParseFailure = {
             reason: res.reason, provider: P.id,
-            core_build: "r21", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
+            core_build: "r22", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
             ...(typeof RSParse.transportInfo === "function" ? RSParse.transportInfo(res.raw) : {chars:String(res.raw || "").length}),
           };
           diag("tool.parseFailure", A.lastParseFailure);
@@ -4881,12 +4881,13 @@ return result`;
           `Couldn't find ${P.displayName}'s chat box. Open a new chat or reload the page.`);
         return;
       }
-      // Startup is a REAL command-protocol handshake. Do not claim Ready until
-      // the model has successfully emitted list_commands, PlazCode has parsed and
-      // executed that command, the command result has landed, and the model has
-      // acknowledged that result. This keeps the bar from going interactive while
-      // ChatGPT is still bootstrapping and proves the exact JSON->tool path works
-      // before the user's first request.
+      // Ready requires an actual command catalogue and acknowledged context.
+      // Normally the model requests list_commands. An opted-in provider may
+      // fetch that read-only catalogue locally after a settled prose reply;
+      // this must never bypass a refusal or fabricate a project result.
+      // The standard path also verifies JSON->tool dispatch. The local path
+      // confirms catalogue delivery and acknowledgement, not model syntax.
+      // Neither path enables the bar before the context has arrived.
       const prompt = systemPrompt();
       const startupInstruction = P.id === "chatgpt" || P.startupReplyAsCode
         ? `Write exactly one fenced json code block containing {"command":"list_commands"} in your normal reply. This page's PlazCode extension reads that reply and runs the command; this site's native tools do not connect to the local bridge.`
@@ -4938,8 +4939,10 @@ return result`;
       // Some providers can answer the initial request as prose despite having
       // received the command protocol. Their opt-in loads the already fetched
       // bridge catalogue locally, then asks the model to acknowledge it.
-      if (P.deterministicBootstrapList && listRes.kind === "text") {
+      let localBootstrapList=false;
+      if (P.deterministicBootstrapList && listRes.kind === "text" && !isProviderPolicyRefusal(listRes.text)) {
         diag("start.deterministicList", { kind: listRes.kind });
+        localBootstrapList=true;
         listRes = { kind: "tool", calls: [{ tool: "list_commands", arguments: {} }], item: listRes.item || P.lastAssistant() };
       }
       // The handshake only needs the command-list request. If the model also appended
@@ -4956,21 +4959,29 @@ return result`;
         return;
       }
 
-      const startupTurn = startupTurnIdentity(listRes.item);
-      decorate.toolBox(listRes.item, "list_commands", "run", "loading commands", true, "", "read");
+      const startupTurn = localBootstrapList ? null : startupTurnIdentity(listRes.item);
+      if(!localBootstrapList)decorate.toolBox(listRes.item, "list_commands", "run", "loading commands", true, "", "read");
       try { ui.trackCard("list_commands", "run", "loading commands", "read"); } catch {}
       diag("start.listCommands", { phase: "run" });
-      rememberExecuted(listRes.item);
+      if(!localBootstrapList)rememberExecuted(listRes.item);
+      const catalogueTarget={chat:P.conversationKey(),engine:activeEngine()};
       const toolFeedback = await runTool({ tool: "list_commands", arguments: startupCall.arguments || {} });
-      if (!alive()) return;
+      if (!alive() || A.stop || P.conversationKey()!==catalogueTarget.chat || activeEngine()!==catalogueTarget.engine) return;
       const cur = activeEngine();
       const scoped = A.toolList.filter((t) => (t.server || cur) === cur);
       const offline = /Roblox Studio is currently OFFLINE|Unreal Editor is currently OFFLINE|AgentScript is currently OFFLINE/.test(toolFeedback);
-      if (P.requireLiveStartup && (offline || feedbackIsError(toolFeedback))) {
+      if ((P.requireLiveStartup || localBootstrapList) && (offline || feedbackIsError(toolFeedback) || !scoped.length)) {
         ui.banner('warn','Bridge connection was not confirmed','Start zatrzymany. Sprawdź PlazCode.exe oraz połączenie ze Studio przed kolejną próbą.');return;
       }
+      if(P.probeEngineOnStartup){
+        let live;try{live=await bg({type:'live-status'});}catch{live=null;}
+        if(!alive() || A.stop || P.conversationKey()!==catalogueTarget.chat || activeEngine()!==catalogueTarget.engine)return;
+        if(!live?.ok || (cur==='local'?live.local_connected:live.roblox_connected)!==true){
+          ui.banner('warn','Bridge connection was not confirmed','The command catalogue is available, but the selected engine did not confirm a live connection. Startup stopped before sending context.');return;
+        }
+      }
       rememberStartupOutcome(startupTurn, offline ? "err" : "done", offline ? "offline" : `${scoped.length} commands`);
-      decorate.toolBox(listRes.item, "list_commands", offline ? "err" : "done",
+      if(!localBootstrapList)decorate.toolBox(listRes.item, "list_commands", offline ? "err" : "done",
         offline ? "offline" : `${scoped.length} commands`, true, "", "read");
       try { ui.trackCard("list_commands", offline ? "err" : "ok", offline ? "offline" : `${scoped.length} commands`, "read"); } catch {}
       diag("start.listCommands", { phase: "done", commands: scoped.length, offline, chars: String(toolFeedback || "").length });
@@ -5013,7 +5024,8 @@ return result`;
         return `${t.name}${params.length ? ` {${params.join(", ")}}` : " {}"}${desc ? ` — ${desc}` : ""}`;
       }).join("\n") + (!offline && typeof connectedAddonsNote === "function" && connectedAddonsNote(cur) ? "\n" + connectedAddonsNote(cur) : "");
       const connectionLine = !offline ? `PlazCode connection: ${cur === "local" ? "the AgentScript workspace" : "Roblox Studio"} is connected right now. Run commands yourself through the PlazCode command format; never ask the user to copy and paste scripts.\n\n` : "";
-      let readyPrompt = `Output of 'list_commands':\n${digest}\n\n${connectionLine}${stagedStartup ? "(System note: The list_commands handshake already ran. These are instructions for future user tasks, not another startup request.)\n" + prompt + "\n\n" : ""}(System note: The startup tool call succeeded. Startup is NOT complete until you acknowledge this result. Reply with exactly "PlazCode is ready." and nothing else.)`;
+      const catalogueNote=localBootstrapList?'The extension fetched this command reference from its bridge after your prose reply; you did not issue a project command.':'The list_commands handshake already ran.';
+      let readyPrompt = `Output of 'list_commands':\n${digest}\n\n${connectionLine}${stagedStartup ? "(System note: "+catalogueNote+" These are instructions for future user tasks, not another startup request.)\n" + prompt + "\n\n" : ""}(System note: The extension command-list request succeeded. Startup is NOT complete until you acknowledge this result. Reply with exactly "PlazCode is ready." and nothing else.)`;
       // 1.24.12: Notion turns Markdown line markers (- item, 1. item, # Heading)
       // and **bold** into formatting while the message is written, so the draft
       // no longer matched and startup stalled with it left in the chat box.

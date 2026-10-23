@@ -74,6 +74,16 @@ const RSProvider = (() => {
   let lockedEditor=null;
   let copilotInputLocked=false, writingEditor=false;
   const editorLocks=new WeakMap();
+  const copilotWritten=new WeakMap();
+  function presentedValue(actual,expected,echo=false){
+    // Copilot may append an invisible caret suffix (the report showed two
+    // extra UTF-16 units starting with U+200B). Project ONLY our known write:
+    // preserve every character of expected, including its own invisible tail.
+    // Never strip format characters from arbitrary drafts or command source.
+    if(site.id!=='copilot' || !actual.startsWith(expected))return actual;
+    const suffix=actual.slice(expected.length),padding=echo?suffix.replace(/^ /,''):suffix;
+    return /^\u200B(?:[ \t\u00A0\u200B\uFEFF]|\r?\n)?$/.test(padding)?expected:actual;
+  }
   const richEditor=ed=>!!ed && !/^(?:TEXTAREA|INPUT)$/.test(ed.tagName);
   const transcriptSelector='pre,code,[role="dialog"],'+site.user+','+site.assistant;
   function emptyCopilotFrame(ed) {
@@ -142,7 +152,14 @@ const RSProvider = (() => {
     }
     return ed.innerText ?? ed.textContent ?? '';
   }
-  const editorText = () => read(() => {const ed=getEditor();return richEditor(ed) ? richEditorText(ed) : ed.value;}, '');
+  const editorText = () => read(() => {
+    const ed=getEditor();if(!richEditor(ed))return ed.value;
+    const text=richEditorText(ed);
+    return copilotWritten.has(ed)?presentedValue(text,copilotWritten.get(ed)):text;
+  }, '');
+  document.addEventListener('input',event=>{
+    if(site.id==='copilot' && event.isTrusted && !writingEditor){const ed=getEditor();if(ed?.contains(event.target))copilotWritten.delete(ed);}
+  },true);
   // Keep Copilot's framework-owned editable/readOnly attributes intact. Native
   // edits from the user are blocked during injection, while our synchronous
   // editing command is allowed to update the site's actual editor model.
@@ -317,6 +334,7 @@ const RSProvider = (() => {
     }
   }
   function setValue(ed,value){
+    if(site.id==='copilot' && richEditor(ed))copilotWritten.set(ed,String(value));
     writingEditor=true;try{return writeValue(ed,value);}finally{writingEditor=false;}
   }
   function writeValue(ed, value) {
@@ -394,7 +412,7 @@ const RSProvider = (() => {
       const final = index === chunks.length - 1;
       const ack = `PlazCode startup part ${index + 1}/${chunks.length} received.`;
       return {text:`⟦RS-SYS⟧ PlazCode startup context part ${index + 1}/${chunks.length}. Preserve all parts in order. This is a command reference, not a project task. Do not run commands while receiving these parts.\n\nBEGIN CONTEXT PART\n${chunk}\nEND CONTEXT PART\n\n` +
-        (final ? 'All parts arrived. The list_commands handshake succeeded. Reply exactly "PlazCode is ready." and wait for the user task.' : `More context follows. Reply exactly "${ack}" and nothing else.`),
+        (final ? 'All parts arrived. The extension returned the command reference. Reply exactly "PlazCode is ready." and wait for the user task.' : `More context follows. Reply exactly "${ack}" and nothing else.`),
         ...(final ? {} : {ack})};
     });
   }
@@ -439,6 +457,15 @@ const RSProvider = (() => {
     const leaves = blocks.filter(pre => !blocks.some(other => other !== pre && pre.contains(other)));
     const code = leaves.map(pre => candidate(pre.matches('.cm-content')?codeMirrorSource(pre):textWithout(codeSource(pre)),true)).filter(Boolean);
     if (code.length) return code.join('\n\n');
+    if(site.id==='arcee' && item && !all(item,'pre,.cm-content,blockquote').length){
+      const inline=scopes.flatMap(root=>all(root,'code')).filter(node=>!node.closest(TEXT_UI_SKIP+',blockquote'));
+      if(inline.length===1){
+        const source=textWithout(inline[0]).trim();
+        // A standalone inline code node is also a whole structured reply.
+        // Inline examples with surrounding prose remain non-executable.
+        if(source===text && /^\{\s*"command"\s*:/.test(source))return candidate(source);
+      }
+    }
     if (item && (all(item,'pre,.cm-content').length || query(item,'blockquote,code'))) return '';
     const fenced = text.match(/^```(?:json|text|txt|lua|luau)?\s*\n([\s\S]*?)\n```\s*$/i);
     if (fenced) return candidate(fenced[1]);
@@ -522,7 +549,7 @@ const RSProvider = (() => {
     if (stopButton()) throw Error(site.name + ': wait for the current response before sending.');
     const origin = conversationKey();
     const normalize=value=>String(value).replace(/\s+/g,' ').trim();
-    const matchesSent=item=>isUserItem(item) && normalize(itemText(item))===normalize(text);
+    const matchesSent=item=>isUserItem(item) && presentedValue(normalize(itemText(item)),normalize(text),true)===normalize(text);
     const beforeUsers=allItems().filter(isUserItem);
     const beforeMatching=beforeUsers.filter(matchesSent).length;
     const beforeAnonymousMatches=beforeUsers.filter(item=>matchesSent(item) && !nativeMessageId(item)).length;
@@ -545,12 +572,14 @@ const RSProvider = (() => {
       if(!current || current!==ed && (site.id!=='copilot' || ed.isConnected && visible(ed) ||
           ![originalParent,originalFrame,replacementBoundary].some(node=>node?.isConnected && node!==document.body && node!==document.documentElement && !node.matches('main,[role="main"]') && node.contains(current))))
         throw Error(site.name+': composer changed '+stage+'. Nothing was sent.');
+      if(current!==ed && copilotWritten.has(ed))copilotWritten.set(current,copilotWritten.get(ed));
       const actual=editorText();
       if(checkText && actual!==expected){
         let at=0;while(at<expected.length && at<actual.length && expected[at]===actual[at])at++;
         const point=(value,index)=>index===value.length?'end':'U+'+value.codePointAt(index).toString(16).toUpperCase().padStart(4,'0');
         diag(site.id+'.draft_changed',{stage,expectedChars:expected.length,actualChars:actual.length,firstDifference:at,editorReplaced:current!==ed});
-        throw Error(site.name+': prepared text changed '+stage+'. Nothing was sent. Expected '+expected.length+' characters, read '+actual.length+'; difference at '+at+' ('+point(expected,at)+' / '+point(actual,at)+').');
+        const actualPoints=at===expected.length?[...actual.slice(at)].slice(0,4).map(char=>point(char,0)).join(' '):point(actual,at);
+        throw Error(site.name+': prepared text changed '+stage+'. Nothing was sent. Expected '+expected.length+' characters, read '+actual.length+'; difference at '+at+' ('+point(expected,at)+' / '+actualPoints+').');
       }
       ed=current;if(site.id==='copilot' && copilotInputLocked)lockedEditor=ed;
     };
@@ -667,7 +696,7 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r21',
+    build:'r22',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the
@@ -676,6 +705,7 @@ const RSProvider = (() => {
     startupReplyAsCode:true, startupRequest:site.compact || site.max > 0 ? startupRequest : undefined, startupFeedbackMessages,
     startupCorrection:site.id==='arcee'?'PlazCode startup check: reply with only the plain JSON object {"command":"list_commands","params":{}}, without markdown backticks or any language label. The extension runs it against the connected bridge. Wait for the actual result.':undefined,
     requireConfirmedStartup:true,
+    deterministicBootstrapList:site.id==='arcee',requireLiveStartup:site.id==='arcee',probeEngineOnStartup:site.id==='arcee',
     inspectOnReadRequest:!!site.strictComposer,
     promptExtra:site.strictComposer?'When the user asks what is in their connected Studio or whether a named object exists, perform a read-only inspection using the actual command schemas and answer from its result. That question authorizes the read. Do not merely offer to inspect, invent project facts or guess command names. Do not edit the project for an inspection question.':undefined,
     requireFreshResponse:site.id==='motif' || !!site.strictComposer,

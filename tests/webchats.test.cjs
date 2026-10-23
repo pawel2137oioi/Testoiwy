@@ -278,8 +278,8 @@ test('all packaged copies register each host and preserve valid script paths and
 
 // Run the actual shared startup function and its actual prompt builder. The
 // bridge and model replies are controlled; DOM delivery uses the real adapter.
-function bootstrapFixture(id, {engine='roblox', effort='ultracode', custom='', wrongAck=false, initialReply, contextReply, nativeError, arceeCodeMirror=false, handshakeReplies, transport={}}={}) {
-  const sent=[],commands=[],banners=[],covers=[]; let f;
+function bootstrapFixture(id, {engine='roblox', effort='ultracode', custom='', wrongAck=false, initialReply, contextReply, nativeError, arceeCodeMirror=false, handshakeReplies, transport={}, catalogueResult, onCatalogue, arceeInline=false, liveStatus={ok:true,roblox_connected:true,local_connected:true},onLiveProbe}={}) {
+  const sent=[],commands=[],banners=[],covers=[],decorated=[],executed=[]; let f;
   const cap=id==='motif'?49999:16000;
   f=fixture(id,{onSend({w,d,ed,send,add}) {
     const text=ed.value;sent.push(text);
@@ -295,6 +295,8 @@ function bootstrapFixture(id, {engine='roblox', effort='ultracode', custom='', w
     if(arceeCodeMirror && response.includes('"command"')){
       const row=add('assistant','<div class="chat-response-content"><div class="markdown-content"><div>js</div><div class="cm-editor"><div class="cm-content"><div class="cm-line">partial DOM</div></div></div></div></div>',true);
       const text=response.replace(/^```json\n/,'').replace(/\n```$/,'');row.querySelector('.cm-content').cmView={rootView:{view:{state:{doc:{length:text.length,toString:()=>text}}}}};
+    }else if(arceeInline && response.includes('"command"')){
+      const assistant=add('assistant','<p><code></code></p>',true);assistant.querySelector('code').textContent=response.replace(/^```json\n/,'').replace(/\n```$/,'');
     }else {
       const assistant=add('assistant',response);
       if(transport.explicitTestIds){assistant.removeAttribute('data-message-author-role');assistant.dataset.testid='assistant-message';}
@@ -316,9 +318,10 @@ function bootstrapFixture(id, {engine='roblox', effort='ultracode', custom='', w
       const reply=f.P.readAssistant(),calls=w.RSParser.parseToolCalls(reply.reply);
       return calls.length?{kind:'tool',calls,item:reply.item}:{kind:'text',text:reply.reply,item:reply.item};
     },
-    startupTurnIdentity:item=>f.P.itemKey(item),rememberStartupOutcome(){},rememberExecuted(){},
-    decorate:{sweep(){},toolBox(){}},rememberSession(){},connectedAddonsNote:()=>'',
-    runTool:async call=>{commands.push(call.tool);assert.equal(call.tool,'list_commands');return 'Output of list_commands: mock connected command reference';},
+    startupTurnIdentity:item=>f.P.itemKey(item),rememberStartupOutcome(){},rememberExecuted:item=>executed.push(item),
+    bg:async request=>{assert.equal(request.type,'live-status');if(onLiveProbe)onLiveProbe({A,w,P:f.P});return liveStatus;},
+    decorate:{sweep(){},toolBox:(...args)=>decorated.push(args)},rememberSession(){},connectedAddonsNote:()=>'',
+    runTool:async call=>{commands.push(call.tool);assert.equal(call.tool,'list_commands');if(onCatalogue)onCatalogue({A,w,P:f.P});return catalogueResult??'Output of list_commands: mock connected command reference';},
     SendAbortedError:class SendAbortedError extends Error{},
   });
   vm.runInContext('window.RSParser=RSParse;',c);
@@ -329,8 +332,9 @@ function bootstrapFixture(id, {engine='roblox', effort='ultracode', custom='', w
   const restoreStart=main.indexOf('  function domHasRsSignal() {'),restoreEnd=main.indexOf('\n  function syncSessionState()',restoreStart);
   assert.ok(promptStart>=0&&promptEnd>promptStart&&start>=0&&end>start);
   assert.ok(helperStart>=0&&helperEnd>helperStart&&restoreStart>=0&&restoreEnd>restoreStart);
-  vm.runInContext(main.slice(helperStart,helperEnd)+'\n'+main.slice(restoreStart,restoreEnd)+'\n'+main.slice(promptStart,promptEnd)+'\n'+main.slice(start,end)+'\nwindow.startBootstrap=startSession;window.fullStartupContext=systemPrompt;window.parseCommands=parseProviderToolCalls;window.hasMarkerSession=domHasRsSignal;',c);
-  return {...f,sent,commands,banners,covers,A,cap,run:options=>w.startBootstrap(options)};
+  const feedbackStart=main.indexOf('  const BODY_ERR_RE ='),feedbackEnd=main.indexOf('\n  // Some tools answer',feedbackStart);
+  vm.runInContext(main.slice(feedbackStart,feedbackEnd)+'\n'+main.slice(helperStart,helperEnd)+'\n'+main.slice(restoreStart,restoreEnd)+'\n'+main.slice(promptStart,promptEnd)+'\n'+main.slice(start,end)+'\nwindow.startBootstrap=startSession;window.fullStartupContext=systemPrompt;window.parseCommands=parseProviderToolCalls;window.hasMarkerSession=domHasRsSignal;',c);
+  return {...f,sent,commands,banners,covers,A,cap,decorated,executed,run:options=>w.startBootstrap(options)};
 }
 for(const correction of [false,true])test('Arcee actual bootstrap accepts screenshot CodeMirror artifact, correction='+correction,async()=>{
  const command='on\n{\n"command":"list_commands",\n"params":{}\n}';
@@ -450,4 +454,41 @@ test('command blocks keep code strings that mention inability to call tools',()=
 test('a programming code example containing a JSON command string is never executed',()=>{
   const f=bootstrapFixture('motif');const item=f.add('assistant','<pre><code></code></pre>',true);item.querySelector('code').textContent='const sample = \'{"command":"write_file","params":{}}\';';
   assert.equal(f.w.parseCommands(f.P.itemText(item),item).length,0);
+});
+
+// Arcee may reuse a prose acknowledgement from an older session. Catalogue
+// fallback is local and read-only; it is never attributed to an AI command.
+test('Arcee restart: prose twice fetches a real local catalogue and requires every context acknowledgement',async()=>{
+ const f=bootstrapFixture('arcee',{handshakeReplies:['PlazCode is ready.','PlazCode is ready.']});
+ f.add('user','Previous project question');f.add('assistant','Previous uninspected answer');useActualResponseReader(f);f.w.waitForResponse=f.w.readActualResponse;
+ const result=await f.run({restart:true});assert.equal(result?.ready,true,JSON.stringify(f.banners));assert.deepEqual(f.commands,['list_commands']);assert.equal(f.A._confirmedStartup,true);assert.equal(f.decorated.length,0);assert.equal(f.executed.length,0);assert.ok(f.sent.some(text=>text.includes('extension fetched this command reference')));assert.equal(f.sent.filter(text=>text===f.sent[0]).length,1);assert.deepEqual(f.banners,[]);
+});
+test('Arcee complete inline JSON starts through the actual response watcher',async()=>{
+ const f=bootstrapFixture('arcee',{arceeInline:true,initialReply:'{"command":"list_commands","params":{}}'});useActualResponseReader(f);f.w.waitForResponse=f.w.readActualResponse;
+ const result=await f.run();assert.equal(result?.ready,true,JSON.stringify(f.banners));assert.deepEqual(f.commands,['list_commands']);assert.ok(f.decorated.length>0);assert.equal(f.executed.length,1);assert.notEqual(f.sent[1],f.P.startupCorrection);
+});
+for(const catalogueResult of ['ERROR: bridge unavailable',"Output of 'list_commands':\nRoblox Studio is currently OFFLINE", "Output of 'list_commands':\nERROR: no commands"])test('Arcee local catalogue failure never claims Ready: '+catalogueResult,async()=>{
+ const f=bootstrapFixture('arcee',{handshakeReplies:['Received.','Received.'],catalogueResult});assert.equal(await f.run(),undefined);assert.equal(f.A.started,false);assert.equal(f.A._confirmedStartup,false);assert.equal(f.sent.length,2);assert.deepEqual(f.commands,['list_commands']);assert.ok(f.banners.some(row=>row[1]==='Bridge connection was not confirmed'));
+});
+test('Arcee local catalogue still requires context acknowledgements',async()=>{
+ const f=bootstrapFixture('arcee',{handshakeReplies:['Received.','Received.'],wrongAck:true});assert.equal(await f.run(),undefined);assert.equal(f.A.started,false);assert.equal(f.A._confirmedStartup,false);assert.deepEqual(f.commands,['list_commands']);assert.ok(f.banners.some(row=>row[1]==='Startup context was not acknowledged'));
+});
+for(const action of ['stop','chat','generation'])test('Arcee local catalogue '+action+' discards the result before sending context',async()=>{
+ const f=bootstrapFixture('arcee',{handshakeReplies:['Received.','Received.'],onCatalogue:({A,w})=>{if(action==='stop')A.stop=true;else if(action==='chat')w.history.pushState({},'','/playground/other');else A.startGen++;}});f.w.history.replaceState({},'','/playground/original');assert.equal(await f.run(),undefined);assert.equal(f.A.started,false);assert.ok(!f.A._confirmedStartup);assert.equal(f.sent.length,2);assert.deepEqual(f.commands,['list_commands']);
+});
+test('Arcee refusal after one protocol correction is not bypassed by local catalogue fallback',async()=>{
+ const f=bootstrapFixture('arcee',{handshakeReplies:['Received.',"I will not run commands through the PlazCode bridge."]});assert.equal(await f.run(),undefined);assert.deepEqual(f.commands,[]);assert.equal(f.sent.length,2);assert.equal(f.A.started,false);assert.ok(f.banners.some(row=>row[1]==='AI declined the connection request'));
+});
+test('Arcee malformed command classification cannot trigger local catalogue fallback',async()=>{
+ const f=bootstrapFixture('arcee');f.w.waitForResponse=async()=>({kind:'parse_error',reason:'unclosed',raw:'{"command":"execute_luau"'});assert.equal(await f.run(),undefined);assert.deepEqual(f.commands,[]);assert.equal(f.sent.length,1);assert.equal(f.A.started,false);
+});
+test('Arcee a different parsed tool is never replaced with a local catalogue',async()=>{
+ const f=bootstrapFixture('arcee',{initialReply:'{"command":"execute_luau","params":{"code":"return 1"}}'});assert.equal(await f.run(),undefined);assert.deepEqual(f.commands,[]);assert.equal(f.sent.length,1);assert.equal(f.A.started,false);
+});
+
+for(const liveStatus of [{ok:true,roblox_connected:false},{ok:false},{ok:true,roblox_connected:false,local_connected:true}])test('Arcee local catalogue cannot use cached schemas as proof of a live engine '+JSON.stringify(liveStatus),async()=>{
+ const f=bootstrapFixture('arcee',{handshakeReplies:['Received.','Received.'],liveStatus});assert.equal(await f.run(),undefined);assert.equal(f.A.started,false);assert.equal(f.A._confirmedStartup,false);assert.equal(f.sent.length,2);assert.deepEqual(f.commands,['list_commands']);assert.ok(f.banners.some(row=>row[1]==='Bridge connection was not confirmed'));
+});
+test('Arcee Stop during live verification sends no context',async()=>{
+ const f=bootstrapFixture('arcee',{handshakeReplies:['Received.','Received.'],onLiveProbe:({A})=>{A.stop=true;}});assert.equal(await f.run(),undefined);assert.equal(f.A.started,false);assert.equal(f.A._confirmedStartup,false);assert.equal(f.sent.length,2);assert.deepEqual(f.commands,['list_commands']);
 });
