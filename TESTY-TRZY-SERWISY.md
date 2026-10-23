@@ -1,5 +1,18 @@
 # Raport weryfikacji — 2026-10-23
 
+## r24 — odczyt zwiniętej historii i potwierdzenie wysyłki Copilot
+
+**767/767 testów Node**, bez błędów i pominięć (`npm test --prefix tests`). Nowy copilot-history.test.cjs dodaje 21 przypadków: sześć oznaczonych struktur historii, czytanie wiadomości będącej button/role=button, oddzielenie treści od metadanych i Copy/menu, dwa sposoby rozwinięcia nowego skrótu, pełny tekst zwinięty tylko przez CSS, brak pełnego tekstu po rozwinięciu, stare i anonimowe wpisy po remoncie, niezgodny/krótki prefiks, obce aria-controls, Stop/zmianę rozmowy/remount, blok kodu asystenta w kontrolce oraz odrzucenie samego JSON asystenta jako dowodu wysyłki i nieoznaczonego JSON jako roli. Suma: wcześniejsze 746 + 21.
+
+**39/39 wykonanych prób Chromium**: 36 controlled-editors.cjs oraz 3 webchats-startup.cjs. Pełny zestaw skryptów i overlay.css przechodzi Start Agent, odbiór kontekstu i natywne pytanie z jednym get_studio_state oraz wynikiem. Copilot obejmuje dokładne 552 znaki + U+200B U+200C, jawne wiadomości z role=button, metadane i Copy, pełny tekst zwinięty przez CSS oraz faktycznie ucięty podgląd rozwijany raz do pełnej treści. Licznik kontroluje brak kliknięć Copy, nadmiarowych rozwinięć i duplikacji Send. Arcee nadal przechodzi lokalny katalog po odpowiedzi opisowej i rzeczywisty kod odczytu. React/Lexical/CodeMirror sprawdzają wewnętrzny model, dokładne źródło i pojedynczą wysyłkę.
+
+Adapter r23 w tej samej nowej próbie pełnego interfejsu zatrzymuje się po wysłaniu na braku potwierdzenia. Dodatnie próby odczytu wiadomości w kontrolce również odtwarzają ten błąd na r23. Na r24 przechodzą. Nie wykonywano ponownie niezmienionych zestawów geometrii i podstawowej wysyłki; poprzednie wyniki są w r22. Składnię zmienionych JS sprawdzono Node 24 w Linux; wskazany w MAINTENANCE.md runtime Windows nie jest dostępny.
+
+Zmiana dotyczy czytnika historii Copilot i ograniczonego rozwijania własnego nowego wpisu, nie ponownego wysyłania. Pełny tekst nadal jest wymagany do potwierdzenia. W razie niepowodzenia raport zawiera wyłącznie liczniki i długości. Wersja 1.24.32, core/provider r24, parser r13. Trzy kopie zsynchronizowane. Model, background i Studio w próbach są kontrolowane; zegar stabilizacji skrócono tylko w fixture. Nie oglądano zalogowanego DOM użytkownika; nie ustalono z pewnością, który wariant struktury występuje na jego koncie. Sumy: WEBCHATS-R24-SHA256SUMS.txt.
+
+---
+
+
 ## r23 — dokładna para U+200B U+200C z komunikatu Copilot
 
 **746/746 testów Node**, bez błędów i pominięć (`cd tests && npm test`). Dotychczasowy webchats-r22.test.cjs rozszerzono z 26 do 30 przypadków. Dodano dokładną końcówkę U+200B U+200C, literalne U+200C w kodzie i na końcu podanego źródła oraz różnicę wewnątrz szkicu. Domyślne opakowanie tego fixture jest teraz parą ze zrzutu, więc dotychczasowe próby echa, remountu i czyszczenia również ją obejmują. Suma: wcześniejsze 742 + 4.

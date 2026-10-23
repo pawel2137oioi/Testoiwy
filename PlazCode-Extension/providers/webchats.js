@@ -25,9 +25,10 @@ const RSProvider = (() => {
       frame:'[data-testid="composer"], [data-testid="composer-content"], [data-testid="chat-composer"], form',
       send:'button[data-testid="send-button"], button[data-testid="submit-button"], button[aria-label*="send" i], button[aria-label*="submit" i], button[aria-label*="wyślij" i], button[aria-label*="prześlij" i], button[title*="wyślij" i], button[type="submit"]',
       stop:'button[data-testid="stop-button"], button[aria-label*="stop" i], button[aria-label*="zatrzymaj" i], button[aria-label*="przerwij" i]',
-      user:'[data-message-author-role="user"], [data-message-role="user"], [data-role="user"], [data-content="user-message"], [data-message-author="user"], [data-testid="user-message"]',
-      assistant:'[data-message-author-role="assistant"], [data-message-role="assistant"], [data-role="assistant"], [data-content="ai-message"], [data-content="response"], [data-message-author="assistant"], [data-message-author="bot"], [data-testid="assistant-message"], [data-testid="bot-message"], [data-testid="answer"]',
+      user:'[data-message-author-role="user"], [data-message-role="user"], [data-role="user"], [data-content="user-message"], [data-message-author="user"], [data-testid="user-message"], [data-testid="user-message-container"], [data-testid="user-message-content"], [data-testid="user-message-text"]',
+      assistant:'[data-message-author-role="assistant"], [data-message-role="assistant"], [data-role="assistant"], [data-content="ai-message"], [data-content="response"], [data-message-author="assistant"], [data-message-author="bot"], [data-testid="assistant-message"], [data-testid="assistant-message-container"], [data-testid="assistant-message-content"], [data-testid="bot-message"], [data-testid="answer"]',
       body:'.markdown, .prose, .markdown-body, .response-text, .text-response, message-content, [data-testid="message-content"]',
+      userBody:'[data-testid="user-message-content"], [data-testid="user-message-text"], [data-content="user-message-text"], .whitespace-pre-wrap',
       max:0,page:8000,startupPage:7000,feedbackBudget:9000,
     },
     'aistudio.tencent.ai': {
@@ -208,9 +209,25 @@ const RSProvider = (() => {
     return nodes.filter(el => !nodes.some(parent => parent !== el && parent.contains(el) &&
       isUserItem(parent) === isUserItem(el)));
   }
-  const TEXT_UI_SKIP = '.rs-chip, .rs-chat-activity, button, [role="button"], .msg-actions, .msg-err, .reasoning, [data-testid*="reasoning"], [data-variant="Thoughts"], .hy-think, .code-block-header, .md-code-block-banner-wrap, .markdown-viewer-code-block-header, .hyc-common-markdown__code__hd-container, .linenumber, .line-number, .react-syntax-highlighter-line-number';
+  const TEXT_UI_DECORATION = '.rs-chip, .rs-chat-activity, .msg-actions, .msg-err, .reasoning, [data-testid*="reasoning"], [data-variant="Thoughts"], .hy-think, .code-block-header, .md-code-block-banner-wrap, .markdown-viewer-code-block-header, .hyc-common-markdown__code__hd-container, .linenumber, .line-number, .react-syntax-highlighter-line-number';
+  const TEXT_UI_SKIP=TEXT_UI_DECORATION+', button, [role="button"]';
+  function skippedTextNode(node,exclude=''){
+    if(site.id!=='copilot')return matches(node,TEXT_UI_SKIP+(exclude?', '+exclude:''));
+    if(matches(node,TEXT_UI_DECORATION+(exclude?', '+exclude:'')))return true;
+    if(!matches(node,'button,[role="button"]'))return false;
+    // An explicitly identified Copilot message can itself be the disclosure
+    // control. It is content, while its child Copy/menu buttons remain UI.
+    if(site.id==='copilot' && (isUserItem(node) || isAssistantItem(node)))return false;
+    if(site.id==='copilot' && node.hasAttribute('aria-expanded') && node.closest(site.user) && query(node,'p,[data-testid="user-message-content"],[data-testid="user-message-text"]'))return false;
+    return true;
+  }
+  function textUIAncestor(node,exclude=''){
+    if(site.id!=='copilot')return !!node.closest(TEXT_UI_SKIP+(exclude?', '+exclude:''));
+    for(let current=node;current?.nodeType===1;current=current.parentElement)if(skippedTextNode(current,exclude))return true;
+    return false;
+  }
   const codeSource = pre => {
-    const sources = all(pre,'code').filter(node => !node.closest(TEXT_UI_SKIP));
+    const sources = all(pre,'code').filter(node => !textUIAncestor(node));
     return sources.length === 1 ? sources[0] : pre;
   };
   function codeMirrorSource(content){
@@ -222,10 +239,9 @@ const RSProvider = (() => {
   }
   function textWithout(root, exclude = '', preserveEdges = false) {
     let text = '';
-    const skip = TEXT_UI_SKIP + (exclude ? ', ' + exclude : '');
     function walk(node) {
       if (node.nodeType === 3) { text += node.nodeValue; return; }
-      if (node.nodeType !== 1 || matches(node, skip)) return;
+      if (node.nodeType !== 1 || skippedTextNode(node,exclude)) return;
       if(site.id==='arcee' && node.matches('.cm-content')){
         const source=codeMirrorSource(node);
         if(source!==null){if(text && !text.endsWith('\n'))text+='\n';text+=source;}
@@ -251,8 +267,13 @@ const RSProvider = (() => {
   }
   function replyRoots(item) {
     if (!item) return [];
+    if(site.id==='copilot' && isUserItem(item)){
+      const roots=all(item,site.userBody).filter(node=>!textUIAncestor(node));
+      const top=roots.filter(node=>!roots.some(parent=>parent!==node && parent.contains(node)));
+      return top.length?top:[item];
+    }
     if (!isAssistantItem(item)) return site.userBody && item.matches('.chat-user-message') ? all(item,site.userBody).slice(0,1) : [item];
-    const roots=all(item,site.body).filter(node=>!node.closest(TEXT_UI_SKIP));
+    const roots=all(item,site.body).filter(node=>!textUIAncestor(node));
     const top=roots.filter(node=>!roots.some(parent=>parent!==node && parent.contains(node)));
     return top.length ? top : site.id==='tencent' || (site.id==='arcee' && item.matches('.chat-message')) ? [] : [item];
   }
@@ -452,13 +473,13 @@ const RSProvider = (() => {
       return '';
     };
     const scopes=site.id==='arcee'?replyRoots(item):[item];
-    const blocks = item ? scopes.flatMap(root=>all(root,site.id==='arcee'?'pre,.cm-content':'pre')).filter(pre => !pre.closest(TEXT_UI_SKIP+',blockquote')) : [];
+    const blocks = item ? scopes.flatMap(root=>all(root,site.id==='arcee'?'pre,.cm-content':'pre')).filter(pre => !textUIAncestor(pre,'blockquote')) : [];
     // Tencent nests pre elements. Read one innermost code body per block.
     const leaves = blocks.filter(pre => !blocks.some(other => other !== pre && pre.contains(other)));
     const code = leaves.map(pre => candidate(pre.matches('.cm-content')?codeMirrorSource(pre):textWithout(codeSource(pre)),true)).filter(Boolean);
     if (code.length) return code.join('\n\n');
     if(site.id==='arcee' && item && !all(item,'pre,.cm-content,blockquote').length){
-      const inline=scopes.flatMap(root=>all(root,'code')).filter(node=>!node.closest(TEXT_UI_SKIP+',blockquote'));
+      const inline=scopes.flatMap(root=>all(root,'code')).filter(node=>!textUIAncestor(node,'blockquote'));
       if(inline.length===1){
         const source=textWithout(inline[0]).trim();
         // A standalone inline code node is also a whole structured reply.
@@ -551,14 +572,36 @@ const RSProvider = (() => {
     const normalize=value=>String(value).replace(/\s+/g,' ').trim();
     const matchesSent=item=>isUserItem(item) && presentedValue(normalize(itemText(item)),normalize(text),true)===normalize(text);
     const beforeUsers=allItems().filter(isUserItem);
+    const beforeAssistants=assistantCount();
     const beforeMatching=beforeUsers.filter(matchesSent).length;
     const beforeAnonymousMatches=beforeUsers.filter(item=>matchesSent(item) && !nativeMessageId(item)).length;
     const beforeIds=new Set(beforeUsers.map(nativeMessageId).filter(Boolean));
-    let confirmedEcho=false;
+    let confirmedEcho=false,expandedEcho=false;
     const echoPresent=()=>{
       if(confirmedEcho)return true;
       const users=allItems().filter(isUserItem),matching=users.filter(matchesSent);
       confirmedEcho=matching.length>beforeMatching || beforeAnonymousMatches===0 && matching.some(item=>nativeMessageId(item) && !beforeIds.has(nativeMessageId(item)));
+      if(!confirmedEcho && !expandedEcho && site.id==='copilot'){
+        for(const [index,item] of users.entries()){
+          const id=nativeMessageId(item);
+          if(id && beforeIds.has(id))continue;
+          const appended=users.length>beforeUsers.length && index>=beforeUsers.length;
+          const freshId=id && beforeIds.size===beforeUsers.length && !beforeIds.has(id);
+          if(!appended && !freshId)continue;
+          const prefix=normalize(itemText(item)).replace(/\u200B\u200C$/,'').replace(/(?:…|\.\.\.)$/,'').trimEnd(),wanted=normalize(text);
+          if(prefix.length<80 || prefix.length>=wanted.length || !wanted.startsWith(prefix))continue;
+          const controls='button[aria-expanded="false"],[role="button"][aria-expanded="false"]';
+          const disclosure=matches(item,controls)?item:all(item,controls).find(node=>{
+            const target=document.getElementById(node.getAttribute('aria-controls')||'');
+            return target && item.contains(target) && !node.closest('.msg-actions');
+          });
+          if(disclosure && owner===sendEpoch && origin===conversationKey()){
+            // Expand only the newly appended, known user message carrying our
+            // long prefix. This is a history disclosure, never Send or a retry.
+            expandedEcho=true;diag(site.id+'.expandSubmittedMessage');disclosure.click();break;
+          }
+        }
+      }
       return confirmedEcho;
     };
     // A focus/input handler may replace the editor while keeping the same
@@ -632,7 +675,11 @@ const RSProvider = (() => {
       }
       return true;
     }
-    failure = site.name + ': message was not confirmed; it may have been sent. Check the chat before retrying.';
+    const usersAfter=allItems().filter(isUserItem),wanted=normalize(text);
+    let bestPrefix=0;
+    for(const item of usersAfter){const actual=normalize(itemText(item));let at=0;while(at<actual.length && at<wanted.length && actual[at]===wanted[at])at++;bestPrefix=Math.max(bestPrefix,at);}
+    diag(site.id+'.unconfirmedDelivery',{usersBefore:beforeUsers.length,usersAfter:usersAfter.length,assistantsBefore:beforeAssistants,assistantsAfter:assistantCount(),bestPrefixChars:bestPrefix,expectedChars:wanted.length,composerEmpty:!editorText().trim()});
+    failure = site.name + ': message was not confirmed; it may have been sent. Check the chat before retrying. Read user messages: '+usersAfter.length+'; closest text '+bestPrefix+'/'+wanted.length+' characters.';
     throw Error(failure);
   }
   async function typeAndSend(value, images) {
@@ -665,7 +712,7 @@ const RSProvider = (() => {
     let ref = null;
     const scopes=site.id==='arcee'?replyRoots(item):[item];
     for (const pre of scopes.flatMap(root=>all(root,site.id==='arcee'?'pre,.cm-editor':'pre'))) {
-      if (pre.closest(TEXT_UI_SKIP+',blockquote') || !/"(?:command|tool)"\s*:|###\s*LUA|###mcp_tool###/i.test(query(pre,'.cm-content')?codeMirrorSource(query(pre,'.cm-content'))||'':pre.textContent || '')) continue;
+      if (textUIAncestor(pre,'blockquote') || !/"(?:command|tool)"\s*:|###\s*LUA|###mcp_tool###/i.test(query(pre,'.cm-content')?codeMirrorSource(query(pre,'.cm-content'))||'':pre.textContent || '')) continue;
       pre.classList.add('rs-tool-hide'); item.classList.add('rs-cmd-mask'); ref ||= pre;
     }
     return ref?.parentElement ? {parent:ref.parentElement,ref} : null;
@@ -696,7 +743,7 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r23',
+    build:'r24',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the

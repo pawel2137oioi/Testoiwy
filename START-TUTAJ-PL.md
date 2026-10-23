@@ -1,3 +1,19 @@
+# PlazCode — rozszerzenie 1.24.32, lokalna poprawka r24
+
+## r24 — potwierdzenie wysłanej wiadomości Copilot
+
+Po ostatnim zrzucie poprawiono odczyt historii rozmowy. Czytnik pomijał wszystkie elementy button/role=button, także jawnie oznaczoną wiadomość będącą kontrolką rozwijania. Taki wpis mógł dać pusty tekst mimo poprawnego wysłania. R24 czyta treść oznaczonych wiadomości, pomijając ich przyciski Copy/menu i metadane; obsługuje również dodatkowe jawne znaczniki treści Copilot.
+
+Jeśli nowy własny wpis zawiera tylko skrócony podgląd, agent może rozwinąć go raz, po sprawdzeniu zgodnego prefiksu co najmniej 80 znaków i przynależności do bieżącej próby. Dopiero pełna zgodność tekstu potwierdza odbiór. Nie ponawia Send. Stary wpis, sam JSON asystenta, obcy podgląd i rozwinięcie bez pełnego tekstu nadal nie potwierdzają wysyłki. Błąd podaje teraz liczbę odczytanych wiadomości i długość pasującego prefiksu, bez treści czatu.
+
+**Aktualizacja:** podmień cały folder rozszerzenia, przeładuj dodatek i odśwież Copilot. Sprawdź **1.24.32** i raport **core:r24/parser:r13/provider:r24**. Uruchom Start Agent w nowym pustym czacie; wcześniej zachowaj lub wyczyść szkic pozostały po starej próbie. Chrome/Edge: `PlazCode-Extension`, Firefox: `PlazCode-Extension-Firefox`. EXE bez zmian.
+
+**Weryfikacja:** 767/767 testów Node i 39/39 wykonanych prób Chromium. Pełny interfejs przechodzi start i jeden odczyt Studio dla dwóch wariantów historii Copilot oraz dla Arcee. Model i most są kontrolowane; nie przeprowadzono próby na zalogowanym koncie ani w prawdziwym Studio. Przyczynę pustego odczytu odtworzono w kodzie; struktura prywatnego DOM ze zrzutu pozostaje niepotwierdzona. Wyniki: [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md); instrukcja: [ARCEE-COPILOT.md](ARCEE-COPILOT.md); sumy: `WEBCHATS-R24-SHA256SUMS.txt`.
+
+Poniżej historia; do aktualizacji obowiązuje r24 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.31, lokalna poprawka r23
 
 ## r23 — dokładna końcówka Copilot U+200B U+200C

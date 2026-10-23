@@ -1,4 +1,13 @@
-# Arcee i copilot.com — r23, rozszerzenie 1.24.31
+# Arcee i copilot.com — r24, rozszerzenie 1.24.32
+
+## R24 — wysłana wiadomość i zwinięta historia Copilot
+
+Zrzut r23 pokazuje, że wiadomość dotarła, lecz jej odczyt nie potwierdził dostarczenia. W kodzie znaleziono pomijanie całego button/role=button, także jeśli sam element był jawnie oznaczoną wiadomością. Poprawiono odczyt takich wiadomości i bloków kodu asystenta; Copy/menu, cytaty i reasoning pozostają poza źródłem komend. Treść użytkownika odczytywana jest z jawnych znaczników, z pominięciem metadanych. Nie wyznacza się roli na podstawie samego JSON lub położenia.
+
+Pełna treść zwinięta przez CSS nie wymaga kliknięcia. Faktycznie skrócony nowy wpis można rozwinąć najwyżej raz, gdy ma zgodny prefiks co najmniej 80 znaków. Stare natywne ID oraz niejednoznaczne anonimowe remounty nie uprawniają do rozwinięcia; kontrolka potomna musi wskazywać treść wewnątrz tego samego wpisu. Rozwinięcie samo w sobie nie dowodzi wysyłki: nadal wymagane jest pełne echo. Stop i zmiana rozmowy przerywają tę ścieżkę. Nie klika się Send ponownie ani nie potwierdza dostarczenia na podstawie samej odpowiedzi asystenta.
+
+Komunikat niepotwierdzonej wysyłki zawiera teraz liczbę odczytanych wpisów użytkownika i długość najbliższego zgodnego prefiksu. Raport diagnostyczny nie zapisuje źródła czatu. Testy Node i pełnego interfejsu odtwarzają błąd na r23 oraz poprawny przepływ na r24; model i most są kontrolowane. Nie przeprowadzono próby na zalogowanym Copilot, więc dokładna struktura DOM ze zrzutu nie jest potwierdzona. Wyniki: TESTY-TRZY-SERWISY.md.
+
 
 ## R23 — drugi znak końcówki: U+200C
 
@@ -68,7 +77,7 @@ Pasek obu nowych adapterów znajduje się nad wykrytym kompozytorem, bez dopisyw
 
 1. Podmień cały folder rozszerzenia i przeładuj go. Zachowaj jedną aktywną instalację. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`.
 2. Odśwież kartę Arcee lub dokładnie `https://copilot.com/`. Nie dodano domeny copilot.microsoft.com. EXE pozostaje bez zmian.
-3. Sprawdź wersję **1.24.31**. Raport transportu nowych adapterów: **core:r23/parser:r13/provider:r23**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
+3. Sprawdź wersję **1.24.32**. Raport transportu nowych adapterów: **core:r24/parser:r13/provider:r24**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
 4. Jeżeli aktualny interfejs serwisu nadal nie zostanie rozpoznany, zwykły czat pozostaje dostępny, a agent nie powinien klikać przypadkowych przycisków. Dla innej domeny po przekierowaniu ta rejestracja nie obowiązuje.
 
 Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przeglądarce. Wysyłanie obrazów pozostaje niezweryfikowane. Brak potwierdzenia wiadomości przez nowy wpis użytkownika zatrzymuje wysyłkę bez ponownego kliknięcia; przed ręczną próbą sprawdź historię, ponieważ wiadomość mogła dotrzeć.
@@ -97,7 +106,7 @@ PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-layout.cjs
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-startup.cjs
 ```
 
-Sumy bieżącej paczki: `WEBCHATS-R23-SHA256SUMS.txt`.
+Sumy bieżącej paczki: `WEBCHATS-R24-SHA256SUMS.txt`.
 
 
 ### Dodatkowe testy kontrolowanych bibliotek

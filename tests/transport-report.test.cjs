@@ -55,12 +55,12 @@ test('source survives rebuilding an owned error card after a DOM remount',async(
 });
 for(const denied of [false,true])test('settings transport report works locally with clipboard denied='+denied,async()=>{
  const f=uiFixture(denied);vm.runInContext('globalThis.mount=mountTransportDiagnostics;',f.c);f.c.mount(f.menu);
- assert.match(f.menu.querySelector('[data-plazcode-transport]').textContent,/core:r23.*parser:r11.*provider:r11/);await f.menu.querySelector('button').onclick();
- const pre=f.menu.querySelector('pre');assert.equal(pre.hidden,false);const info=JSON.parse(pre.textContent);assert.equal(info.transport_build.core,'r23');assert.equal(info.transport_build.parser,'r11');assert.equal(info.provider,'deepseek');assert.equal(info.last_parse_failure.chars,144);assert.equal(f.copies.length,denied?0:1);if(!denied)assert.equal(f.copies[0],pre.textContent);
+ assert.match(f.menu.querySelector('[data-plazcode-transport]').textContent,/core:r24.*parser:r11.*provider:r11/);await f.menu.querySelector('button').onclick();
+ const pre=f.menu.querySelector('pre');assert.equal(pre.hidden,false);const info=JSON.parse(pre.textContent);assert.equal(info.transport_build.core,'r24');assert.equal(info.transport_build.parser,'r11');assert.equal(info.provider,'deepseek');assert.equal(info.last_parse_failure.chars,144);assert.equal(f.copies.length,denied?0:1);if(!denied)assert.equal(f.copies[0],pre.textContent);
 });
 test('state tag includes the actually loaded transport versions',()=>{
  const f=uiFixture();Object.assign(f.w,{activeEngine:()=> 'roblox'});vm.runInContext(section('  function asStateTag()','  // Is `name` a tool')+';globalThis.tag=asStateTag;',f.c);
- assert.match(f.c.tag(),/TRANSPORT=core:r23\/parser:r11\/provider:r11/);
+ assert.match(f.c.tag(),/TRANSPORT=core:r24\/parser:r11\/provider:r11/);
  assert.match(f.c.tag(),/plazcode_status \{\}.*does not require Studio support/);
 });
 test('local status does not depend on the bridge advertising its name or a Studio connection',async()=>{
