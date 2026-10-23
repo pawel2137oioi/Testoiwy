@@ -1,5 +1,18 @@
 # Raport weryfikacji — 2026-10-23
 
+## r25 — brakujące znaczniki ról Copilot
+
+**787/787 testów Node**, bez błędów i pominięć (`npm test --prefix tests`). Nowy copilot-role-markers.test.cjs dodaje 20 przypadków. Sprawdza dokładne tokeny nazwanych grup, testid ai-message, artykuł użytkownika z natywnym ID, treść bez dotychczasowych data-content/data-role, deduplikację zagnieżdżonych znaczników, wyłączenie etykiet i reakcji, pojedyncze wysłanie i rozwinięcie, pierwszy zapis rozmowy, remount starego wpisu, zachowany szkic i przywracanie potwierdzonej sesji. Odmienne podciągi klas i group-hover, sama klasa wewnętrznej treści AI, wyrównanie wizualne, znaczniki w nav/aside/pre/code/blockquote/dialog/edytorze oraz sam JSON AI nie stają się wpisami lub dowodem dostarczenia. Suma: wcześniejsze 767 + 20.
+
+**42/42 próby Chromium**: 36 controlled-editors.cjs i 6 webchats-startup.cjs. Trzy nowe przepływy pełnego startu nie używają wcześniejszych data-content/data-role/data-message-id. Użytkownik ma dokładną klasę group/user-message i natywne ID; asystent jest rozpoznawany przez testid ai-message albo group/ai-message. Test obejmuje treść group/ai-message-item bez markdown, metadane i reakcje, ucięty podgląd rozwijany raz przez przypisaną kontrolkę, U+200B U+200C po własnym źródle i pierwszy zapis /chat/conversation/<id>. Każdy przepływ przechodzi kontekst, gotowość oraz jedno natywne pytanie z jednym get_studio_state i wynikiem, bez duplikacji Send/Copy. Dotychczasowe dwa warianty Copilot i Arcee pozostają w zestawie. Model i most są kontrolowane, czasy stabilizacji skrócono tylko w fixture.
+
+Na adapterze r24 nowe dodatnie próby nazwanych znaczników nie przechodzą; pełny interfejs wariantu named-groups odtwarza brak potwierdzenia przy zerowej liczbie odczytanych wiadomości. Porównanie nie obejmuje zalogowanego konta. Dodatkowo uruchomiono odczyt dwóch publicznych zapisów DOM z repo revivalstack/ai-chat-exporter, commit 4ce218d1290956703489870aafa2adfdf4448f38: copilot-chat-dom.html i copilot-dom-2question-ans-pairs.html. Oba dają po dwa wpisy użytkownika i AI z niepustą treścią. Źródła i zakres: ARCEE-COPILOT.md.
+
+Składnię zmienionych JS sprawdzono Node 24 w Linux; runtime Windows z MAINTENANCE.md nie jest dostępny. Wersja 1.24.33, core/provider r25, parser r13. Trzy kopie zsynchronizowane. Nie powtarzano niezmienionych zestawów geometrii i podstawowej wysyłki (poprzedni wynik w r22). Nie przeprowadzono próby na zalogowanym koncie ani w prawdziwym Studio. Publiczne przykłady potwierdzają znaczniki, ale nie dowodzą aktualnej struktury konta użytkownika. Sumy: WEBCHATS-R25-SHA256SUMS.txt.
+
+---
+
+
 ## r24 — odczyt zwiniętej historii i potwierdzenie wysyłki Copilot
 
 **767/767 testów Node**, bez błędów i pominięć (`npm test --prefix tests`). Nowy copilot-history.test.cjs dodaje 21 przypadków: sześć oznaczonych struktur historii, czytanie wiadomości będącej button/role=button, oddzielenie treści od metadanych i Copy/menu, dwa sposoby rozwinięcia nowego skrótu, pełny tekst zwinięty tylko przez CSS, brak pełnego tekstu po rozwinięciu, stare i anonimowe wpisy po remoncie, niezgodny/krótki prefiks, obce aria-controls, Stop/zmianę rozmowy/remount, blok kodu asystenta w kontrolce oraz odrzucenie samego JSON asystenta jako dowodu wysyłki i nieoznaczonego JSON jako roli. Suma: wcześniejsze 746 + 21.

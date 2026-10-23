@@ -1,3 +1,19 @@
+# PlazCode — rozszerzenie 1.24.33, lokalna poprawka r25
+
+## r25 — Copilot: „Read user messages: 0”
+
+Zrzut 1.24.32 potwierdza brak rozpoznanych wpisów, a nie tylko pusty tekst zwiniętej wiadomości. Dodano dokładne, opisane w publicznych eksporterach znaczniki Copilot: tokeny klas `group/user-message`, `group/ai-message`, `data-testid="ai-message"` i artykuł użytkownika z natywnym ID zakończonym `-user-message`. Czytnik korzysta też z właściwej treści `group/ai-message-item` i `max-w-user-text-message`, pomijając etykiety dostępności i reakcje. Nie zgaduje roli na podstawie JSON, wyglądu lub dowolnej klasy zawierającej słowo message.
+
+Testy obejmują wiadomości bez wszystkich wcześniejszych atrybutów, zwinięty podgląd, pierwszy zapis adresu rozmowy, rozpoznanie polecenia AI, kontekst i odczyt Studio. Wersja r24 w takim przypadku odtwarza 0 odczytanych wpisów; r25 przechodzi. Same odpowiedzi AI i stare wpisy nadal nie potwierdzają wysyłki. Send nie jest ponawiany.
+
+**Aktualizacja:** podmień cały folder rozszerzenia, przeładuj dodatek i odśwież stronę Copilot. Sprawdź **1.24.33** i **core:r25/parser:r13/provider:r25**. W nowym pustym czacie uruchom Start Agent. Zachowaj lub wyczyść szkic pozostały po poprzedniej próbie. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`. EXE bez zmian.
+
+**Weryfikacja:** 787/787 testów Node i 42/42 prób Chromium. Pełny interfejs obejmuje pięć wariantów Copilot i jeden Arcee; model, most i Studio są kontrolowane. Sprawdzono też odczyt dwóch publicznych zapisów DOM Copilot. Nie ma dostępu do zalogowanego konta użytkownika, więc zgodność z jego bieżącym DOM pozostaje niepotwierdzona. Wyniki: [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md); źródła znaczników: [ARCEE-COPILOT.md](ARCEE-COPILOT.md); sumy: `WEBCHATS-R25-SHA256SUMS.txt`.
+
+Poniżej historia; do aktualizacji obowiązuje r25 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.32, lokalna poprawka r24
 
 ## r24 — potwierdzenie wysłanej wiadomości Copilot

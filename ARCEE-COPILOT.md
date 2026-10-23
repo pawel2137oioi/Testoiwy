@@ -1,4 +1,18 @@
-# Arcee i copilot.com — r24, rozszerzenie 1.24.32
+# Arcee i copilot.com — r25, rozszerzenie 1.24.33
+
+## R25 — rozpoznawanie nazwanych grup wiadomości Copilot
+
+Nowy zrzut r24 podaje **Read user messages: 0; closest text 0/552 characters**. W takim przypadku poprawa odczytu istniejącego rozpoznanego wpisu nie wystarcza. Dodano dokładne znaczniki ról i treści znalezione w dwóch publicznych implementacjach eksportu rozmów:
+
+- [revivalstack/ai-chat-exporter, zapisane DOM i selektory](https://github.com/revivalstack/ai-chat-exporter/tree/4ce218d1290956703489870aafa2adfdf4448f38): reference-html-dom/copilot-chat-dom.html, copilot-dom-2question-ans-pairs.html oraz sekcja COPILOT_MESSAGE_SELECTOR w ai-chat-exporter.user.js.
+- [TomSchmidtDev/browser-ai-chat-exporter, odczyt consumer UI](https://github.com/TomSchmidtDev/browser-ai-chat-exporter/blob/0830aad4488754ba7c6b2cdcf6cfb7ea65841e80/platforms/copilot/content.js#L201): dokładny token group/user-message, testid ai-message i treść użytkownika wewnątrz grupy.
+
+Adapter przyjmuje dokładne tokeny `group/user-message` i `group/ai-message`, testid `ai-message` oraz role=article z natywnym ID kończącym się `-user-message`. Nie używa podciągu class*=message, utility group-hover, samego JSON ani pozycji w kolumnie. Klasa `group/ai-message-item` jest treścią, nie samodzielnym dowodem roli. Rozpoznane wpisy nie mogą pochodzić z cytatu, kodu, nawigacji, dialogu ani kompozytora. Zagnieżdżone dotychczasowe znaczniki nie dublują wpisów.
+
+Treść użytkownika pochodzi z data-content=user-message lub dokładnych znaczników treści, w tym max-w-user-text-message. AI korzysta z group/ai-message-item. Etykiety sr-only/data-copy=false i reakcje pozostają poza tekstem. Natywne ID użytkownika utrzymuje tożsamość po remoncie i rozwinięciu podglądu. Nadal wymagane jest nowe pełne echo własnego tekstu, a nie sama odpowiedź AI lub stary identyczny wpis. Brak ponownego Send.
+
+Nowe fixture odtwarzają brak rozpoznanych ról na r24 po usunięciu wszystkich wcześniejszych atrybutów. R25 przechodzi pełny start, kontekst i kontrolowany odczyt. Nie oglądano zalogowanego DOM konta użytkownika; podane źródła są publicznymi przykładami i implementacjami, a nie potwierdzeniem jego bieżącej wersji interfejsu. Bezpośredni odczyt copilot.com/chat w tej sesji blokował CONNECT 403. Wyniki: TESTY-TRZY-SERWISY.md.
+
 
 ## R24 — wysłana wiadomość i zwinięta historia Copilot
 
@@ -77,7 +91,7 @@ Pasek obu nowych adapterów znajduje się nad wykrytym kompozytorem, bez dopisyw
 
 1. Podmień cały folder rozszerzenia i przeładuj go. Zachowaj jedną aktywną instalację. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`.
 2. Odśwież kartę Arcee lub dokładnie `https://copilot.com/`. Nie dodano domeny copilot.microsoft.com. EXE pozostaje bez zmian.
-3. Sprawdź wersję **1.24.32**. Raport transportu nowych adapterów: **core:r24/parser:r13/provider:r24**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
+3. Sprawdź wersję **1.24.33**. Raport transportu nowych adapterów: **core:r25/parser:r13/provider:r25**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
 4. Jeżeli aktualny interfejs serwisu nadal nie zostanie rozpoznany, zwykły czat pozostaje dostępny, a agent nie powinien klikać przypadkowych przycisków. Dla innej domeny po przekierowaniu ta rejestracja nie obowiązuje.
 
 Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przeglądarce. Wysyłanie obrazów pozostaje niezweryfikowane. Brak potwierdzenia wiadomości przez nowy wpis użytkownika zatrzymuje wysyłkę bez ponownego kliknięcia; przed ręczną próbą sprawdź historię, ponieważ wiadomość mogła dotrzeć.
@@ -106,7 +120,7 @@ PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-layout.cjs
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-startup.cjs
 ```
 
-Sumy bieżącej paczki: `WEBCHATS-R24-SHA256SUMS.txt`.
+Sumy bieżącej paczki: `WEBCHATS-R25-SHA256SUMS.txt`.
 
 
 ### Dodatkowe testy kontrolowanych bibliotek

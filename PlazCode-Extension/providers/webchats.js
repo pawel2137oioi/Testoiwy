@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Tencent, Motif and ChatWave hooks observed 2026-10-21. Arcee hooks recovered
-// from its public app bundle 2026-10-23; copilot.com remains a semantic contract.
+// from its public app bundle 2026-10-23. Copilot's exact named message classes
+// are also documented by public transcript exporters (see ARCEE-COPILOT.md).
 // Unknown message roles are never executable.
 const RSProvider = (() => {
   'use strict';
@@ -25,10 +26,10 @@ const RSProvider = (() => {
       frame:'[data-testid="composer"], [data-testid="composer-content"], [data-testid="chat-composer"], form',
       send:'button[data-testid="send-button"], button[data-testid="submit-button"], button[aria-label*="send" i], button[aria-label*="submit" i], button[aria-label*="wyślij" i], button[aria-label*="prześlij" i], button[title*="wyślij" i], button[type="submit"]',
       stop:'button[data-testid="stop-button"], button[aria-label*="stop" i], button[aria-label*="zatrzymaj" i], button[aria-label*="przerwij" i]',
-      user:'[data-message-author-role="user"], [data-message-role="user"], [data-role="user"], [data-content="user-message"], [data-message-author="user"], [data-testid="user-message"], [data-testid="user-message-container"], [data-testid="user-message-content"], [data-testid="user-message-text"]',
-      assistant:'[data-message-author-role="assistant"], [data-message-role="assistant"], [data-role="assistant"], [data-content="ai-message"], [data-content="response"], [data-message-author="assistant"], [data-message-author="bot"], [data-testid="assistant-message"], [data-testid="assistant-message-container"], [data-testid="assistant-message-content"], [data-testid="bot-message"], [data-testid="answer"]',
-      body:'.markdown, .prose, .markdown-body, .response-text, .text-response, message-content, [data-testid="message-content"]',
-      userBody:'[data-testid="user-message-content"], [data-testid="user-message-text"], [data-content="user-message-text"], .whitespace-pre-wrap',
+      user:'[data-message-author-role="user"], [data-message-role="user"], [data-role="user"], [data-content="user-message"], [data-message-author="user"], [data-testid="user-message"], [data-testid="user-message-container"], [data-testid="user-message-content"], [data-testid="user-message-text"], [class~="group/user-message"], [role="article"][id$="-user-message"]',
+      assistant:'[data-message-author-role="assistant"], [data-message-role="assistant"], [data-role="assistant"], [data-content="ai-message"], [data-content="response"], [data-message-author="assistant"], [data-message-author="bot"], [data-testid="assistant-message"], [data-testid="assistant-message-container"], [data-testid="assistant-message-content"], [data-testid="bot-message"], [data-testid="answer"], [data-testid="ai-message"], [class~="group/ai-message"]',
+      body:'[class~="group/ai-message-item"], .markdown, .prose, .markdown-body, .response-text, .text-response, message-content, [data-testid="message-content"]',
+      userBody:'[data-testid="user-message-content"], [data-testid="user-message-text"], [data-content="user-message-text"], [data-content="user-message"], .max-w-user-text-message, .whitespace-pre-wrap',
       max:0,page:8000,startupPage:7000,feedbackBudget:9000,
     },
     'aistudio.tencent.ai': {
@@ -204,7 +205,10 @@ const RSProvider = (() => {
   const isUserItem = el => matches(el, site.user);
   const isAssistantItem = el => matches(el, site.assistant) && !isUserItem(el);
   function allItems() {
-    const nodes = all(document, site.user + ', ' + site.assistant).filter(el => !el.closest(OWN));
+    const nodes = all(document, site.user + ', ' + site.assistant).filter(el => !el.closest(OWN) &&
+      // Named role classes are exact tokens, never group-hover utilities or
+      // arbitrary markdown/alignment. Quoted content and other UI aren't turns.
+      (site.id!=='copilot' || !el.closest('nav,aside,pre,code,blockquote,[role="dialog"],[contenteditable="true"],[contenteditable="plaintext-only"]')));
     // Keep a single turn when the same role is marked on nested elements.
     return nodes.filter(el => !nodes.some(parent => parent !== el && parent.contains(el) &&
       isUserItem(parent) === isUserItem(el)));
@@ -213,6 +217,7 @@ const RSProvider = (() => {
   const TEXT_UI_SKIP=TEXT_UI_DECORATION+', button, [role="button"]';
   function skippedTextNode(node,exclude=''){
     if(site.id!=='copilot')return matches(node,TEXT_UI_SKIP+(exclude?', '+exclude:''));
+    if(matches(node,'[data-copy="false"],.sr-only,[data-testid="user-message-reactions"],[data-testid="message-item-reactions"]'))return true;
     if(matches(node,TEXT_UI_DECORATION+(exclude?', '+exclude:'')))return true;
     if(!matches(node,'button,[role="button"]'))return false;
     // An explicitly identified Copilot message can itself be the disclosure
@@ -529,7 +534,8 @@ const RSProvider = (() => {
     }
     return location.pathname+location.search+location.hash;
   }
-  const nativeMessageId=item=>item?.getAttribute('data-message-id') || item?.getAttribute('data-mid') || null;
+  const nativeMessageId=item=>item?.getAttribute('data-message-id') || item?.getAttribute('data-mid') ||
+    (site.id==='copilot' && isUserItem(item) && /-user-message$/.test(item.id||'')?item.id:null);
   function conversationKey() {
     // Tencent first changes / to /chat/HunyuanDefault, then appends its saved
     // conversation id. The intermediate address and modelId query aren't chats.
@@ -743,7 +749,7 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r24',
+    build:'r25',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the
