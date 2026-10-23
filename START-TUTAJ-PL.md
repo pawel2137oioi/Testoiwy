@@ -1,3 +1,19 @@
+# PlazCode — rozszerzenie 1.24.40, ciągłość startu Copilot r32
+
+## r32 — start zatrzymujący się przy części 4/10
+
+Odtworzono dwa błędy zgodne z nowym objawem: anulowanie całego startu po dziesięciu minutach mimo kolejnych potwierdzeń oraz uznanie usunięcia pierwszej widocznej wiadomości za zmianę rozmowy. W kontrolowanym Chromium r31 przerywa przy części 4, gdy strona zostawia tylko cztery ostatnie tury. R32 przechodzi ten sam start i późniejsze pytanie do Studio.
+
+Limit czasu dotyczy teraz bieżącego kroku, a zapisany adres rozmowy zachowuje jej tożsamość podczas wirtualizacji listy. Gdy brak ID wiadomości i licznik widocznych odpowiedzi stoi w miejscu, świeża odpowiedź wymaga pełnego potwierdzonego echa wysłanej wiadomości oraz nowej odpowiedzi po nim w natywnej kolejności rozmowy. Stare odpowiedzi, Stop, zmiana czatu i brak potwierdzenia nadal blokują wykonanie. Pasek pokazuje numer aktualnie przesyłanej części kontekstu.
+
+**Aktualizacja:** podmień cały folder `PlazCode-Extension` (Firefox: `PlazCode-Extension-Firefox`), przeładuj rozszerzenie i odśwież kartę Copilot. Sprawdź **1.24.40** oraz **core:r32/parser:r13/provider:r32**. Uruchom Start Agent na pustym polu, najlepiej w nowym czacie. EXE pozostaje bez zmian.
+
+**Weryfikacja:** 941/941 testów Node oraz 60 różnych sprawdzeń Chromium. Obejmują wolny start przekraczający dziesięć minut według zegara testowego, cztery widoczne tury bez ID i późniejszy pojedynczy odczyt Studio. Nie przeprowadzono próby na zalogowanym koncie użytkownika; zrzut nie ustala, który z dwóch odtworzonych mechanizmów wystąpił na tym koncie. Wyniki: [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md); opis: [ARCEE-COPILOT.md](ARCEE-COPILOT.md); sumy: `WEBCHATS-R32-SHA256SUMS.txt`.
+
+Poniżej historia; do aktualizacji obowiązuje r32 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.39, akapity Copilot r31
 
 ## r31 — błąd „Expected 7282 characters, read 7339”

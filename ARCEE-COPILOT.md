@@ -1,4 +1,14 @@
-# Arcee i copilot.com — r31, rozszerzenie 1.24.39
+# Arcee i copilot.com — r32, rozszerzenie 1.24.40
+
+## R32 — pełny start mimo wolnych odpowiedzi i wirtualizacji historii
+
+Nowy zrzut pokazuje potwierdzenia części 1–4 i przerwany start. Odtworzono dwa niezależne błędy: globalny limit 600000 ms anuluje długi start mimo postępu; czytnik tożsamości traktuje zniknięcie pierwszej widocznej wiadomości jako zmianę czatu. Po naprawie tego drugiego błędu ograniczone okno bez ID ujawnia jeszcze warunek świeżości oparty wyłącznie na rosnącej liczbie odpowiedzi. Na takim widoku licznik przestaje rosnąć, chociaż nowa odpowiedź już istnieje.
+
+R32 utrzymuje tożsamość rozmowy dla niezmienionego zapisanego adresu i wiąże odpowiedź z konkretnym wysłaniem. Opcjonalny kontrakt captureResponseOwner/responseIsFresh wymaga pełnego nowego echa użytkownika, tego samego czatu i wysłania oraz nowej odpowiedzi po tym echu, bez późniejszej wiadomości użytkownika. Sam remount, stara odpowiedź, późno przypisane ID, częściowe echo i zmiana czatu nie dowodzą nowej odpowiedzi. Mechanizm działa również dla natywnej wiadomości użytkownika po starcie. Nie tworzy sztucznych ID ani nie interpretuje komendy na podstawie jej wyglądu.
+
+Każda potwierdzana część ma osobny limit dziesięciu minut. Dotychczasowe limity braku postępu (dwie minuty w spoczynku, pięć przy sygnale generowania), Stop i brak automatycznego ponawiania wysyłki pozostają zachowane. Numer części jest widoczny na pasku. Nie usuwa się kontekstu, aby skrócić start; gotowość nadal wymaga odbioru wszystkich części.
+
+W kontrolowanym pełnym interfejsie r31 odtwarza Startup failed przy wysłaniu części 4 po usunięciu pierwszego wpisu. R32 przechodzi start z co najmniej dziesięcioma częściami, oknem czterech tur bez ID, opóźnioną odpowiedzią oraz zegarem przekraczającym dziesięć minut. Potem natywne pytanie wywołuje dokładnie jeden get_studio_state i przekazanie wyniku. Model i most są kontrolowane; nie ustalono prywatnego DOM ani czasu odpowiedzi na koncie użytkownika. Szczegóły: TESTY-TRZY-SERWISY.md.
 
 ## R31 — dokładny odczyt akapitów przy wysyłaniu kontekstu
 
@@ -164,7 +174,7 @@ Pasek obu nowych adapterów znajduje się nad wykrytym kompozytorem, bez dopisyw
 
 1. Podmień cały folder rozszerzenia i przeładuj go. Zachowaj jedną aktywną instalację. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`.
 2. Odśwież kartę Arcee lub dokładnie `https://copilot.com/`. Nie dodano domeny copilot.microsoft.com. EXE pozostaje bez zmian.
-3. Sprawdź wersję **1.24.39**. Raport transportu nowych adapterów: **core:r31/parser:r13/provider:r31**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
+3. Sprawdź wersję **1.24.40**. Raport transportu nowych adapterów: **core:r32/parser:r13/provider:r32**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
 4. Jeżeli aktualny interfejs serwisu nadal nie zostanie rozpoznany, zwykły czat pozostaje dostępny, a agent nie powinien klikać przypadkowych przycisków. Dla innej domeny po przekierowaniu ta rejestracja nie obowiązuje.
 
 Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przeglądarce. Wysyłanie obrazów pozostaje niezweryfikowane. Brak potwierdzenia wiadomości przez nowy wpis użytkownika zatrzymuje wysyłkę bez ponownego kliknięcia; przed ręczną próbą sprawdź historię, ponieważ wiadomość mogła dotrzeć.
@@ -193,7 +203,7 @@ PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-layout.cjs
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-startup.cjs
 ```
 
-Sumy bieżącej paczki: `WEBCHATS-R31-SHA256SUMS.txt`.
+Sumy bieżącej paczki: `WEBCHATS-R32-SHA256SUMS.txt`.
 
 
 ### Dodatkowe testy kontrolowanych bibliotek

@@ -717,6 +717,30 @@ const RSProvider = (() => {
   }
   const nativeMessageId=item=>item?.getAttribute('data-message-id') || item?.getAttribute('data-mid') ||
     (site.id==='copilot' && isUserItem(item) && /-user-message$/.test(item.id||'')?item.id:null);
+  let responseDelivery=null;
+  const sentText=value=>String(value).replace(/\s+/g,' ').trim();
+  function beginResponseDelivery(text){
+    if(!site.strictComposer)return;
+    const expected=sentText(text),rows=allItems(),users=rows.filter(isUserItem);
+    const match=item=>presentedValue(sentText(itemText(item)),expected,true)===expected;
+    responseDelivery={chat:conversationKey(),epoch:sendEpoch,expected,
+      matches:users.filter(match).length,anonymousMatches:users.filter(item=>!nativeMessageId(item)&&match(item)).length,
+      users:new Set(users.map(nativeMessageId).filter(Boolean)),
+      replies:new Set(rows.filter(isAssistantItem)),replyIds:new Set(rows.filter(isAssistantItem).map(nativeMessageId).filter(Boolean)),confirmed:false};
+  }
+  function responseIsFresh(owner,item){
+    if(!owner || owner!==responseDelivery || owner.epoch!==sendEpoch || owner.chat!==conversationKey() || item!==lastAssistant())return false;
+    const rows=allItems(),users=rows.filter(isUserItem);
+    const matches=users.filter(user=>presentedValue(sentText(itemText(user)),owner.expected,true)===owner.expected);
+    if(!owner.confirmed)owner.confirmed=matches.length>owner.matches || owner.anonymousMatches===0&&matches.some(user=>nativeMessageId(user)&&!owner.users.has(nativeMessageId(user)));
+    const user=users.at(-1),id=nativeMessageId(item);
+    // A flat viewport count is not a dead reply. Require the complete, freshly
+    // confirmed user echo and a NEW assistant following it in native order.
+    // Old replies, late IDs, remounts before that echo and other user turns
+    // cannot transfer ownership to this send.
+    return owner.confirmed && matches.includes(user) && rows.indexOf(user)<rows.indexOf(item) &&
+      !owner.replies.has(item) && !(id&&owner.replyIds.has(id));
+  }
   function conversationKey() {
     // Tencent first changes / to /chat/HunyuanDefault, then appends its saved
     // conversation id. The intermediate address and modelId query aren't chats.
@@ -733,8 +757,11 @@ const RSProvider = (() => {
       site.id==='arcee' && /\/playground\/[\w-]+/.test(value) ||
       site.id==='copilot' && /[?&](?:conversationId|chatId|threadId)=[^&#]+/i.test(value);
     const savedRoute=isSaved(route),previousSavedRoute=isSaved(lastRoute||'');
-    const changed = chat && ((hadTurns && !any && !!getEditor()) ||
-      (firstUser !== null && token !== null && !sameFirst) ||
+    // A saved route identifies the conversation even when the site's virtual
+    // list removes its first message or briefly unmounts every visible turn.
+    const sameSaved=site.strictComposer && savedRoute && route===lastRoute;
+    const changed = chat && ((!sameSaved && hadTurns && !any && !!getEditor()) ||
+      (!sameSaved && firstUser !== null && token !== null && !sameFirst) ||
       (route !== lastRoute && !(savedRoute && !previousSavedRoute && sameFirst &&
         (!site.strictComposer || any || hadTurns || sending && ambiguous))));
     if (!chat || changed) { chat = site.id + ':' + route + ':' + (++epoch); firstUser = null; hadTurns = false; }
@@ -854,6 +881,7 @@ const RSProvider = (() => {
     if (!enabled(b)) throw Error(site.name + ': send is unavailable.');
     // Commit exactly once. Never fall back to Enter or re-click on a timeout.
     ambiguous = true;
+    beginResponseDelivery(text);
     b.click();
     const accepted = await waitFor(() => owner !== sendEpoch || conversationKey() !== origin || loginGatePresent() || !!scanError() ||
       echoPresent() || freshRefusal(), 12000);
@@ -908,6 +936,7 @@ const RSProvider = (() => {
       }
       if (handlers.isBlocked()) return;
       if (!handlers.isStarted()) { if (chatIsEmpty()) handlers.onBlockedAttempt(); return; }
+      beginResponseDelivery(editorText());
       handlers.onUserMessage(assistantCount());
     }
     document.addEventListener('keydown', notify, true);
@@ -950,7 +979,7 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r31',
+    build:'r32',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the
@@ -963,6 +992,7 @@ const RSProvider = (() => {
     inspectOnReadRequest:!!site.strictComposer,
     promptExtra:site.strictComposer?'When the user asks what is in their connected Studio or whether a named object exists, perform a read-only inspection using the actual command schemas and answer from its result. That question authorizes the read. Do not merely offer to inspect, invent project facts or guess command names. Do not edit the project for an inspection question.':undefined,
     requireFreshResponse:site.id==='motif' || !!site.strictComposer,
+    ...(site.strictComposer?{captureResponseOwner:()=>responseDelivery,responseIsFresh}:{}),
     // Legacy marker-only sessions may have been armed by an unsuccessful
     // handshake. Restore only when this chat visibly confirms readiness.
     canRestoreSession,

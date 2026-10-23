@@ -1,4 +1,18 @@
-# Raport weryfikacji — 2026-10-23
+# Raport weryfikacji — 2026-10-24 (Europe/Warsaw)
+
+## r32 — start przekraczający dziesięć minut i cztery widoczne tury
+
+**941/941 testów Node**, bez błędów i pominięć (`npm test --prefix tests`, Node v24.19.0, Linux). Dodano 13 przypadków do istniejącego webchats.test.cjs. Uruchamiają rzeczywisty startSession, czytnik odpowiedzi i watchdog z kontrolowanym zegarem. R31 odtwarza dwa niezależne przerwania: Start got stuck mimo kolejnych poprawnych odpowiedzi po 160 sekund oraz chat changed after sending po przycięciu listy do czterech tur. R32 przechodzi oba pełne starty, zachowując wszystkie części kontekstu.
+
+Przypadki ujemne potwierdzają limity braku postępu przy busy=false i busy=true, twardy limit jednego kroku mimo zmieniającego się tekstu, Stop po czwartej części bez piątej wysyłki oraz odrzucenie starego węzła, starej odpowiedzi ponownie zamontowanej przed echem, obcej wiadomości użytkownika, innego czatu, Stop i poprzedniego obiektu wysłania. Pełne echo oraz nowa odpowiedź po nim zachowują powiązanie po remoncie. Istniejący test tożsamości uaktualniono świadomie: pusty widok pod tym samym zapisanym adresem nie oznacza nowej rozmowy; przejście do nowego adresu nadal ją zmienia.
+
+**20/20 scenariuszy pełnego interfejsu Chromium** (`node tests/browser/webchats-startup.cjs`). Obejmują wszystkie poprzednie warianty Copilot i Arcee, odmowy, raport błędu, brak pełnego źródła oraz nowe microsoft-windowed i microsoft-slow-windowed. Nowe warianty usuwają starsze elementy, nie nadają ID wiadomości i zachowują maksymalnie cztery wpisy każdej roli. Wysyłają co najmniej dziesięć części, odbierają je po kolei dokładnie raz i przechodzą do natywnego pytania z jednym get_studio_state oraz wynikiem. Wariant slow przesuwa Date.now o 160000 ms przy każdej odpowiedzi kontekstu; to test upływu czasu z rzeczywistymi timerami Chromium, nie wielominutowa próba sieciowa na koncie. Odpowiedzi kontekstu są opóźnione o 250 ms, aby czytnik najpierw widział poprzednią odpowiedź.
+
+Osobny baseline tego samego pełnego interfejsu z adapterem r31 zatrzymuje się przy części 4 i wyświetla chat changed after sending. Gotowość pozostaje niepotwierdzona, brak komend projektu. Nie jest doliczony do nowych 20. **36/36 prób prawdziwych React/Lexical/CodeMirror** oraz **4/4 próby ProseMirror** z r31 również przeszły. Łącznie **60 różnych sprawdzeń Chromium**. Nie powtarzano osobnej niezmienionej macierzy geometrii ani 12 prób czytnika kodu MAIN z r30; skrypt MAIN i CSS nie zostały zmienione.
+
+Zrzut nie zawiera przyczyny anulowania ani struktury listy, więc nie przypisuje się mu z pewnością jednego z odtworzonych mechanizmów. Brak próby na zalogowanym koncie lub prawdziwym Studio. Gotowość, echa i kolejność są sprawdzane na kontrolowanej stronie z rzeczywistym kodem rozszerzenia; nie wykonano automatycznego ponowienia Send. Kompletność źródła i parser r13 pozostają zachowane. Wersja 1.24.40, core/provider r32; EXE bez zmian. Składnię, parytet kopii runtime, manifesty, zasoby i ZIP-y sprawdzono przed publikacją. Sumy: WEBCHATS-R32-SHA256SUMS.txt.
+
+---
 
 ## r31 — akapity kompozytora i błąd 7282/7339 na pozycji 173
 

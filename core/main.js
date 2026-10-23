@@ -676,7 +676,7 @@
   const agentLifecycle = createAgentLifecycle((previous, next) => {
     // Every phase releases its own timestamp. Command/socket deadlines belong
     // to their in-flight request and remain alive until cancellation settles.
-    if (previous === 'starting') A._startingSince = 0;
+    if (previous === 'starting') { A._startingSince = 0; A._startupStepSince = 0; A.startupContext = null; }
     if (next === 'idle' && !A.injecting && !A.pendingToolSettles) {
       try { P.setInputLock?.(false); } finally { try { ui.inputCover(false); } catch {} }
     }
@@ -1038,7 +1038,10 @@
       const token = P.lastAssistantId ? P.lastAssistantId() : undefined;
       const item = P.lastAssistant();
       if (!item) return false;
-      if (owner.token != null) {
+      if (owner.providerOwner && P.responseIsFresh?.(owner.providerOwner,item)) {
+        // Provider verified a fresh complete user echo followed by this reply,
+        // even if its virtualized viewport exposes no stable message IDs.
+      } else if (owner.token != null) {
         if (token !== owner.token || token === owner.sendToken) return false;
       } else if (token !== owner.token || item !== owner.item) return false;
       res.item = item;
@@ -1050,7 +1053,8 @@
     const t0 = Date.now();
     // Bind every recovered read to this send; never carry evidence into a
     // different conversation, send, or logical assistant turn.
-    const sendOwner = { session: A.sessionGen, sendToken: A.sendToken };
+    const sendOwner = { session: A.sessionGen, sendToken: A.sendToken,
+      providerOwner:P.captureResponseOwner?.() };
     const readChat = () => P.conversationKey ? P.conversationKey() : null;
     const sendChat = readChat();
     const toolResponse = (calls, item, text, token, chat) => ({
@@ -1218,10 +1222,10 @@
       // A newly assigned ID on an old node is not evidence of a new answer
       // when this send captured no stable ID. Strict providers then need the
       // fresh turn count, including while old responses are being remounted.
-      const newReply = (curTok !== undefined && curTok !== null &&
+      const newReply = !!(sendOwner.providerOwner && P.responseIsFresh?.(sendOwner.providerOwner,d.item)) || ((curTok !== undefined && curTok !== null &&
           !(P.requireFreshResponse && sendOwner.sendToken == null))
         ? (curTok !== sendOwner.sendToken)
-        : P.assistantCount() > base;
+        : P.assistantCount() > base);
 
       // ChatGPT's streaming renderer can swap the reply subtree after the DOM
       // sweeper has already parsed a valid command. In that race the sweep paints
@@ -1704,7 +1708,7 @@
     };
   }
   function transportBuildVersions() {
-    return {core:"r31",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"};
+    return {core:"r32",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"};
   }
   function transportBuildLabel() {
     const b = transportBuildVersions();
@@ -4098,7 +4102,7 @@ return result`;
         if (res.kind === "parse_error") {
           A.lastParseFailure = {
             reason: res.reason, provider: P.id,
-            core_build: "r31", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
+            core_build: "r32", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
             ...(typeof RSParse.transportInfo === "function" ? RSParse.transportInfo(res.raw) : {chars:String(res.raw || "").length}),
           };
           diag("tool.parseFailure", A.lastParseFailure);
@@ -4847,7 +4851,9 @@ return result`;
     const myGen = ++A.startGen;   // identity of THIS bootstrap
     A.startupOwner = myGen; // keep cancelled sends isolated until their promise settles
     A._startupProgressAt = Date.now();
+    A._startupStepSince = Date.now();
     A._startupProgressToken = null;
+    A.startupContext = null;
     A.startingKey = null;          // unknown until the conversation gets an id
     const alive = () => A.startGen === myGen; // false once superseded/aborted
     A.toolCallsSinceReminder = 0; // fresh reminder cadence for the new session
@@ -5049,7 +5055,13 @@ return result`;
       diag("start.commandDigest", { chars: readyPrompt.length, lines: readyPrompt.split("\n").length, commands: scoped.length });
       const stages = P.startupFeedbackMessages ? P.startupFeedbackMessages(readyPrompt) : [{text:readyPrompt}];
       let readyRes;
-      for (const stage of stages) {
+      for (const [stageIndex,stage] of stages.entries()) {
+        // Each context part is a separate confirmed exchange. A long sequence
+        // must not exhaust one global deadline while it is making progress.
+        A._startupStepSince = Date.now();
+        A._startupProgressAt = Date.now();
+        A.startupContext = {part:stageIndex+1,total:stages.length};
+        ui.setStarting(true);
         const readyBase = await submitAndGetBase(stage.text);
         if (!alive()) return;
         readyRes = validateProviderResponse(await waitForResponse(readyBase));
@@ -5057,7 +5069,7 @@ return result`;
         if (A.stop || readyRes.kind === "stopped") { diag("start.aborted", { kind: readyRes.kind }); return; }
         if(readyRes.kind==="text" && isProviderPolicyRefusal(readyRes.text)){showStartupRefusal();return;}
         if(stage.ack && (readyRes.kind!=="text" || String(readyRes.text||"").trim()!==stage.ack)) {
-          ui.banner("warn","Startup context was not acknowledged","PlazCode stayed stopped. No project command ran and no message was resent. Inspect this chat before restarting.");return;
+          ui.banner("warn","Startup context was not acknowledged",`Context part ${stageIndex+1}/${stages.length} was not acknowledged. No project command ran and no message was resent. Inspect this chat before restarting.`);return;
         }
       }
       const readyText = String(readyRes.text || "").replace(/[`*#]/g, "").trim().replace(/^_+|_+$/g, "");
@@ -8361,7 +8373,7 @@ function renderCards(panel) {
         toneClass = "starting";
         indicator = `<span class="rs-spin"></span>`;
         const _engineStarting = currentEngine === "local" ? "AgentScript" : "Roblox";
-        msg = `Starting ${_engineStarting} agent…`;
+        msg = A.startupContext ? `Starting ${_engineStarting} agent — context ${A.startupContext.part}/${A.startupContext.total}…` : `Starting ${_engineStarting} agent…`;
         label = "Starting…"; kind = "starting"; disabled = true;
       } else if (A.bridge && A.bridge.connected && A.bridge.studio_checking === true && currentEngine !== "local" && !A.bridge.roblox_connected) {
         toneClass = "starting";
@@ -10253,6 +10265,30 @@ return "PLACED"`;const placed=await runTool({tool:"execute_luau",arguments:{code
     return (Date.now() - t0) / 1000;
   }
 
+  function checkStartupWatchdog() {
+    if (!A.starting || !A._startingSince) return;
+    let busy=false,token='';
+    try { busy=!!(P.isBusyNow ? P.isBusyNow() : P.isGenerating()); } catch {}
+    try {
+      const item=P.lastAssistant();
+      const text=String(item && P.classifyText ? P.classifyText(item) : '');
+      token=String(P.lastAssistantId ? P.lastAssistantId() : '')+':'+text.length+':'+text.slice(-200);
+    } catch {}
+    const now=Date.now();
+    if(token!==A._startupProgressToken){A._startupProgressToken=token;A._startupProgressAt=now;}
+    const idleMs=now-(A._startupProgressAt||A._startingSince);
+    const elapsedMs=now-A._startingSince;
+    const stepMs=now-(A._startupStepSince||A._startingSince);
+    if(stepMs<=600000 && idleMs<=(busy?300000:120000))return;
+    A.stop=true;A.startGen++;A.injectGeneration++;A.injecting=false;
+    A.starting=false;A.startingKey=null;A._startingSince=0;
+    try{ui.setStarting(false);}catch{}
+    try{ui.inputCover(false);}catch{}
+    try{P.setInputLock(false);}catch{}
+    try{ui.banner('warn','Start got stuck','The current startup step stopped responding and was cancelled. Your chat box is unlocked. Check this chat before restarting.');}catch{}
+    try{diag('start.staleAborted',{idleMs,elapsedMs,stepMs,busy});}catch{}
+  }
+
   // Timestamp of the user's last REAL click on the site (trusted event, outside
   // RobloxScript's own UI). A genuine "regenerate ↻" is always such a click;
   // DeepSeek's post-stop phantom generations and stop-button re-mount flickers
@@ -10282,38 +10318,9 @@ rsInterval(() => {
         try { ui.inputCover(false); } catch {}
         try { P.setInputLock(false); } catch {}
       }
-      // Measure real response progress. Slow native thinking gets a bounded
-      // grace period; a stale Stop control cannot hold the composer forever.
-      if (A.starting && A._startingSince) {
-        let busy = false, token = "";
-        try { busy = !!(P.isBusyNow ? P.isBusyNow() : P.isGenerating()); } catch {}
-        try {
-          const item = P.lastAssistant();
-          const text = String(item && P.classifyText ? P.classifyText(item) : "");
-          token = String(P.lastAssistantId ? P.lastAssistantId() : "") + ":" + text.length + ":" + text.slice(-200);
-        } catch {}
-        if (token !== A._startupProgressToken) {
-          A._startupProgressToken = token;
-          A._startupProgressAt = Date.now();
-        }
-        const idleMs = Date.now() - (A._startupProgressAt || A._startingSince);
-        const elapsedMs = Date.now() - A._startingSince;
-        if (elapsedMs > 600000 || idleMs > (busy ? 300000 : 120000)) {
-          A.stop = true;
-          A.startGen++;
-          A.injectGeneration++;
-          A.injecting = false;
-          A.starting = false;
-          A.startingKey = null;
-          A._startingSince = 0;
-          try { ui.setStarting(false); } catch {}
-          try { ui.inputCover(false); } catch {}
-          try { P.setInputLock(false); } catch {}
-          try { ui.banner("warn", "Start got stuck",
-            "Startup stopped responding and was cancelled. Your chat box is unlocked. Try Start again once cancellation finishes, or reload the page."); } catch {}
-          try { diag("start.staleAborted", { idleMs, elapsedMs, busy }); } catch {}
-        }
-      }
+      // Per-step deadline plus bounded idle grace: progress across many context
+      // parts does not look like a stale single request.
+      checkStartupWatchdog();
       // Stuck injecting: the 400ms post-send clear in submitAndGetBase's
       // finally should have run; >60s means an exception ate it.
       if (A.injecting && A._injectingSince && Date.now() - A._injectingSince > 60000) {

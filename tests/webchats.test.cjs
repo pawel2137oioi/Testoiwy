@@ -109,7 +109,9 @@ for(const id of Object.keys(hosts)) {
     const f=fixture(id);const key=f.P.conversationKey();const row=f.add('user','startup');assert.equal(f.P.conversationKey(),key);
     row.appendChild(f.d.createElement('div')).className='rs-chip';assert.equal(f.P.conversationKey(),key);
     f.w.history.pushState({},'', '/chat/saved-id');assert.equal(f.P.conversationKey(),key);
-    for(const item of f.P.allItems())item.remove();assert.notEqual(f.P.conversationKey(),key);
+    for(const item of f.P.allItems())item.remove();
+    if(id==='copilot'||id==='arcee'){assert.equal(f.P.conversationKey(),key);f.w.history.pushState({},'', '/');}
+    assert.notEqual(f.P.conversationKey(),key);
   });
   test(id+': hard generation remains busy across long reasoning pause',()=>{
     const f=fixture(id);f.add('assistant','thinking');
@@ -301,6 +303,7 @@ function bootstrapFixture(id, {engine='roblox', effort='ultracode', custom='', w
       const assistant=add('assistant',response);
       if(transport.explicitTestIds){assistant.removeAttribute('data-message-author-role');assistant.dataset.testid='assistant-message';}
     }
+    if(transport.window)while(f.P.userCount()>transport.window || f.P.assistantCount()>transport.window)f.P.allItems()[0].remove();
   }});
   const c=f.dom.getInternalVMContext(),w=f.w;
   if(arceeCodeMirror){w.setInterval=()=>1;vm.runInContext(fs.readFileSync(path.join(root,'providers/chatgpt-cm.js'),'utf8'),c);}
@@ -419,6 +422,58 @@ function useActualResponseReader(f) {
   assert.ok(start>=0&&end>start);vm.runInContext(main.slice(start,end)+'\nwindow.readActualResponse=waitForResponse;',c);
   return ()=>w.readActualResponse(0);
 }
+function useStartupWatchdog(f) {
+  const main=fs.readFileSync(process.env.PLAZCODE_TEST_CORE||path.join(root,'core/main.js'),'utf8');
+  const start=main.indexOf('  function checkStartupWatchdog() {');
+  const legacyStart=main.indexOf('      if (A.starting && A._startingSince) {');
+  const code=start>=0?main.slice(start,main.indexOf('\n  // Timestamp of the user',start)):
+    'function checkStartupWatchdog() {'+main.slice(legacyStart,main.indexOf('\n      // Stuck injecting:',legacyStart))+'}';
+  assert.ok(start>=0 || legacyStart>=0);vm.runInContext(code+'\nwindow.checkStartupWatchdog=checkStartupWatchdog;',f.dom.getInternalVMContext());
+  return ()=>f.w.checkStartupWatchdog();
+}
+test('Copilot multipart startup continues after ten minutes of real acknowledged progress',async t=>{
+  const f=bootstrapFixture('copilot');t.after(()=>f.dom.window.close());const watchdog=useStartupWatchdog(f),read=f.w.waitForResponse;
+  f.w.waitForResponse=async(...args)=>{f.advance(160000);f.P.isBusyNow=()=>true;const result=await read(...args);watchdog();return result;};
+  const result=await f.run();assert.equal(result?.ready,true,JSON.stringify(f.banners));assert.ok(f.sent.length>10);assert.ok(f.w.Date.now()-10000>600000);assert.equal(f.A._confirmedStartup,true);assert.deepEqual(f.banners,[]);
+});
+test('Copilot saved-chat startup survives a four-turn DOM window without message IDs',async t=>{
+  const f=bootstrapFixture('copilot',{transport:{saveRoute:'/chat/conversation/windowed',window:4}});t.after(()=>f.dom.window.close());useActualResponseReader(f);f.w.waitForResponse=f.w.readActualResponse;
+  const result=await f.run();assert.equal(result?.ready,true,JSON.stringify(f.banners));assert.ok(f.sent.length>10);assert.equal(f.P.assistantCount(),4);assert.equal(f.A._confirmedStartup,true);assert.deepEqual(f.commands,['list_commands']);assert.deepEqual(f.banners,[]);
+});
+for(const [busy,delay] of [[false,120001],[true,300001]])test('startup still cancels an idle current step, busy='+busy,t=>{
+  const f=bootstrapFixture('copilot');t.after(()=>f.dom.window.close());const watchdog=useStartupWatchdog(f);
+  f.A.starting=true;f.A._startingSince=f.w.Date.now();f.A._startupStepSince=f.w.Date.now();f.P.isBusyNow=()=>busy;watchdog();f.advance(delay);watchdog();
+  assert.equal(f.A.stop,true);assert.equal(f.A.starting,false);assert.equal(f.ed.readOnly,false);assert.equal(f.covers.at(-1),false);assert.equal(f.banners[0][1],'Start got stuck');assert.equal(f.sent.length,0);
+});
+test('changing text cannot keep one startup step alive past its hard deadline',t=>{
+  const f=bootstrapFixture('copilot');t.after(()=>f.dom.window.close());const watchdog=useStartupWatchdog(f);
+  f.A.starting=true;f.A._startingSince=f.w.Date.now();f.A._startupStepSince=f.w.Date.now();f.P.isBusyNow=()=>true;
+  for(let i=0;i<7;i++){f.add('assistant','Still thinking '+i);f.advance(100000);watchdog();}
+  assert.equal(f.A.starting,false);assert.equal(f.A.stop,true);assert.equal(f.banners[0][1],'Start got stuck');
+});
+test('Stop after the fourth context part leaves startup unconfirmed and sends no fifth part',async t=>{
+  const f=bootstrapFixture('copilot');t.after(()=>f.dom.window.close());const read=f.w.waitForResponse;
+  f.w.waitForResponse=async(...args)=>{const result=await read(...args);if(f.sent.length===5)f.A.stop=true;return result;};
+  assert.equal(await f.run(),undefined);assert.equal(f.sent.length,5);assert.equal(f.A.started,false);assert.equal(f.A.starting,false);assert.equal(f.ed.readOnly,false);assert.equal(f.covers.at(-1),false);assert.deepEqual(f.commands,['list_commands']);
+});
+for(const action of ['old-node','old-remount','other-user','other-chat','stop','old-delivery'])test('response ownership rejects '+action+' despite a flat anonymous viewport',async t=>{
+  const f=bootstrapFixture('copilot',{transport:{saveRoute:'/chat/conversation/proof',window:4}});t.after(()=>f.dom.window.close());
+  f.w.history.replaceState({},'','/chat/conversation/proof');
+  for(let i=0;i<4;i++){f.add('user','Previous question '+i);f.add('assistant','Previous answer '+i);}
+  const old=f.P.lastAssistant();await f.P.typeAndSend('Fresh exact message');const owner=f.P.captureResponseOwner(),fresh=f.P.lastAssistant();assert.equal(f.P.responseIsFresh(owner,fresh),true);
+  if(action==='old-node'){fresh.remove();f.d.body.append(old);}
+  else if(action==='old-remount'){fresh.remove();f.P.allItems().find(f.P.isUserItem).before(old.cloneNode(true));}
+  else if(action==='other-user')f.add('user','A different follow-up');
+  else if(action==='other-chat')f.w.history.pushState({},'','/chat/conversation/other');
+  else if(action==='stop')f.P.stopGeneration();
+  else await f.P.typeAndSend('Another fresh message');
+  assert.equal(f.P.responseIsFresh(owner,f.P.lastAssistant()),false);
+});
+test('fresh response ownership survives remounts after its complete confirmed user echo',async t=>{
+  const f=bootstrapFixture('copilot',{transport:{saveRoute:'/chat/conversation/proof',window:4}});t.after(()=>f.dom.window.close());
+  await f.P.typeAndSend('Fresh exact message');const owner=f.P.captureResponseOwner();for(const item of f.P.allItems())item.replaceWith(item.cloneNode(true));
+  assert.equal(f.P.responseIsFresh(owner,f.P.lastAssistant()),true);
+});
 for(const id of ['arcee','copilot'])test(id+': first startup with real response watcher survives save/remount and leaves no startup draft',async()=>{
  const f=bootstrapFixture(id,{transport:id==='arcee'?{saveRoute:'/playground/new-conversation',remountUsers:true}:{explicitTestIds:true,retainDraft:true,remountUsers:true}});
  if(id==='arcee')f.w.history.replaceState({},'','/playground');
