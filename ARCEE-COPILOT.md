@@ -1,6 +1,6 @@
-# Arcee i copilot.com — r34, rozszerzenie 1.24.42
+# Arcee i copilot.com — r35, rozszerzenie 1.24.43
 
-R34 poprawia natywne kontrolki i odczyt Meta AI oraz obsługę odmowy ze zrzutu. Zawiera też otrzymane znaczniki edytora i ikon LongCat; wcześniejsze poprawki Arcee i Copilot pozostają zachowane. Zakres bieżącej weryfikacji i ograniczenia opisuje LONGCAT-META.md. Aktualna instalacja to 1.24.42, core/provider r34, parser r13; poniżej historia napraw r32 i starszych.
+R35 usuwa limit sześciu poziomów przy szukaniu lokalnych kontrolek kompozytora Meta AI i rozszerza jego diagnostykę. Najnowszy raport dotyczy błędu przed wysyłką; nie jest odmową modelu. Wcześniejsze poprawki r34, LongCat, Arcee i Copilot pozostają zachowane. Zakres bieżącej weryfikacji i ograniczenia opisuje LONGCAT-META.md. Aktualna instalacja to 1.24.43, core/provider r35, parser r13; poniżej historia napraw r32 i starszych.
 
 ## R32 — pełny start mimo wolnych odpowiedzi i wirtualizacji historii
 
@@ -176,7 +176,7 @@ Pasek obu nowych adapterów znajduje się nad wykrytym kompozytorem, bez dopisyw
 
 1. Podmień cały folder rozszerzenia i przeładuj go. Zachowaj jedną aktywną instalację. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`.
 2. Odśwież kartę Arcee lub dokładnie `https://copilot.com/`. Nie dodano domeny copilot.microsoft.com. EXE pozostaje bez zmian.
-3. Sprawdź wersję **1.24.42**. Raport transportu nowych adapterów: **core:r34/parser:r13/provider:r34**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
+3. Sprawdź wersję **1.24.43**. Raport transportu nowych adapterów: **core:r35/parser:r13/provider:r35**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
 4. Jeżeli aktualny interfejs serwisu nadal nie zostanie rozpoznany, zwykły czat pozostaje dostępny, a agent nie powinien klikać przypadkowych przycisków. Dla innej domeny po przekierowaniu ta rejestracja nie obowiązuje.
 
 Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przeglądarce. Wysyłanie obrazów pozostaje niezweryfikowane. Brak potwierdzenia wiadomości przez nowy wpis użytkownika zatrzymuje wysyłkę bez ponownego kliknięcia; przed ręczną próbą sprawdź historię, ponieważ wiadomość mogła dotrzeć.
@@ -205,7 +205,7 @@ PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-layout.cjs
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-startup.cjs
 ```
 
-Sumy bieżącej paczki: `WEBCHATS-R34-SHA256SUMS.txt`.
+Sumy bieżącej paczki: `WEBCHATS-R35-SHA256SUMS.txt`.
 
 
 ### Dodatkowe testy kontrolowanych bibliotek

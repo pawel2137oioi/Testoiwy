@@ -115,6 +115,13 @@ const RSProvider = (() => {
   }
   const richEditor=ed=>!!ed && !/^(?:TEXTAREA|INPUT)$/.test(ed.tagName);
   const transcriptSelector='pre,code,blockquote,nav,aside,[role="dialog"],'+site.user+','+site.assistant;
+  // Meta nests its visible Lexical editor and hidden mirror well below the
+  // sibling controls row. Six wrappers did not reach that row in the report.
+  // Keep the search bounded and below page/transcript/form boundaries.
+  const composerAncestorLimit=site.id==='meta'?24:6;
+  const composerForm=el=>el?.closest(site.id==='meta'?'form,[role="form"]':'form');
+  const localComposerControl=(control,ed,requireVisible=true)=>(!requireVisible || visible(control)) && !control.closest(OWN+','+transcriptSelector) &&
+    (!composerForm(control) || composerForm(control)===composerForm(ed));
   function longcatIconControls(root,action){
     if(site.id!=='longcat')return [];
     const icons={send:'#icon-send',stop:'#icon-stop'};
@@ -150,17 +157,30 @@ const RSProvider = (() => {
     // Many React composers have neither a form nor a textbox role. Resolve
     // their nearest local send/stop row instead of requiring invented test IDs.
     // Never search across the page, another form or a transcript/settings pane.
-    const boundary=ed.closest(site.frame);
+    const boundary=ed.closest(site.frame+(site.id==='meta'?', [role="form"]':''));
     const controls=site.send+','+site.stop;
-    for(let n=ed.parentElement,depth=0;n && depth<6;n=n.parentElement,depth++){
-      if(n===document.body || n===document.documentElement || n.matches('main,[role="main"],'+transcriptSelector))break;
-      const buttons=[...new Set([...all(n,controls),...longcatIconControls(n)])].filter(b=>visible(b) && !b.closest(OWN+','+transcriptSelector) && (!b.closest('form') || b.closest('form')===ed.closest('form')));
-      const editors=all(n,site.editor).filter(e=>visible(e) && !e.closest(OWN+','+transcriptSelector));
+    let metaMirrorFrame=null,reachedBoundary=false;
+    for(let n=ed.parentElement,depth=0;n && depth<composerAncestorLimit;n=n.parentElement,depth++){
+      if(n===document.body || n===document.documentElement || n.matches('main,[role="main"],'+transcriptSelector)){
+        if(site.id==='meta')return metaMirrorFrame || emptyStrictFrame(ed);
+        break;
+      }
+      // A wrapper that also owns the conversation is outside the composer.
+      if(site.id==='meta' && query(n,site.user+','+site.assistant))return metaMirrorFrame || emptyStrictFrame(ed);
+      const buttons=[...new Set([...all(n,controls),...longcatIconControls(n)])].filter(b=>localComposerControl(b,ed) ||
+        site.id==='meta' && matches(b,'[data-testid="composer-send-button"],[data-testid="composer-stop-button"]') && localComposerControl(b,ed,false));
+      const editors=all(n,site.id==='meta'?'textarea,[contenteditable="true"],[contenteditable="plaintext-only"]':site.editor).filter(e=>visible(e) && !e.closest(OWN+','+transcriptSelector));
       if(ed===lockedEditor && n.contains(ed) && !editors.includes(ed))editors.push(ed);
       if(buttons.length && editors.length===1 && editors[0]===ed)return n;
-      if(n===boundary)break;
+      if(site.id==='meta' && buttons.length && editors.length>1)return null;
+      if(site.id==='meta' && !metaMirrorFrame && matches(ed,'[data-testid="composer-input"]') && editors.length===1 && editors[0]===ed){
+        const mirrors=all(n,'textarea[data-testid="composer-input"]').filter(mirror=>mirror!==ed && !visible(mirror) && !mirror.closest(OWN+','+transcriptSelector) && composerForm(mirror)===composerForm(ed));
+        if(mirrors.length===1)metaMirrorFrame=n;
+      }
+      if(n===boundary){reachedBoundary=true;break;}
     }
-    return boundary && boundary!==ed && !boundary.matches('main,[role="main"]') ? boundary : emptyStrictFrame(ed);
+    if(metaMirrorFrame)return metaMirrorFrame;
+    return boundary && (site.id!=='meta'||reachedBoundary) && boundary!==ed && !boundary.matches('main,[role="main"]') ? boundary : emptyStrictFrame(ed);
   }
   const getEditor = () => {
     if(lockedEditor?.isConnected && visible(lockedEditor))return lockedEditor;
@@ -247,12 +267,13 @@ const RSProvider = (() => {
       if (b && query(b, 'g[id="Stop generating"]')) return b;
     }
     const scope=site.strictComposer ? composerFrame() : document;
-    return longcatIconControls(scope,'stop').find(visible) || all(scope,site.stop).find(visible) ||
-      all(scope, 'button,[role="button"]').find(el => visible(el) && /^(stop|stop response|stop generating|停止生成|停止回答)$/i.test(buttonLabel(el))) || null;
+    const controlVisible=site.id==='meta'?control=>localComposerControl(control,getEditor()):visible;
+    return longcatIconControls(scope,'stop').find(controlVisible) || all(scope,site.stop).find(controlVisible) ||
+      all(scope, 'button,[role="button"]').find(el => controlVisible(el) && /^(stop|stop response|stop generating|停止生成|停止回答)$/i.test(buttonLabel(el))) || null;
   }
   function sendButton() {
     if(site.id==='meta'||site.id==='longcat'){
-      const candidates=[...new Set([...all(composerFrame(),site.send),...longcatIconControls(composerFrame(),'send')])].filter(button=>visible(button)&&button!==stopButton());
+      const candidates=[...new Set([...all(composerFrame(),site.send),...longcatIconControls(composerFrame(),'send')])].filter(button=>(site.id==='meta'?localComposerControl(button,getEditor()):visible(button))&&button!==stopButton());
       const primary=candidates.filter(button=>matches(button,site.id==='meta'?'[data-testid="composer-send-button"]':'[data-testid="send-button"]'));
       return primary.length===1?primary[0]:!primary.length&&candidates.length===1?candidates[0]:null;
     }
@@ -597,7 +618,7 @@ const RSProvider = (() => {
   }
   function writeValue(ed, value) {
     if(site.id==='meta' && richEditor(ed)){
-      const mirrors=all(strictFrame(ed),'textarea[data-testid="composer-input"]').filter(node=>node!==ed&&!visible(node));
+      const mirrors=all(strictFrame(ed),'textarea[data-testid="composer-input"]').filter(node=>node!==ed&&!visible(node)&&!node.closest(OWN+','+transcriptSelector)&&composerForm(node)===composerForm(ed));
       if(mirrors.length>1)throw Error('Meta AI: multiple composer mirrors. Nothing was sent.');
       if(mirrors.length===1){
         Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype,'value').set.call(mirrors[0],value);
@@ -813,9 +834,15 @@ const RSProvider = (() => {
         }
       }
       const placeholders=[...new Set(all(node,'[data-placeholder],[placeholder]').slice(0,3).flatMap(tokens))];
+      const providerFrame=kind==='editor'?read(()=>strictFrame(node)):null;
+      const knownControls=providerFrame?[...all(providerFrame,site.send+','+site.stop),...longcatIconControls(providerFrame)].filter(control=>localComposerControl(control,node,false)):[];
+      const visibleControls=knownControls.filter(visible);
+      let frameDepth=0,ancestor=node;
+      if(providerFrame)while(ancestor&&ancestor!==providerFrame&&frameDepth<=composerAncestorLimit){ancestor=ancestor.parentElement;frameDepth++;}
+      const mirrorPair=providerFrame&&site.id==='meta'&&matches(node,'[data-testid="composer-input"]')&&all(providerFrame,'textarea[data-testid="composer-input"]').some(mirror=>mirror!==node&&!visible(mirror));
       return {kind,depth,tag:node.tagName.toLowerCase(),role,visible:visible(node),in_viewport:!!rect&&rect.width>0&&rect.height>0&&rect.bottom>0&&rect.right>0&&rect.top<window.innerHeight&&rect.left<window.innerWidth,
         disabled:!!node.disabled||node.getAttribute('aria-disabled')==='true',readonly:!!node.readOnly,editable:editable===null?null:editable===''?'true':/^(?:true|false|plaintext-only)$/i.test(editable)?editable.toLowerCase():'other',
-        ...(kind==='editor'?{matches_provider:matches(node,site.editor),excluded_by_transcript:!!node.closest(transcriptSelector),frame_found:read(()=>!!strictFrame(node),false),lexical:node.getAttribute('data-lexical-editor')==='true'}:{}),
+        ...(kind==='editor'?{matches_provider:matches(node,site.editor),excluded_by_transcript:!!node.closest(transcriptSelector),frame_found:!!providerFrame,frame_resolution:visibleControls.length?'visible_controls':knownControls.length?'hidden_controls':mirrorPair?'mirror_pair':providerFrame&&matches(providerFrame,site.frame)?'known_boundary':providerFrame?'editor_parent':'none',provider_frame_depth:providerFrame&&ancestor===providerFrame?frameDepth:null,frame_has_known_controls:knownControls.length>0,frame_has_visible_controls:visibleControls.length>0,lexical:node.getAttribute('data-lexical-editor')==='true'}:{}),
         ...(kind==='control'?{matches_send:matches(node,site.send),matches_stop:matches(node,site.stop)}:{}),
         ...(types.has(type)?{type}:{}),...(classes.length?{classes}:{}),...(testid?{has_testid:true,...(testids.has(testid)?{testid}:{})}:{}),
         ...(labels.length?{labels}:{}),...(placeholders.length?{child_placeholders:placeholders}:{}),...(icons.length?{icons}:{}),has_svg:!!query(node,'svg'),has_svg_use:!!query(node,'svg use'),has_svg_rect:!!query(node,'svg rect'),has_svg_path:!!query(node,'svg path'),children:node.children.length};
@@ -823,12 +850,19 @@ const RSProvider = (() => {
     // Reserve space for each editor before expanding its nearby context.
     for(const [index,node] of picked.entries())entries.push({...describe(node,'editor',0),index,selected:node===selected,ancestors:[],controls:[]});
     for(const [index,node] of picked.entries()){
-      const entry=entries[index];let frame=null;
-      for(let parent=node.parentElement,depth=1;parent&&depth<=6;parent=parent.parentElement,depth++){
+      const entry=entries[index],providerFrame=read(()=>strictFrame(node));let frame=null;
+      const boundary=node.closest(site.frame+(site.id==='meta'?', [role="form"]':''));
+      for(let parent=node.parentElement,depth=1;parent&&depth<=composerAncestorLimit;parent=parent.parentElement,depth++){
         const ancestor=describe(parent,'ancestor',depth);if(ancestor)entry.ancestors.push(ancestor);
-        if(parent.matches('body,html,main,[role="main"]'))break;
-        const controls=all(parent,controlSelector).filter(control=>!control.closest(OWN)&&control!==node&&!control.contains(node));
-        if(!frame&&(controls.length||parent.matches('form,[data-testid="composer"],[data-testid="chat-composer"]')))frame={depth,controls};
+        if(parent.matches('body,html,main,[role="main"],'+transcriptSelector) || site.id==='meta'&&query(parent,site.user+','+site.assistant))break;
+        const controls=all(parent,controlSelector).filter(control=>!control.closest(OWN+','+transcriptSelector)&&control!==node&&!control.contains(node)&&!node.contains(control)&&(!composerForm(control)||composerForm(control)===composerForm(node)));
+        // Prefer the actual provider frame. If it is only an editor/mirror
+        // fallback, retain a farther row when it reveals additional unknown
+        // semantic controls; never interpret those controls as Send.
+        const fixed=parent===providerFrame&&entry.frame_has_known_controls;
+        if(!frame?.fixed&&(controls.length&&(!frame||controls.some(control=>!frame.controls.includes(control)))||parent===boundary))frame={depth,controls,fixed};
+        if(fixed)frame={depth,controls,fixed:true};
+        if(parent===boundary)break;
       }
       if(frame){entry.frame_depth=frame.depth;entry.control_count=frame.controls.length;omitted+=Math.max(0,frame.controls.length-8);
         for(const control of frame.controls.slice(0,8)){const detail=describe(control,'control',frame.depth);if(detail)entry.controls.push(detail);}
@@ -1174,7 +1208,7 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r34',
+    build:'r35',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the

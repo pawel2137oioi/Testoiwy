@@ -1,3 +1,21 @@
+# PlazCode — rozszerzenie 1.24.43, Meta AI r35
+
+## r35 — przycisk wysyłania poza sześcioma poziomami edytora
+
+Przesłany raport r34 pokazuje rozpoznany widoczny edytor Lexical i ukryty textarea z tym samym `composer-input`. W sześciu sprawdzonych elementach nadrzędnych nie ma żadnych kontrolek, a na zrzucie obok gotowego szkicu jest niebieska strzałka wysyłania. Stary resolver kończył szukanie na tych sześciu poziomach i przyjmował samą gałąź edytora jako kompozytor. Ten błąd występuje przed odpowiedzią modelu; nie jest odmową Meta.
+
+R35 szuka najbliższego lokalnego kompozytora Meta z rozpoznanym Send/Stop do 24 poziomów, z zachowaniem granic formularza, głównej treści i transkryptu. Ukryty mirror nie jest drugim widocznym polem. Obce pola, niejednoznaczne przyciski i nieznane kontrolki nie pozwalają na przypadkową wysyłkę. Raport opisuje też głębszą strukturę i odróżnia znalezienie samego pola od kompozytora z kontrolkami, bez eksportowania szkicu.
+
+**Aktualizacja:** podmień cały folder `PlazCode-Extension` (Firefox: `PlazCode-Extension-Firefox`), przeładuj rozszerzenie i odśwież Meta AI. Sprawdź **1.24.43** oraz **core:r35/parser:r13/provider:r35**. Pozostaw jedną aktywną instalację i przed nowym Start usuń pozostały szkic startowy albo zapisz własny tekst. Gotowa wiadomość nie jest automatycznie wysyłana ponownie. EXE pozostaje bez zmian.
+
+Raport nie zawiera rzeczywistych atrybutów strzałki Send ani całej struktury jej rodziców. Regresja odtwarza potwierdzony układ pola i głębsze kontrolki na kontrolowanej stronie React/Lexical; nie zastępuje testu zalogowanego konta. Bezpośredni dostęp do Meta w środowisku nadal blokuje proxy (CONNECT 403). Wcześniejsza obsługa jawnej odmowy modelu pozostaje zachowana: odmowa zatrzymuje start, nie potwierdza połączenia i nie powoduje ponawiania prośby.
+
+Opis i polecenia: [LONGCAT-META.md](LONGCAT-META.md). Wyniki: [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md). Sumy bieżących plików: `WEBCHATS-R35-SHA256SUMS.txt`.
+
+Poniżej historia; do aktualizacji obowiązuje r35 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.42, Meta AI r34
 
 ## r34 — natywne kontrolki Meta i prawidłowa obsługa odmowy

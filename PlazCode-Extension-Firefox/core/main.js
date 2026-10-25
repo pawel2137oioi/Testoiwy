@@ -1715,7 +1715,7 @@
     };
   }
   function transportBuildVersions() {
-    return {core:"r34",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"};
+    return {core:"r35",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"};
   }
   function transportBuildLabel() {
     const b = transportBuildVersions();
@@ -4115,7 +4115,7 @@ return result`;
         if (res.kind === "parse_error") {
           A.lastParseFailure = {
             reason: res.reason, provider: P.id,
-            core_build: "r34", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
+            core_build: "r35", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
             ...(typeof RSParse.transportInfo === "function" ? RSParse.transportInfo(res.raw) : {chars:String(res.raw || "").length}),
           };
           diag("tool.parseFailure", A.lastParseFailure);

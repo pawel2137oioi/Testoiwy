@@ -1,0 +1,58 @@
+// Reproduces the r34 user's split composer: a real Lexical model, hidden React
+// textarea mirror, six control-free ancestor levels and deeper local controls.
+// Remaining Meta markup/model/bridge is controlled, never a live-account claim.
+const {chromium}=require('playwright');
+const fs=require('node:fs'),path=require('node:path'),assert=require('node:assert/strict');
+const deps=process.env.PLAZCODE_BROWSER_DEPS||'/tmp/plazcode-ui-r19';
+const {buildSync}=require(path.join(deps,'node_modules/esbuild'));
+const root=path.resolve(__dirname,'../..'),manifest=JSON.parse(fs.readFileSync(path.join(root,'manifest.json'),'utf8'));
+const scripts=manifest.content_scripts.find(group=>group.js.includes('providers/webchats.js')).js;
+const fixture=buildSync({entryPoints:[path.join(__dirname,'fixtures/meta-deep-composer-r35.js')],bundle:true,write:false,format:'iife',nodePaths:[path.join(deps,'node_modules')]}).outputFiles[0].text;
+const baseline=process.env.PLAZCODE_EXPECT_BASELINE_FAILURE==='1';
+(async()=>{
+ const browser=await chromium.launch({headless:true,executablePath:process.env.PLAZCODE_CHROMIUM||'/usr/bin/chromium',args:['--no-sandbox']});let passed=0;
+ try{
+  for(const scenario of (baseline?['testid','role']:['testid','role','hidden','ambiguous-send','two-editors'])){
+   const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];page.on('pageerror',error=>errors.push(error.message));
+   try{
+    await page.route('**/*',route=>route.fulfill({contentType:'text/html; charset=utf-8',body:'<!doctype html><meta charset="utf-8"><main><section id="thread"></section><section id="native-root"></section></main>'}));
+    await page.goto('https://www.meta.ai/');await page.addStyleTag({content:'body{background:#171717;color:white;margin:0}#native-root{position:fixed;bottom:20px;left:20%;width:65%}#native-card{background:#303030;padding:16px;border-radius:24px}.native-editor{white-space:pre-wrap;min-height:70px;max-height:180px;overflow:auto;outline:none}.native-editor p{margin:0}.native-controls{display:flex;justify-content:flex-end;gap:8px;margin-top:8px}.native-controls button,.native-send{width:42px;height:36px;color:white;background:#4263eb;border:0;border-radius:18px;display:flex;align-items:center;justify-content:center}.native-send[hidden]{display:none}.native-controls button[aria-label="Myślenie"]{width:80px}#thread{padding:20px;max-height:500px;overflow:auto}.ur-markdown{margin:8px 0}'});
+    await page.addScriptTag({content:fixture});
+    await page.evaluate(({version,scenario})=>{
+      window.nativeSent=[];window.nativeMirrorWrites=[];window.nativeStops=0;window.calls=[];window.copyClicks=0;
+      const thread=document.querySelector('#thread');
+      const add=(role,text,code=false)=>{const row=document.createElement('article');row.dataset.messageRole=role;if(role==='assistant')row.className='ur-markdown';if(code){const pre=document.createElement('pre'),source=document.createElement('code');source.textContent=text;pre.append(source);row.append(pre);}else row.textContent=text;thread.append(row);};
+      mountDeepMeta({depth:scenario==='role'?12:10,kind:scenario==='role'?'role':'testid',initialHidden:scenario==='hidden',onSend:text=>{
+        add('user',text);history.replaceState({},'','/prompt/deep-meta');setNativeBusy(true);
+        setTimeout(()=>{const part=text.match(/PlazCode startup context part (\d+)\/(\d+)\./);if(part)add('assistant',part[1]===part[2]?'PlazCode is ready.':`PlazCode startup part ${part[1]}/${part[2]} received.`);else if(text.includes("Output of 'get_studio_state'"))add('assistant','Studio returned Workspace.Solaris.');else if(text.includes('Czy widzisz'))add('assistant','{"command":"get_studio_state","params":{}}',true);else add('assistant','{"command":"list_commands","params":{}}',true);setNativeBusy(false);},80);
+      }});
+      if(scenario==='ambiguous-send'){const clone=document.querySelector('.native-send').cloneNode(true);clone.removeAttribute('data-testid');document.querySelector('.native-send').removeAttribute('data-testid');clone.onclick=()=>window.accidentalClicks=(window.accidentalClicks||0)+1;document.querySelector('.native-controls').append(clone);}
+      if(scenario==='two-editors'){const ed=document.createElement('div');ed.contentEditable='true';ed.setAttribute('role','textbox');ed.dataset.testid='composer-input';ed.textContent='Another draft';document.querySelector('#native-card').prepend(ed);}
+      const storage={rsSetupSeen:true,rsAutoFix:false},status={ok:true,connected:true,roblox_connected:true,local_connected:false,mcpAlive:true,studio:true,studioApp:true,studioProc:true,robloxProc:true,engine:'roblox',tools:1,servers:[{id:'roblox',alive:true,tools:1}]};
+      const reply=message=>{if(['status','live-status'].includes(message.type))return status;if(message.type==='list_tools')return {ok:true,tools:[{name:'get_studio_state',server:'roblox',description:'Read Studio',inputSchema:{type:'object',properties:{}}}]};if(message.type==='rs-get-engine')return {engine:'roblox'};if(message.type==='call_tool'){window.calls.push(message.name);return {ok:true,text:'{"mode":"Edit","path":"Workspace.Solaris"}'};}return {ok:true,memories:[],skills:[],entries:[],items:[],tools:[],text:''};};
+      window.chrome={runtime:{id:'meta-r35-deep',getManifest:()=>({version}),getURL:name=>location.origin+'/__extension/'+name,onMessage:{addListener(){}},sendMessage:(message,callback)=>{const result=reply(message);if(callback){queueMicrotask(()=>callback(result));return;}return Promise.resolve(result);}},storage:{local:{get:(key,callback)=>{if(callback)callback({...storage});else return Promise.resolve({...storage});},set:(value,callback)=>{Object.assign(storage,value);callback?.();return Promise.resolve();}},onChanged:{addListener(){}}},i18n:{getMessage:()=>''}};
+    },{version:manifest.version,scenario});
+    for(const script of scripts){await page.addScriptTag({content:fs.readFileSync(script==='providers/webchats.js'&&process.env.PLAZCODE_TEST_PROVIDER||path.join(root,script),'utf8')});if(script==='providers/webchats.js')await page.evaluate(()=>Object.assign(RSProvider.timings,{GEN_IDLE_MS:20,STABLE_MS:40,REASON_IDLE_MS:100}));}
+    await page.addStyleTag({content:fs.readFileSync(path.join(root,'overlay.css'),'utf8')});
+    if(scenario==='two-editors'){
+      await page.waitForTimeout(400);assert.equal(await page.evaluate(()=>RSProvider.getEditor()),null);assert.equal(await page.locator('#rs-action').isDisabled(),true);assert.deepEqual(await page.evaluate(()=>window.nativeSent),[]);assert.deepEqual(await page.evaluate(()=>window.calls),[]);assert.equal(await page.locator('#native-card>[contenteditable]').textContent(),'Another draft');assert.deepEqual(errors,[]);passed++;console.log('Meta two visible native editors: Start disabled; drafts preserved; zero sends');continue;
+    }
+    assert.equal(await page.evaluate(()=>!!RSProvider.getEditor()),true);if(scenario==='hidden')assert.equal(await page.locator('.native-send').isVisible(),false);
+    const shape=await page.evaluate(()=>{let n=RSProvider.getEditor();return Array.from({length:6},()=>{n=n.parentElement;return{children:n.children.length,svg:!!n.querySelector('svg')};});});assert.deepEqual(shape,[1,2,2,1,1,1].map(children=>({children,svg:false})));
+    await page.locator('#rs-action[data-kind="start"]:enabled').waitFor({timeout:15000});await page.locator('#rs-action').click();
+    if(baseline||scenario==='ambiguous-send'){
+      await page.locator('.rs-banner-t').filter({hasText:'Startup failed'}).waitFor({timeout:20000});assert.match(await page.locator('.rs-banner-m').textContent(),/send is unavailable/);assert.equal(await page.locator('.native-send').first().getAttribute('aria-disabled'),'false');assert.deepEqual(await page.evaluate(()=>window.nativeSent),[]);assert.deepEqual(await page.evaluate(()=>window.calls),[]);assert.equal(await page.evaluate(()=>window.accidentalClicks||0),0);assert.ok((await page.evaluate(()=>modelText())).length>100);assert.equal(await page.locator('.native-editor').getAttribute('contenteditable'),'true');assert.deepEqual(errors,[]);passed++;console.log(baseline?'r34 baseline '+scenario+': actual model contains draft, visible enabled Send is missed beyond six wrappers; zero clicks':'Meta ambiguous native Sends: enabled controls untouched; no send or tool; draft preserved');continue;
+    }
+    assert.equal(await page.evaluate(()=>RSProvider.composerFrame().id),'native-card');
+    await page.waitForFunction(()=>RSProvider.canRestoreSession()&&document.querySelector('#rs-action')?.dataset.kind==='restart',null,{timeout:45000});
+    const startup=await page.evaluate(()=>({sent:window.nativeSent,writes:window.nativeMirrorWrites,editor:RSProvider.editorText(),model:modelText(),calls:window.calls}));assert.equal(startup.editor,'');assert.equal(startup.model,'');assert.deepEqual(startup.calls,[]);assert.ok(startup.sent.length>4);assert.equal(startup.sent.length,new Set(startup.sent).size);
+    const parts=startup.sent.slice(1).map(value=>value.match(/PlazCode startup context part (\d+)\/(\d+)\./));assert.ok(parts.every(Boolean));assert.equal(parts.length,Number(parts[0][2]));assert.deepEqual(parts.map(part=>Number(part[1])),parts.map((_,index)=>index+1));assert.ok(startup.sent.some(value=>value.includes('\n\n')));for(const value of startup.sent)assert.ok(startup.writes.includes(value),'exact native mirror write must reach Lexical model');
+    const geometry=await page.evaluate(()=>{const b=document.querySelector('#rs-bar').getBoundingClientRect(),e=document.querySelector('#native-card').getBoundingClientRect();return{barBottom:b.bottom,editorTop:e.top};});assert.ok(geometry.barBottom<=geometry.editorTop+2,JSON.stringify(geometry));
+    const editor=page.locator('.native-editor');await editor.focus();await page.keyboard.insertText('Czy widzisz pliki w Studio?');await page.waitForFunction(()=>modelText()==='Czy widzisz pliki w Studio?');await page.locator('.native-send').click();
+    await page.waitForFunction(()=>window.nativeSent.some(value=>value.includes("Output of 'get_studio_state'")),null,{timeout:20000});await page.waitForFunction(()=>!RSProvider.isGenerating()&&modelText()==='',null,{timeout:15000});assert.deepEqual(await page.evaluate(()=>window.calls),['get_studio_state']);assert.equal(await page.evaluate(()=>window.nativeSent.length-new Set(window.nativeSent).size),0);assert.deepEqual(await page.locator('.rs-banner-t').allTextContents(),[]);
+    await page.evaluate(()=>setNativeBusy(true));assert.equal(await page.evaluate(()=>RSProvider.isHardGenerating()),true);await page.evaluate(()=>RSProvider.stopGeneration());assert.equal(await page.evaluate(()=>window.nativeStops),1);assert.equal(await page.evaluate(()=>RSProvider.isHardGenerating()),false);assert.deepEqual(errors,[]);passed++;console.log('Meta '+scenario+': deep real Lexical/mirror, exact startup/context, local frame, one tool, Stop and unobstructed editor passed');
+   }catch(error){console.error(scenario,await page.evaluate(()=>({bar:document.querySelector('#rs-bar')?.textContent,banners:[...document.querySelectorAll('.rs-banner')].map(node=>node.textContent),sent:window.nativeSent?.map(value=>({chars:value.length,head:value.slice(0,90)})),calls:window.calls,model:typeof modelText==='function'?modelText().slice(0,120):null,frame:typeof RSProvider!=='undefined'?RSProvider.composerFrame()?.id:null})));throw error;}finally{await page.close();}
+  }
+  console.log(passed+(baseline?' expected r34 deep-composer failures reproduced':' deep Meta full UI checks passed'));
+ }finally{await browser.close();}
+})().catch(error=>{console.error(error);process.exitCode=1;});

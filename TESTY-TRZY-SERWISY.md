@@ -1,5 +1,21 @@
 # Raport weryfikacji — 2026-10-25 (Europe/Warsaw)
 
+## r35 — Meta: głęboki kompozytor z rzeczywistego raportu
+
+**Pełna regresja: 1122/1122 testów Node, bez błędów i pominięć.**
+
+Celowana regresja Node: **51/51 testów** (16 nowych, 26 dotychczasowych Meta, 9 diagnostyki). Dodatkowe próby Chromium przechodzą: **4/4** wcześniejsze pełne scenariusze Meta, **2/2** odmowy ze zrzutu, **21/21** sprawdzeń kontrolowanych edytorów Meta oraz **18/18** prób układu nowych serwisów.
+
+Raport użytkownika r34 potwierdza widoczny `div[role="textbox"][data-lexical-editor="true"][data-testid="composer-input"]` oraz ukryty textarea mirror z tym samym test ID. Pierwsze sześć przodków widocznego edytora ma kolejno 1, 2, 2, 1, 1, 1 dzieci; żaden nie zawiera SVG ani wykrytych kontrolek. `frame_found:true` pochodził z fallbacku do samej gałęzi edytora, mimo błędu `send is unavailable`. Na zrzucie przygotowany szkic i strzałka Send są widoczne. Nie ma jeszcze wiadomości ani odpowiedzi modelu.
+
+Regresja `tests/meta-deep-composer-r35.test.cjs` obejmuje głębsze rozpoznane kontrolki Send/Stop, ukryty mirror, lokalne granice, niejednoznaczne pola/przyciski i diagnostykę bez treści. `tests/browser/meta-deep-composer-r35.cjs` odtwarza zagnieżdżenie w rzeczywistym React/Lexical z hidden textarea oraz kontrolkami głębiej niż poprzedni limit. Model AI i most pozostają kontrolowane. **5/5 nowych prób Chromium przechodzi**: pełny start z przyciskiem na poziomie 10 i 12, początkowo ukryty Send, niejednoznaczne Send i dwa widoczne edytory. W dodatnich porównano rzeczywisty model Lexical, zapis do mirror React, wszystkie części kontekstu, jedno wykonanie komendy, Stop i niezasłonięte pole. Osobne **2 oczekiwane niepowodzenia r34** odtwarzają pozostawiony szkic, dostępny przycisk i zero kliknięć; nie dolicza się ich do dodatnich wyników.
+
+Raport nie ujawnia faktycznej etykiety/test ID przycisku Send ani całego drzewa poza sześcioma przodkami. Próba głębokiego kompozytora sprawdza lukę resolvera dla rozpoznanych kontrolek; nie dowodzi, że konkretny obecny przycisk na koncie ma te same atrybuty. Bezpośredni dostęp do Meta pozostaje zablokowany przez proxy (CONNECT 403); nie testowano zalogowanego konta ani rzeczywistego Studio. Jawna odmowa modelu nadal zatrzymuje sesję i nie jest nazywana błędem wysyłki.
+
+Wersja 1.24.43, core/provider r35, parser r13. Sumy: `WEBCHATS-R35-SHA256SUMS.txt`.
+
+---
+
 ## r34 — Meta AI: natywne odpowiedzi, kontrolki i odmowa ze zrzutu
 
 **1106/1106 testów Node** przechodzi bez błędów i pominięć. Dodatkowa regresja Chromium: **9/9** scenariuszy startu nowych adapterów, **18/18** prób układu, **21/21** sprawdzeń rzeczywistych edytorów Meta React/Lexical (także ukrytego mirror textarea) i **36/36** sprawdzeń dotychczasowego edytora Copilot/CodeMirror. To odrębne zestawy od opisanych poniżej sześciu nowych scenariuszy Meta.
