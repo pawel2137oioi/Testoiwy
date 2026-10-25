@@ -8,24 +8,26 @@ const RSProvider = (() => {
   const sites = {
     'longcat.ai': {
       id:'longcat',name:'LongCat',experimental:true,strictComposer:true,compact:true,controlledComposer:true,
-      editor:'textarea, [contenteditable="true"][role="textbox"], [contenteditable="true"][data-lexical-editor="true"], [contenteditable="plaintext-only"]',
-      frame:'[data-testid="composer"], [data-testid="chat-composer"], form',
+      editor:'textarea, [contenteditable="true"], [contenteditable="plaintext-only"]',
+      frame:'.chat-input-container, .page-footer, [data-testid="composer"], [data-testid="chat-composer"], form',
       send:'button[data-testid="send-button"], button[aria-label*="send" i], button[aria-label*="发送"], button[aria-label*="wyślij" i], button[type="submit"], [role="button"][aria-label="Send" i]',
       stop:'button[data-testid="stop-button"], button[aria-label*="stop" i], button[aria-label*="停止"], [role="button"][aria-label*="stop" i]',
-      user:'[data-message-author-role="user"], [data-message-type="user"], [data-role="user"], [data-testid="user-message"]',
-      assistant:'[data-message-author-role="assistant"], [data-message-type="assistant"], [data-role="assistant"], [data-testid="assistant-message"]',
-      body:'.markdown-body, .markdown, .prose, [data-testid="message-content"]',
+      // Public .chat clients document these exact native containers. The .ai
+      // composer is supplied by the user; its transcript still needs live proof.
+      user:'[data-message-author-role="user"], [data-message-type="user"], [data-role="user"], [data-testid="user-message"], .message-list .user-text',
+      assistant:'[data-message-author-role="assistant"], [data-message-type="assistant"], [data-role="assistant"], [data-testid="assistant-message"], .message-list .md-show-container .mt-markdown-body',
+      body:'.mt-markdown-body, .markdown-body, .markdown, .prose, [data-testid="message-content"]',
       max:0,page:7000,startupPage:7000,feedbackBudget:8000,
     },
     'www.meta.ai': {
       id:'meta',name:'Meta AI',experimental:true,strictComposer:true,compact:true,controlledComposer:true,
-      editor:'textarea[data-testid="composer-input"], [contenteditable="true"][data-testid="composer-input"], [contenteditable="true"][role="textbox"], [contenteditable="true"][data-lexical-editor="true"], [contenteditable="plaintext-only"]',
+      editor:'textarea[data-testid="composer-input"], textarea[placeholder*="Meta AI" i], textarea[aria-label*="Meta AI" i], [contenteditable="true"][data-testid="composer-input"], [contenteditable="true"][role="textbox"], [contenteditable="true"][data-lexical-editor="true"], [contenteditable="plaintext-only"]',
       frame:'[data-testid="composer"], [data-testid="chat-composer"], form',
-      send:'[data-testid="composer-send-button"], button[aria-label^="Send" i], button[aria-label^="Wyślij" i], button[aria-label^="Envoyer" i], button[aria-label="Отправить" i], [role="button"][aria-label="Send" i], button[type="submit"]',
-      stop:'[data-testid="composer-stop-button"], button[aria-label*="stop" i], button[aria-label="Arrêter" i], button[aria-label="Zatrzymaj" i], [role="button"][aria-label*="stop" i]',
-      user:'[data-message-type="user"], [data-message-author-role="user"], [data-role="user"], [data-testid="user-message"], [data-message-item="true"][data-message-id*="_user"]',
-      assistant:'[data-message-type="assistant"], [data-message-author-role="assistant"], [data-role="assistant"], [data-testid="assistant-message"], [data-message-item="true"][data-message-id*="_assistant"]',
-      body:'[data-testid="assistant-message"], .prose, .markdown, [data-testid="message-content"]',
+      send:'[data-testid="composer-send-button"], button[aria-label^="Send" i], button[aria-label^="Wyślij" i], button[aria-label^="Envoyer" i], button[aria-label="Отправить" i], [role="button"][aria-label^="Send" i], [role="button"][aria-label^="Wyślij" i], [role="button"][aria-label^="Envoyer" i], [role="button"][aria-label="Отправить" i], button[type="submit"]',
+      stop:'[data-testid="composer-stop-button"], button[aria-label*="stop" i], button[aria-label^="Arrêter" i], button[aria-label^="Zatrzymaj" i], button[aria-label^="Przerwij" i], button[aria-label^="Остановить" i], [role="button"][aria-label*="stop" i], [role="button"][aria-label^="Zatrzymaj" i], [role="button"][aria-label^="Przerwij" i], [role="button"][aria-label^="Arrêter" i], [role="button"][aria-label^="Остановить" i]',
+      user:'[data-message-type="user"], [data-message-author-role="user"], [data-message-role="user"], [data-author="user"], [data-role="user"], [data-testid="user-message"], [data-message-item="true"][data-message-id*="_user"]',
+      assistant:'[data-message-type="assistant"], [data-message-author-role="assistant"], [data-message-role="assistant"], [data-author="assistant"], [data-role="assistant"], [data-testid="assistant-message"], [data-message-item="true"][data-message-id*="_assistant"], .ur-markdown',
+      body:'[data-testid="assistant-message"], .ur-markdown, .prose, .markdown, [data-testid="message-content"]',
       max:0,page:7000,startupPage:7000,feedbackBudget:8000,
     },
     // Contract-based adapters: these semantic hooks must be confirmed on a
@@ -112,7 +114,24 @@ const RSProvider = (() => {
     return /^\u200B(?:[ \t\u00A0\u200B\u200C\uFEFF]|\r?\n)?$/.test(padding)?expected:actual;
   }
   const richEditor=ed=>!!ed && !/^(?:TEXTAREA|INPUT)$/.test(ed.tagName);
-  const transcriptSelector='pre,code,[role="dialog"],'+site.user+','+site.assistant;
+  const transcriptSelector='pre,code,blockquote,nav,aside,[role="dialog"],'+site.user+','+site.assistant;
+  function longcatIconControls(root,action){
+    if(site.id!=='longcat')return [];
+    const icons={send:'#icon-send',stop:'#icon-stop'};
+    const controls=[];
+    for(const use of all(root,'svg use')){
+      const href=use.getAttribute('href')||use.getAttribute('xlink:href');
+      const kind=Object.keys(icons).find(key=>icons[key]===href);
+      if(!kind || action&&kind!==action || use.closest(OWN+','+transcriptSelector))continue;
+      const svg=use.closest('svg'),control=svg?.closest('button,[role="button"]')||svg;
+      if(control&&!controls.includes(control))controls.push(control);
+    }
+    return controls;
+  }
+  function clickControl(control){
+    if(typeof control.click==='function')control.click();
+    else control.dispatchEvent(new MouseEvent('click',{bubbles:true,cancelable:true,composed:true}));
+  }
   function emptyStrictFrame(ed) {
     if(!site.controlledComposer)return null;
     const labels=['placeholder','aria-label','data-placeholder'].map(name=>ed.getAttribute(name)||'').join(' ');
@@ -121,7 +140,8 @@ const RSProvider = (() => {
     // The actual send still waits for an enabled local button after typing.
     const chatLabel=/copilot|longcat|meta ai|send (?:a )?message|wyślij wiadomość|prześlij wiadomość|发送/i.test(labels);
     const chatPane=(/^\/chat(?:\/|$)/i.test(location.pathname) || site.id==='meta') && ed.closest('main,[role="main"]');
-    if(!chatLabel && !chatPane)return null;
+    const longcatPlaceholder=site.id==='longcat' && [ed,...all(ed,'[data-placeholder],[placeholder],[aria-label]').slice(0,4)].some(node=>['placeholder','data-placeholder','aria-label'].some(name=>/^Tell me what you need[.!…]?$/i.test((node.getAttribute(name)||'').trim())));
+    if(!chatLabel && !chatPane && !longcatPlaceholder)return null;
     const parent=ed.parentElement;
     if(!parent || parent===document.body || parent===document.documentElement || parent.matches('main,[role="main"],'+transcriptSelector))return null;
     return parent;
@@ -134,7 +154,7 @@ const RSProvider = (() => {
     const controls=site.send+','+site.stop;
     for(let n=ed.parentElement,depth=0;n && depth<6;n=n.parentElement,depth++){
       if(n===document.body || n===document.documentElement || n.matches('main,[role="main"],'+transcriptSelector))break;
-      const buttons=all(n,controls).filter(b=>visible(b) && !b.closest(OWN+','+transcriptSelector) && (!b.closest('form') || b.closest('form')===ed.closest('form')));
+      const buttons=[...new Set([...all(n,controls),...longcatIconControls(n)])].filter(b=>visible(b) && !b.closest(OWN+','+transcriptSelector) && (!b.closest('form') || b.closest('form')===ed.closest('form')));
       const editors=all(n,site.editor).filter(e=>visible(e) && !e.closest(OWN+','+transcriptSelector));
       if(ed===lockedEditor && n.contains(ed) && !editors.includes(ed))editors.push(ed);
       if(buttons.length && editors.length===1 && editors[0]===ed)return n;
@@ -166,7 +186,7 @@ const RSProvider = (() => {
         if(node.nodeType!==1 || ignored(node))return '';
         if(node.tagName==='BR')return '\n';
         const children=[...node.childNodes].filter(child=>!ignored(child));
-        if((node===ed || /^(P|DIV)$/.test(node.nodeName)) && children.length===1 && children[0].nodeName==='BR')return '';
+        if((node===ed || /^(P|DIV)$/.test(node.nodeName)) && children.length===1 && children[0].nodeName==='BR' && !(site.id==='longcat'&&ed.matches('.ProseMirror')))return '';
         let value='',previous=null;
         for(const child of children){
           const block=child.nodeType===1 && /^(P|DIV|LI|PRE|H[1-6])$/.test(child.tagName);
@@ -227,12 +247,12 @@ const RSProvider = (() => {
       if (b && query(b, 'g[id="Stop generating"]')) return b;
     }
     const scope=site.strictComposer ? composerFrame() : document;
-    return all(scope,site.stop).find(visible) ||
+    return longcatIconControls(scope,'stop').find(visible) || all(scope,site.stop).find(visible) ||
       all(scope, 'button,[role="button"]').find(el => visible(el) && /^(stop|stop response|stop generating|停止生成|停止回答)$/i.test(buttonLabel(el))) || null;
   }
   function sendButton() {
     if(site.id==='meta'||site.id==='longcat'){
-      const candidates=all(composerFrame(),site.send).filter(button=>visible(button)&&button!==stopButton());
+      const candidates=[...new Set([...all(composerFrame(),site.send),...longcatIconControls(composerFrame(),'send')])].filter(button=>visible(button)&&button!==stopButton());
       const primary=candidates.filter(button=>matches(button,site.id==='meta'?'[data-testid="composer-send-button"]':'[data-testid="send-button"]'));
       return primary.length===1?primary[0]:!primary.length&&candidates.length===1?candidates[0]:null;
     }
@@ -247,8 +267,8 @@ const RSProvider = (() => {
   function legacyMetaUser(el){
     return site.id==='meta' && matches(el,'[class~="starting:opacity-0"]') &&
       !matches(el,site.assistant) &&
-      matches(el.parentElement,'.flex.flex-col') && !!query(el.parentElement,'[data-testid="assistant-message"]') &&
-      !query(el,'[data-testid="assistant-message"],textarea,[contenteditable],form') && !!textWithout(el).trim();
+      matches(el.parentElement,'.flex.flex-col') && !!query(el.parentElement,site.assistant) &&
+      !query(el,site.assistant+',textarea,[contenteditable],form') && !!textWithout(el).trim();
   }
   const isUserItem = el => matches(el, site.user) || legacyMetaUser(el);
   const isAssistantItem = el => matches(el, site.assistant) && !isUserItem(el) && !el.closest(site.user);
@@ -265,9 +285,21 @@ const RSProvider = (() => {
       isUserItem(parent) === isUserItem(el)));
   }
   const TEXT_UI_DECORATION = '.rs-chip, .rs-chat-activity, .msg-actions, .msg-err, .reasoning, [data-testid*="reasoning"], [data-testid="thinking-status"], [data-testid="subagent-cot-list"], [data-variant="Thoughts"], .hy-think, .code-block-header, .md-code-block-banner-wrap, .markdown-viewer-code-block-header, .hyc-common-markdown__code__hd-container, .linenumber, .line-number, .react-syntax-highlighter-line-number';
-  const TEXT_UI_SKIP=TEXT_UI_DECORATION+', button, [role="button"]';
+  const TEXT_UI_SKIP=TEXT_UI_DECORATION+', button, [role="button"]'+(site.id==='longcat'?', .code-block-header__copy, .code-block-header__lang':'');
   const SCRIPTOR_BLOCK='.scriptor-component-code-block,[aria-label="Code preview" i],[aria-label="Codevorschau" i],[aria-label="Podgląd kodu" i]';
-  const replyCodeSelector=()=>site.id==='arcee'?'pre,.cm-content':site.id==='copilot'?'pre,'+SCRIPTOR_BLOCK:site.id==='meta'?'pre,.ur-code-block':'pre';
+  const replyCodeSelector=()=>site.id==='arcee'?'pre,.cm-content':site.id==='copilot'?'pre,'+SCRIPTOR_BLOCK:site.id==='meta'?'pre,.ur-code-block':site.id==='longcat'?'pre,code.code-block-body':'pre';
+  function longcatCodeSource(block){
+    // Native code.code-block-body may have no PRE ancestor. Read that complete
+    // body, never the header's language/Copy chrome or a virtualized viewport.
+    const source=block.tagName==='PRE'?codeSource(block):block;
+    const virtual='[data-virtualized="true"],[data-virtualization="true"],.monaco-editor,.cm-editor,.cm-content,[data-virtuoso-scroller]';
+    for(let parent=source;parent;parent=parent.parentElement){
+      if(matches(parent,virtual))return null;
+      if(isAssistantItem(parent))break;
+    }
+    if(query(source,virtual))return null;
+    return textWithout(source,'blockquote',true);
+  }
   const rawRequested=new WeakSet();
   function metaViewerSource(block){
     const pre=query(block,'pre');
@@ -403,6 +435,7 @@ const RSProvider = (() => {
   }
   function renderedCodeSource(block){
     if(site.id==='copilot'&&matches(block,SCRIPTOR_BLOCK))return scriptorSource(block);
+    if(site.id==='longcat')return longcatCodeSource(block);
     if(site.id==='meta'&&matches(block,'.ur-code-block'))return metaViewerSource(block);
     if(site.id==='meta'&&block.tagName==='PRE')return textWithout(block,'blockquote',true);
     return block.matches('.cm-content')?codeMirrorSource(block):textWithout(codeSource(block));
@@ -553,8 +586,9 @@ const RSProvider = (() => {
   }
   function pendingComposerAttachment(){
     if(site.id!=='meta'&&site.id!=='longcat')return false;
+    const ed=getEditor(),nativeSeparator=site.id==='longcat'&&ed?.matches('.ProseMirror');
     return all(composerFrame(),'input[type="file"]').some(input=>input.files?.length) ||
-      !!query(getEditor(),'img,.inline-image-node') ||
+      all(ed,'img,.inline-image-node').some(node=>!nativeSeparator||!matches(node,'img.ProseMirror-separator[alt=""]:not([src]):not([srcset])')) ||
       all(composerFrame(),'[data-testid="attachment-preview"],[data-testid="file-preview"],button[aria-label="Remove image"],button[aria-label="Remove attachment"]').some(visible);
   }
   function setValue(ed,value){
@@ -593,6 +627,16 @@ const RSProvider = (() => {
           // Offer plain text to their paste handler so their model owns the
           // update. This does not read or alter the OS clipboard.
           const data=new DataTransfer();data.setData('text/plain',value);
+          if(site.id==='longcat' && ed.classList.contains('ProseMirror')){
+            // ProseMirror's default plain-text paste collapses blank lines.
+            // Use one native clipboard paragraph with literal hard breaks so
+            // Tiptap.getText() also preserves every line, tab and space.
+            const html=String(value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\n/g,'<br>');
+            // The native clipboard parser drops a final BR as a placeholder.
+            // A second BR protects an actual final source newline; the parser
+            // consumes only this added placeholder, not the source break.
+            data.setData('text/html','<p data-pm-slice="0 0 []" style="white-space: pre-wrap">'+html+(String(value).endsWith('\n')?'<br>':'')+'</p>');
+          }
           const event=new ClipboardEvent('paste',{clipboardData:data,bubbles:true,cancelable:true,composed:true});
           ed.dispatchEvent(event);if(event.defaultPrevented)return;
         }
@@ -727,6 +771,71 @@ const RSProvider = (() => {
   }
   const needsToolContinuation=(value,item)=>!!toolContinuationKind(value,item);
   let lastTransportFailure=null;
+  function composerTransportSnapshot(){
+    // This is structural evidence for an editor the adapter may not yet know.
+    // Never include drafts, arbitrary labels/IDs/classes, SVG paths or URLs.
+    const editorSelector='textarea,[contenteditable="true" i],[contenteditable="plaintext-only" i],[contenteditable=""]';
+    const controlSelector='button,[role="button"],input[type="submit"],[tabindex="0"],.send-button,.stop-button,.btn-send,.btn-stop,[data-testid="send-button"],[data-testid="stop-button"],[data-testid="composer-send-button"],[data-testid="composer-stop-button"]';
+    const candidates=all(document,editorSelector).filter(node=>!node.closest(OWN));
+    const selected=read(getEditor,null),picked=(selected&&candidates.includes(selected)?[selected,...candidates.filter(node=>node!==selected)]:candidates).slice(0,8),entries=[];
+    const classNames=['chat-input-container','chat-input-wrapper','chat-input-footer','chat-input-area','textarea-container','chat-input-send','chat-input-stop','v-chat-input','message-input','input-wrapper','composer-input','composer-content','composer-row','page-footer','v-send-button','v-stop-button','submit-button','send-button','stop-button','send-icon','stop-icon','send-btn','stop-btn','btn-send','btn-stop','icon-send','icon-stop','ProseMirror','tiptap','lexical','t-textarea','ant-input','el-textarea','n-input','v-input','composer'];
+    const testids=new Set(['composer','composer-input','composer-content','chat-composer','message-input','send-button','submit-button','stop-button','composer-send-button','composer-stop-button']);
+    const roles=new Set(['textbox','searchbox','button','combobox','form','group','region','presentation','none']);
+    const types=new Set(['textarea','text','search','hidden','file','button','submit','reset']);
+    const labelToken=value=>{
+      const label=String(value||'').replace(/\s+/g,' ').trim().toLowerCase().replace(/(?:\u2026|\.{3})$/,'').trim();
+      if(/^(?:send|send message|send a message|submit|submit prompt|wyślij|wyślij wiadomość|envoyer|отправить|发送|发送消息)$/.test(label))return 'send';
+      if(/^(?:stop|stop response|stop responding|stop generating|zatrzymaj|arrêter|остановить|停止|停止生成|停止回答)$/.test(label))return 'stop';
+      if(label==='tell me what you need')return 'tell_me_what_you_need';
+      if(/^(?:ask meta ai|zapytaj meta ai)$/.test(label))return 'ask_meta_ai';
+      if(/^(?:think|thinking|myślenie)$/.test(label))return 'think';
+      if(/^(?:search|szukaj|搜索)$/.test(label))return 'search';
+      if(/^(?:attach|attachment|add attachment|attach file|add file|remove image|remove attachment)$/.test(label))return 'attachment';
+      return null;
+    };
+    const tokens=node=>[...new Set(['placeholder','aria-label','data-placeholder','title'].map(name=>labelToken(node.getAttribute(name))).filter(Boolean))];
+    let reported=0,omitted=Math.max(0,candidates.length-picked.length);
+    function describe(node,kind,depth){
+      if(reported>=80){omitted++;return null;}
+      reported++;
+      const rawClasses=[...node.classList].slice(0,32),classes=[];
+      for(const raw of rawClasses){const name=classNames.find(value=>raw===value||raw.startsWith(value+'-')||raw.startsWith(value+'_')||raw.startsWith('_'+value+'_'));if(name&&!classes.includes(name))classes.push(name);}
+      const role=roles.has(node.getAttribute('role'))?node.getAttribute('role'):node.hasAttribute('role')?'other':null;
+      const editable=node.getAttribute('contenteditable'),type=String(node.type||'').toLowerCase(),testid=node.getAttribute('data-testid');
+      const rect=read(()=>node.getBoundingClientRect(),null);
+      const labels=tokens(node),textLabel=(kind==='control'?labelToken(node.textContent):null);
+      if(textLabel&&!labels.includes(textLabel))labels.push(textLabel);
+      const icons=[];
+      for(const icon of [node,...all(node,'svg,use,[data-icon]')].slice(0,8)){
+        for(const attr of ['data-icon','id','href','xlink:href']){
+          const value=String(icon.getAttribute(attr)||'').toLowerCase();
+          const token=/^#?(?:icon-)?(send|stop|arrow-up|paper-plane)$/.exec(value)?.[1];if(token&&!icons.includes(token))icons.push(token);
+        }
+      }
+      const placeholders=[...new Set(all(node,'[data-placeholder],[placeholder]').slice(0,3).flatMap(tokens))];
+      return {kind,depth,tag:node.tagName.toLowerCase(),role,visible:visible(node),in_viewport:!!rect&&rect.width>0&&rect.height>0&&rect.bottom>0&&rect.right>0&&rect.top<window.innerHeight&&rect.left<window.innerWidth,
+        disabled:!!node.disabled||node.getAttribute('aria-disabled')==='true',readonly:!!node.readOnly,editable:editable===null?null:editable===''?'true':/^(?:true|false|plaintext-only)$/i.test(editable)?editable.toLowerCase():'other',
+        ...(kind==='editor'?{matches_provider:matches(node,site.editor),excluded_by_transcript:!!node.closest(transcriptSelector),frame_found:read(()=>!!strictFrame(node),false),lexical:node.getAttribute('data-lexical-editor')==='true'}:{}),
+        ...(kind==='control'?{matches_send:matches(node,site.send),matches_stop:matches(node,site.stop)}:{}),
+        ...(types.has(type)?{type}:{}),...(classes.length?{classes}:{}),...(testid?{has_testid:true,...(testids.has(testid)?{testid}:{})}:{}),
+        ...(labels.length?{labels}:{}),...(placeholders.length?{child_placeholders:placeholders}:{}),...(icons.length?{icons}:{}),has_svg:!!query(node,'svg'),has_svg_use:!!query(node,'svg use'),has_svg_rect:!!query(node,'svg rect'),has_svg_path:!!query(node,'svg path'),children:node.children.length};
+    }
+    // Reserve space for each editor before expanding its nearby context.
+    for(const [index,node] of picked.entries())entries.push({...describe(node,'editor',0),index,selected:node===selected,ancestors:[],controls:[]});
+    for(const [index,node] of picked.entries()){
+      const entry=entries[index];let frame=null;
+      for(let parent=node.parentElement,depth=1;parent&&depth<=6;parent=parent.parentElement,depth++){
+        const ancestor=describe(parent,'ancestor',depth);if(ancestor)entry.ancestors.push(ancestor);
+        if(parent.matches('body,html,main,[role="main"]'))break;
+        const controls=all(parent,controlSelector).filter(control=>!control.closest(OWN)&&control!==node&&!control.contains(node));
+        if(!frame&&(controls.length||parent.matches('form,[data-testid="composer"],[data-testid="chat-composer"]')))frame={depth,controls};
+      }
+      if(frame){entry.frame_depth=frame.depth;entry.control_count=frame.controls.length;omitted+=Math.max(0,frame.controls.length-8);
+        for(const control of frame.controls.slice(0,8)){const detail=describe(control,'control',frame.depth);if(detail)entry.controls.push(detail);}
+      }
+    }
+    return {detected:!!selected,counts:{editor_candidates:candidates.length,visible_candidates:candidates.filter(visible).length,reported_editors:entries.length,reported_nodes:reported},editors:entries,omitted};
+  }
   function transportSnapshot(){
     const items=allItems(),item=items.filter(isAssistantItem).at(-1)||null;
     const reply=item?classifyText(item,undefined,true):'',candidate=item?commandText(reply,item):'';
@@ -756,12 +865,13 @@ const RSProvider = (() => {
     for(const [index,block] of codeLeaves.slice(0,3).entries())walk(block,'code.'+index,0);
     if(item)walk(item,'reply',0);
     else for(const [index,article] of all(document,'[role="article"]').filter(node=>!node.closest(OWN)).slice(-3).entries())walk(article,'unclassified.'+index,0);
-    return {counts:{users:items.filter(isUserItem).length,assistants:items.filter(isAssistantItem).length,articles:all(document,'[role="article"]').filter(node=>!node.closest(OWN)).length,reply_roots:roots.length,pre:code.filter(node=>node.tagName==='PRE').length,scriptor:code.filter(node=>matches(node,SCRIPTOR_BLOCK)).length,reply_chars:reply.length,candidate_chars:candidate.length},candidate:{json:!!json&&typeof json==='object',has_command:!!json&&typeof json.command==='string',list_commands:json?.command==='list_commands',has_luau_opener:/^###\s*lua/i.test(candidate)},code_sources:codeSources,shape,omitted};
+    return {counts:{users:items.filter(isUserItem).length,assistants:items.filter(isAssistantItem).length,articles:all(document,'[role="article"]').filter(node=>!node.closest(OWN)).length,reply_roots:roots.length,pre:code.filter(node=>node.tagName==='PRE').length,scriptor:code.filter(node=>matches(node,SCRIPTOR_BLOCK)).length,reply_chars:reply.length,candidate_chars:candidate.length},candidate:{json:!!json&&typeof json==='object',has_command:!!json&&typeof json.command==='string',list_commands:json?.command==='list_commands',has_luau_opener:/^###\s*lua/i.test(candidate)},code_sources:codeSources,shape,omitted,composer:read(composerTransportSnapshot,{unavailable:true})};
   }
   function captureTransportDiagnostics(stage,result={}){
     lastTransportFailure={stage:/^(?:startup_handshake_failed|startup_send_failed|command_source_unavailable)$/.test(stage)?stage:'unknown',result:{kind:/^(?:tool|text|timeout|stopped|parse_error|busy)$/.test(result.kind||'')?result.kind:'unknown',chars:Number.isSafeInteger(result.chars)?result.chars:0,calls:Number.isSafeInteger(result.calls)?result.calls:0,current_reply:result.currentReply===true,has_reply_item:result.hasItem===true},snapshot:read(transportSnapshot,{unavailable:true})};
   }
   function sourceReadFailure(item){
+    if(site.id==='longcat')return isAssistantItem(item)&&!isPolicyRefusal(classifyText(item,'pre,code'))&&all(item,'pre,code.code-block-body').some(block=>!textUIAncestor(block,'blockquote')&&longcatCodeSource(block)===null);
     if(site.id==='meta')return isAssistantItem(item)&&!isPolicyRefusal(classifyText(item,'pre,code,.ur-code-block'))&&all(item,'.ur-code-block').some(block=>!textUIAncestor(block,'blockquote')&&metaViewerSource(block)===null&&/"(?:command|tool)"\s*:|###\s*LUA/i.test(block.textContent||''));
     if(!isAssistantItem(item)||isPolicyRefusal(classifyText(item,'pre,code,'+SCRIPTOR_BLOCK)))return false;
     return replyRoots(item).some(root=>[...(matches(root,'.scriptor-component-code-block.scriptor-codeblock-virtualized')?[root]:[]),...sourceAll(root,'.scriptor-component-code-block.scriptor-codeblock-virtualized')].some(block=>!textUIAncestor(block,'blockquote')&&scriptorSource(block)===null&&all(block,'[role="textbox"],textarea').some(box=>box.textContent.trim()||box.value)));
@@ -864,7 +974,7 @@ const RSProvider = (() => {
     const beforeAssistants=assistantCount();
     const beforeReplies=assistants(),beforeReplyNodes=new Set(beforeReplies),beforeReplyIds=new Set(beforeReplies.map(nativeMessageId).filter(Boolean));
     const freshRefusal=()=>{
-      if(site.id!=='copilot' || isGenerating())return false;
+      if(!['copilot','meta'].includes(site.id) || isGenerating())return false;
       const rows=assistants();
       return rows.some((item,index)=>{
         const id=nativeMessageId(item);
@@ -957,9 +1067,19 @@ const RSProvider = (() => {
     // Commit exactly once. Never fall back to Enter or re-click on a timeout.
     ambiguous = true;
     beginResponseDelivery(text);
-    b.click();
-    const accepted = await waitFor(() => owner !== sendEpoch || conversationKey() !== origin || loginGatePresent() || !!scanError() ||
-      echoPresent() || freshRefusal(), 12000);
+    clickControl(b);
+    const receiptReady = () => owner !== sendEpoch || conversationKey() !== origin || loginGatePresent() || !!scanError() ||
+      echoPresent() || freshRefusal();
+    let accepted = await waitFor(receiptReady, 12000);
+    if(!accepted && site.id==='meta' && stopButton()){
+      // Meta's legacy user wrapper is identifiable only beside its native
+      // assistant root. That root can mount after a slow first response.
+      // An active native Stop permits one bounded wait, never a receipt or a
+      // second Send. Keep the same bound after Stop disappears so the reply
+      // DOM can commit; exact echo/refusal and every cancellation guard remain.
+      diag('meta.awaitingNativeReceipt');
+      accepted = await waitFor(receiptReady, 30000);
+    }
     checkCancelled();
     if (conversationKey() !== origin) throw Error(site.name + ': chat changed after sending. Check the previous chat before retrying.');
     if (loginGatePresent() || scanError()) {
@@ -967,8 +1087,8 @@ const RSProvider = (() => {
       diag(site.id + '.send_failed', {reason:failure}); throw Error(failure);
     }
     if(freshRefusal()){
-      failure='Copilot declined the connection request. Startup stopped; nothing was resent.';
-      diag('copilot.sendRefused',{users: userCount(),assistants:assistantCount()});
+      failure=site.name+' declined the connection request. Startup stopped; nothing was resent.';
+      diag(site.id+'.sendRefused',{users: userCount(),assistants:assistantCount()});
       const error=Error(failure);error.plazcodePolicyRefusal=true;throw error;
     }
     if (accepted && echoPresent()) {
@@ -1004,7 +1124,7 @@ const RSProvider = (() => {
       if (e.type === 'keydown') {
         if (e.key !== 'Enter' || e.shiftKey || e.isComposing || !ed.contains(e.target) || !editorText().trim()) return;
       } else {
-        const target = e.target?.closest('button,[role="button"],.hy-chat-input-send-btn,.hy-chat-input-stop-btn');
+        const target = e.target?.closest('button,[role="button"],.hy-chat-input-send-btn,.hy-chat-input-stop-btn') || longcatIconControls(composerFrame()).find(control=>control.contains(e.target));
         if (!target) return;
         if (target === stopButton()) { handlers.onNativeStop(); return; }
         if (target !== sendButton() || !enabled(target) || !editorText().trim()) return;
@@ -1054,7 +1174,7 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r33',
+    build:'r34',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the
@@ -1089,7 +1209,7 @@ const RSProvider = (() => {
     readAssistant() { const item=lastAssistant(),source=classifyText(item,undefined,true); return {present:!!item,reply:source.trim(),source,thinking:'',item}; },
     streamLen,snapshot:() => ({th:0,rp:streamLen()}),getEditor,editorText,chatIsEmpty,isFreshChat,
     composerFrame,barAnchor:composerFrame,setInputLock,writeDraft,clearEditor,typeAndSend,
-    stopGeneration() { sendEpoch++; const b=stopButton(); if (b) b.click(); },
+    stopGeneration() { sendEpoch++; const b=stopButton(); if (b) clickControl(b); },
     isGenerating,isBusyNow:isGenerating,isHardGenerating:() => !!stopButton() && !loginGatePresent() && !scanError(),
     enforceComposer:() => ({ready:!!getEditor() && !loginGatePresent()}),
     ensureComposerReady:async () => ({ready:!!getEditor() && !loginGatePresent()}),

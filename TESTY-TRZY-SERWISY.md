@@ -1,4 +1,26 @@
-# Raport weryfikacji — 2026-10-24 (Europe/Warsaw)
+# Raport weryfikacji — 2026-10-25 (Europe/Warsaw)
+
+## r34 — Meta AI: natywne odpowiedzi, kontrolki i odmowa ze zrzutu
+
+**1106/1106 testów Node** przechodzi bez błędów i pominięć. Dodatkowa regresja Chromium: **9/9** scenariuszy startu nowych adapterów, **18/18** prób układu, **21/21** sprawdzeń rzeczywistych edytorów Meta React/Lexical (także ukrytego mirror textarea) i **36/36** sprawdzeń dotychczasowego edytora Copilot/CodeMirror. To odrębne zestawy od opisanych poniżej sześciu nowych scenariuszy Meta.
+
+Nowy `tests/meta-r34.test.cjs`: **26/26 testów Node**. Obejmuje lokalne role Send/Stop z etykietami polskimi i obcymi, textarea bez test ID, `.ur-markdown`, jawne role wiadomości, odrzucenie cytatów/rozumowania, pełne źródło kodu, zablokowane lub niejednoznaczne Send oraz świeżość odmowy. Stara odmowa i jej remount nie stają się potwierdzeniem nowej wysyłki. Baseline adaptera r33 nie przechodzi trzech nowych przypadków natywnego Meta.
+
+`tests/browser/meta-native-startup-r34.cjs`: **4/4 próby Chromium**. Jawne role i starsze natywne wrappery `.ur-markdown` przechodzą pełny Start, wszystkie osiem części kontekstu, zmianę adresu po zapisaniu pierwszej rozmowy, jedno wykonanie `get_studio_state`, przekazanie wyniku i lokalny Stop. Przypadek z pierwszą odpowiedzią po 13,2 s odtwarza wcześniejszy przedwczesny limit potwierdzenia. R34 przy widocznym natywnym Stop czeka dodatkowo najwyżej 30 s, nadal wymagając pełnego nowego echa albo świeżej odmowy; Stop nie jest potwierdzeniem dostarczenia. Osobny przypadek niedostępnego Send sprawdza zero kliknięć, odblokowane pole i przycisk raportu bez treści wiadomości. Pięć nowych testów Node obejmuje też brak potwierdzenia mimo Stop, brak Stop, późną odmowę i anulowanie.
+
+`tests/browser/meta-r34.cjs`: **2/2 próby pełnego interfejsu Chromium** z wszystkimi skryptami manifestu i CSS. Wykorzystują textarea „Zapytaj Meta AI…”, polski przycisk `role="button"`, natywną odpowiedź `.ur-markdown` i dokładny tekst odmowy ze zrzutu. Wariant pełnego i skróconego echa pokazują wyłącznie **AI declined the connection request**: jedna wysyłka, brak korekty i poleceń projektu, brak potwierdzonej sesji, odblokowana edycja. Model i most są kontrolowane; próba nie dowodzi, że rzeczywisty model zgodzi się na integrację.
+
+Pozostałe nowe testy Node obejmują **7 przypadków kompozytora LongCat**, **16 przypadków natywnego źródła LongCat** i **9 przypadków diagnostyki kompozytora**. Ta ostatnia zachowuje tylko ograniczone znaczniki techniczne i flagi; nie eksportuje treści szkicu, dowolnych etykiet, ID, URL ani ścieżek SVG. Sam helper diagnostyczny nie klika i nie modyfikuje strony.
+
+`tests/browser/longcat-editor.cjs`: **20/20 prób** rzeczywistych domyślnych modeli ProseMirror i Tiptap. W przeciwieństwie do wcześniejszego fixture nie ma własnego parsera wklejania. Porównuje się dokument modelu i natywne `Tiptap.getText()` z dosłownym wejściem, także przy wielu pustych liniach, końcowym nowym wierszu, wcięciach, Unicode, znakach niewidocznych i znakach HTML. Natywny separator kursora ProseMirror nie jest załącznikiem; prawdziwy obraz nadal nim jest. Osobny baseline samego tekstowego wklejania odtwarza utratę pustych linii w obu modelach i zatrzymuje operację przed Send — to **2 oczekiwane niepowodzenia**, niedoliczane do prób dodatnich.
+
+`tests/browser/longcat-native-startup-r34.cjs`: **2/2 próby pełnego interfejsu** z tymi modelami. Pole ma podany przez użytkownika placeholder, a przyciski wyłącznie podane SVG `#icon-send`/`#icon-stop`, bez wymogu button lub role. Oba przechodzą list_commands, cały kontekst, gotowość, okno czterech tur bez ID, pojedynczy odczyt i Stop. Transkrypt jest odtworzony z publicznego kontraktu longcat.chat, nie pobrany z prywatnego longcat.ai.
+
+**Ograniczenia:** bezpośrednie odczyty www.meta.ai i longcat.ai pozostają zablokowane przez proxy (CONNECT 403). Nie testowano zalogowanych kont, rzeczywistego modelu, mostu ani Studio; nie wykonano próby Firefox. HTML pustego pola oraz Send/Stop LongCat otrzymano od użytkownika, lecz nie pełny aktualny transkrypt. Źródła publicznych kontraktów, instalacja i polecenia odtwarzania są w LONGCAT-META.md. Odmowa Meta jest zachowaniem modelu; nie zmieniono promptu, aby ją obejść.
+
+Wersja 1.24.42, core/provider r34, parser r13. Native EXE i desktopowe feedy bez zmian. Sumy: WEBCHATS-R34-SHA256SUMS.txt.
+
+---
 
 ## r33 — LongCat i Meta AI
 

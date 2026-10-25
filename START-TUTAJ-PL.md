@@ -1,3 +1,25 @@
+# PlazCode — rozszerzenie 1.24.42, Meta AI r34
+
+## r34 — natywne kontrolki Meta i prawidłowa obsługa odmowy
+
+Poprawiono wykrywanie pola „Zapytaj Meta AI…”, lokalnych przycisków Send/Stop oznaczonych `role="button"` oraz odpowiedzi `.ur-markdown`. Rozpoznawane są też jawne role `data-message-role` i `data-author`. Wcześniejszy czytnik pomijał tę odpowiedź, choć model już odpowiedział na prośbę PlazCode.
+
+Na przesłanym zrzucie **Meta odmawia udziału w protokole agenta**. R34 rozpoznaje dokładną odmowę i pokazuje **AI declined the connection request**, także przy skróconym echu wysłanej wiadomości. Kończy start po jednej wysyłce, nie wykonuje poleceń projektu i przywraca edycję. Ta poprawka usuwa mylący błąd transportu; nie wymusza zgody modelu. Jeśli model odmawia, połączenie pozostaje nieaktywne.
+
+**Aktualizacja:** podmień cały folder `PlazCode-Extension` (Firefox: `PlazCode-Extension-Firefox`), przeładuj rozszerzenie i odśwież kartę Meta AI. Zachowaj jedną aktywną instalację. Sprawdź **1.24.42** i raport **core:r34/parser:r13/provider:r34**. Uruchom istniejący PlazCode.exe oraz Studio albo AgentScript; świadomą nową próbę Start wykonuj przy pustym polu. EXE i jego aktualizacje pozostają bez zmian.
+
+Poprawiono także przedwczesny limit potwierdzenia przy wolnej pierwszej odpowiedzi Meta: widoczny natywny Stop pozwala na jedno dodatkowe oczekiwanie do 30 s, bez ponawiania wysyłki. Pełne potwierdzenie nadal jest wymagane.
+
+W razie błędu startu przycisk **Copy transport report** jest dostępny także w Meta. Raport obejmuje ograniczony opis rozpoznania kompozytora i kontrolek, bez treści szkicu. Dotychczasowe przyciski raportu w Settings pozostają dostępne.
+
+Dołączono również przygotowaną poprawkę LongCat opartą na przesłanym HTML: pusty ProseMirror z „Tell me what you need.”, `#icon-send` i `#icon-stop`. W rzeczywistych domyślnych edytorach ProseMirror/Tiptap poprawiono zachowanie pustych linii, wcięć i końcowego nowego wiersza. Obecny transkrypt longcat.ai nadal nie został pobrany z konta użytkownika.
+
+**Zakres potwierdzenia:** testy używają rzeczywistego kodu rozszerzenia, kontrolowanej strony/modelu/mostu i dokładnej odmowy ze zrzutu. Proxy blokuje bezpośredni odczyt Meta i LongCat (CONNECT 403); nie przeprowadzono próby na zalogowanym koncie ani w prawdziwym Studio. Opis, źródła i odtwarzanie: [LONGCAT-META.md](LONGCAT-META.md). Wyniki: [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md). Sumy bieżących plików: `WEBCHATS-R34-SHA256SUMS.txt`.
+
+Poniżej historia; do aktualizacji obowiązuje r34 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.41, LongCat i Meta AI r33
 
 ## r33 — dwie nowe integracje przeglądarkowe

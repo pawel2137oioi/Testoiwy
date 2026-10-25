@@ -1715,7 +1715,7 @@
     };
   }
   function transportBuildVersions() {
-    return {core:"r33",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"};
+    return {core:"r34",parser:typeof RSParse !== "undefined" && RSParse.build || "unknown",provider:P.build || "unknown"};
   }
   function transportBuildLabel() {
     const b = transportBuildVersions();
@@ -3589,6 +3589,8 @@ return result`;
     }
     ui.banner("warn","AI declined the connection request",P.id==="clickup"
       ? "The selected ClickUp AI model declined the PlazCode connection request. Startup stopped; no project command ran and the request was not repeated. You can choose another available model and start a fresh chat. Model support varies; acceptance is not guaranteed."
+      : P.id==="meta"
+      ? "Meta AI declined the PlazCode connection request. Startup stopped; no project command ran and the request was not repeated. Normal chat remains available. This is a model refusal, not a failed Send button."
       : "The AI did not accept or confirm the PlazCode connection. Startup stopped; no project action was started and the bridge was not restarted. You can clarify the request or choose another available model. Acceptance is not guaranteed.");
   }
   function showSourceUnavailable(item) {
@@ -4113,7 +4115,7 @@ return result`;
         if (res.kind === "parse_error") {
           A.lastParseFailure = {
             reason: res.reason, provider: P.id,
-            core_build: "r33", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
+            core_build: "r34", parser_build: RSParse.build || "unknown", provider_build: P.build || "unknown",
             ...(typeof RSParse.transportInfo === "function" ? RSParse.transportInfo(res.raw) : {chars:String(res.raw || "").length}),
           };
           diag("tool.parseFailure", A.lastParseFailure);
@@ -4987,7 +4989,7 @@ return result`;
         ui.banner("warn", "Startup handshake failed",
           P.id==='copilot'
             ? 'PlazCode could not read a complete list_commands request from this Copilot reply. Startup stayed stopped.'
-            : `${P.displayName} did not produce the required list_commands tool call. PlazCode stayed stopped instead of pretending it was ready. Try Start again.`,{transportReport:P.id==='copilot'});
+            : `${P.displayName} did not produce the required list_commands tool call. PlazCode stayed stopped instead of pretending it was ready. Try Start again.`,{transportReport:!!P.captureTransportDiagnostics});
         return;
       }
 
@@ -5123,7 +5125,7 @@ return result`;
         if(e && e.plazcodePolicyRefusal===true)showStartupRefusal();
         else {
           try{if(P.captureTransportDiagnostics)P.captureTransportDiagnostics('startup_send_failed');}catch{}
-          ui.banner("warn", "Startup failed", String((e && e.message) || e),{transportReport:P.id==='copilot'});
+          ui.banner("warn", "Startup failed", String((e && e.message) || e),{transportReport:!!P.captureTransportDiagnostics});
         }
       }
     } finally {
