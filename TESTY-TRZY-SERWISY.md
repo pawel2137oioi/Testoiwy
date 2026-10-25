@@ -1,5 +1,21 @@
 # Raport weryfikacji — 2026-10-25 (Europe/Warsaw)
 
+## r36 — rzeczywisty Lexical z jednokierunkowym ukrytym mirror
+
+**Końcowa regresja: 1129/1129 testów Node, bez błędów i pominięć.** Przechodzą również **5/5** wcześniejszych scenariuszy głębokiego kompozytora i **21/21** sprawdzeń rzeczywistych edytorów Meta React/Lexical, w tym starszego kontraktu bez znacznika Lexical.
+
+Raport użytkownika r35 potwierdza, że lokalny Send jest już znaleziony: `composer-send-button`, widoczny, niezablokowany, `provider_frame_depth:9`. Powód zatrzymania to `last_draft_failure: prepared_text_changed`, `before_send`, `expected_chars:552`, `actual_chars:0`, `editor_replaced:false`. Nie ma wysłanej wiadomości ani odpowiedzi asystenta. R36 pomija zapis do hidden textarea dla widocznego edytora oznaczonego `data-lexical-editor="true"` i używa istniejącego natywnego paste/delete. Dokładna kontrola widocznego źródła pozostaje wymagana.
+
+Nowy `tests/meta-editor-r36.test.cjs` sprawdza ten kierunek synchronizacji, zachowanie szkicu i źródła oraz obsługę usuwania i anulowania. Nowy `tests/browser/meta-editor-r36.cjs` używa prawdziwego Lexical i React z jednokierunkowym mirror; odróżnia dokument modelu od wartości ukrytego textarea. Wcześniejsze fixture dwukierunkowo przenosiło zapis mirror do Lexical, więc nie odtwarzało tego błędu. **4/4 nowe próby Chromium przechodzą**, obejmując dosłowne źródło, pełny start, początkowo ukryty Send i zachowanie szkicu użytkownika. Każda wysyłka porównuje prawdziwy dokument Lexical z mirror React; kontrolowane odpowiedzi pozwalają sprawdzić cały kontekst, jedną komendę, jej wynik i Stop. Osobny baseline r35 odtwarza dokładnie expected552/read0 przy rozpoznanym aktywnym Send, bez kliknięcia — **1 oczekiwane niepowodzenie**, niedoliczane do dodatnich prób. Celowana regresja Node: **80/80** (7 nowych, 16 głębokiego pola, 26 Meta i 31 wcześniejszych adapterów).
+
+Starszy jednostkowy fixture głębokiego pola miał marker Lexical, ale obsługiwał jedynie zapis do mirror. Uzupełniono natywne paste/delete, zachowując warunki granic i niejednoznaczności. W teście prawdziwego edytora zastąpiono wymóg syntetycznego zapisu mirror porównaniem rzeczywistego dokumentu i textarea przy każdej wysyłce; dokładność źródła nadal jest wymagana.
+
+Testy kontrolują stronę, odpowiedzi modelu i most. Nie testowano zalogowanego konta ani prawdziwego Studio; bezpośredni dostęp do Meta blokuje proxy. Aktualny problem powstaje przed wysyłką. Odmowa modelu pozostaje odrębnym wynikiem.
+
+Wersja 1.24.44, core/provider r36, parser r13. Sumy: `WEBCHATS-R36-SHA256SUMS.txt`.
+
+---
+
 ## r35 — Meta: głęboki kompozytor z rzeczywistego raportu
 
 **Pełna regresja: 1122/1122 testów Node, bez błędów i pominięć.**

@@ -6,7 +6,7 @@ const test=require('node:test'),assert=require('node:assert/strict'),fs=require(
 const {JSDOM}=require('jsdom'),root=path.resolve(__dirname,'..');
 const source=fs.readFileSync(process.env.PLAZCODE_TEST_PROVIDER||path.join(root,'providers/webchats.js'),'utf8');
 function fixture({depth=10,hidden=false,known=true,unknown=false,disabled=false,stop=false}={}){
- const dom=new JSDOM('<!doctype html><main><section id="thread"></section></main>',{url:'https://www.meta.ai/',runScripts:'outside-only'}),w=dom.window,d=w.document,stats={sends:[],stops:0,mirrorInputs:0};let clock=10000,model='';
+ const dom=new JSDOM('<!doctype html><main><section id="thread"></section></main>',{url:'https://www.meta.ai/',runScripts:'outside-only'}),w=dom.window,d=w.document,stats={sends:[],stops:0,mirrorInputs:0,nativePastes:0};let clock=10000,model='';
  w.Date.now=()=>clock;w.setTimeout=fn=>{clock+=100;queueMicrotask(fn);return 1;};
  w.HTMLElement.prototype.getBoundingClientRect=function(){const invisible=this.closest('[hidden]');return{width:invisible?0:640,height:invisible?0:70,top:500,bottom:570,left:10,right:650};};
  const ed=d.createElement('div');ed.setAttribute('contenteditable','true');ed.setAttribute('role','textbox');ed.dataset.lexicalEditor='true';ed.dataset.testid='composer-input';
@@ -18,18 +18,24 @@ function fixture({depth=10,hidden=false,known=true,unknown=false,disabled=false,
  if(known)send.dataset.testid=stop?'composer-stop-button':'composer-send-button';
  if(!known||stop)send.setAttribute('aria-label',unknown?'PRIVATE_UNKNOWN_ACTION':stop?'Zatrzymaj generowanie':'Wyślij wiadomość');
  send.setAttribute('aria-disabled',String(disabled));send.innerHTML='<svg><path d="PRIVATE_SVG_SOURCE"></path></svg>';const controls=d.createElement('div');controls.append(send);card.append(controls);d.querySelector('main').append(card);
+ // These regressions exercise frame discovery. Model the native editing
+ // contract too: a Lexical editor owns paste/delete; the mirror is optional.
+ class Transfer{constructor(){this.values={};}setData(kind,value){this.values[kind]=String(value);}getData(kind){return this.values[kind]||'';}}
+ w.DataTransfer=Transfer;w.ClipboardEvent=class extends w.Event{constructor(type,options){super(type,options);this.clipboardData=options.clipboardData;}};
+ ed.addEventListener('paste',event=>{event.preventDefault();stats.nativePastes++;model=event.clipboardData.getData('text/plain');setText(model);mirror.value=model;if(hidden&&model)send.hidden=false;});
+ ed.addEventListener('beforeinput',event=>{if(event.inputType==='deleteContentBackward'){event.preventDefault();model='';setText('');mirror.value='';}});
  mirror.oninput=()=>{stats.mirrorInputs++;model=mirror.value;setText(model);if(hidden&&model)send.hidden=false;};
  send.onclick=()=>{if(stop){stats.stops++;return;}stats.sends.push(model);const echo=d.createElement('article');echo.dataset.role='user';echo.textContent=model;d.querySelector('#thread').append(echo);model='';mirror.value='';setText('');if(hidden)send.hidden=true;};
  vm.runInContext(source+'\nwindow.P=RSProvider;',dom.getInternalVMContext());
  return{dom,w,d,P:w.P,ed,mirror,card,send,controls,ancestors,stats};
 }
-for(const [depth,hidden] of [[10,false],[24,true]])test('Meta native mirror and Send beyond six wrappers: '+depth+' levels, hidden='+hidden,async t=>{
+for(const [depth,hidden] of [[10,false],[24,true]])test('Meta native document and Send beyond six wrappers: '+depth+' levels, hidden='+hidden,async t=>{
  const f=fixture({depth,hidden});t.after(()=>f.dom.window.close());assert.equal(f.P.getEditor(),f.ed);assert.equal(f.P.composerFrame(),f.card);
- const text='First line\n\n  literal <code> & zażółć 😀\n';assert.equal(await f.P.typeAndSend(text),true);assert.deepEqual(f.stats.sends,[text]);assert.equal(f.stats.mirrorInputs,1);assert.equal(f.P.editorText(),'');
+ const text='First line\n\n  literal <code> & zażółć 😀\n';assert.equal(await f.P.typeAndSend(text),true);assert.deepEqual(f.stats.sends,[text]);assert.equal(f.stats.mirrorInputs,0);assert.equal(f.stats.nativePastes,1);assert.equal(f.P.editorText(),'');
 });
-test('Meta mirror pair prepares the native model before a semantic Send appears',async t=>{
+test('Meta mirror pair identifies the field before a semantic Send appears',async t=>{
  const f=fixture({known:false,hidden:true});t.after(()=>f.dom.window.close());assert.equal(f.P.composerFrame(),f.ancestors[2]);
- assert.equal(await f.P.typeAndSend('Prepared through the hidden mirror'),true);assert.deepEqual(f.stats.sends,['Prepared through the hidden mirror']);assert.equal(f.stats.mirrorInputs,1);
+ assert.equal(await f.P.typeAndSend('Prepared through the native editor'),true);assert.deepEqual(f.stats.sends,['Prepared through the native editor']);assert.equal(f.stats.mirrorInputs,0);assert.equal(f.stats.nativePastes,1);
 });
 test('deep native Meta Stop is recognized and clicked once before another draft is written',async t=>{
  const f=fixture({stop:true});t.after(()=>f.dom.window.close());assert.equal(f.P.isHardGenerating(),true);await assert.rejects(()=>f.P.typeAndSend('Another request'),/wait for the current response/);f.P.stopGeneration();assert.equal(f.stats.stops,1);assert.deepEqual(f.stats.sends,[]);assert.equal(f.stats.mirrorInputs,0);
@@ -60,7 +66,7 @@ test('diagnostics reach deep known controls without exporting a draft or exceedi
 test('Meta does not jump to a known control beyond the bounded ancestor scan',async t=>{
  const f=fixture({depth:25});t.after(()=>f.dom.window.close());assert.notEqual(f.P.composerFrame(),f.card);await assert.rejects(()=>f.P.typeAndSend('A complete draft'),/send is unavailable/);assert.deepEqual(f.stats.sends,[]);
 });
-test('a quoted hidden mirror is not written along with the real Meta composer mirror',async t=>{
+test('native Meta editing leaves a quoted hidden mirror untouched',async t=>{
  const f=fixture();t.after(()=>f.dom.window.close());const quote=f.d.createElement('blockquote'),mirror=f.mirror.cloneNode();mirror.value='PRIVATE_QUOTED_DRAFT';quote.append(mirror);f.card.append(quote);
- assert.equal(await f.P.typeAndSend('Actual native model'),true);assert.deepEqual(f.stats.sends,['Actual native model']);assert.equal(mirror.value,'PRIVATE_QUOTED_DRAFT');assert.equal(f.stats.mirrorInputs,1);
+ assert.equal(await f.P.typeAndSend('Actual native model'),true);assert.deepEqual(f.stats.sends,['Actual native model']);assert.equal(mirror.value,'PRIVATE_QUOTED_DRAFT');assert.equal(f.stats.mirrorInputs,0);assert.equal(f.stats.nativePastes,1);
 });

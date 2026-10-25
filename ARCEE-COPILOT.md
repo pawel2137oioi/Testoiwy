@@ -1,6 +1,6 @@
-# Arcee i copilot.com — r35, rozszerzenie 1.24.43
+# Arcee i copilot.com — r36, rozszerzenie 1.24.44
 
-R35 usuwa limit sześciu poziomów przy szukaniu lokalnych kontrolek kompozytora Meta AI i rozszerza jego diagnostykę. Najnowszy raport dotyczy błędu przed wysyłką; nie jest odmową modelu. Wcześniejsze poprawki r34, LongCat, Arcee i Copilot pozostają zachowane. Zakres bieżącej weryfikacji i ograniczenia opisuje LONGCAT-META.md. Aktualna instalacja to 1.24.43, core/provider r35, parser r13; poniżej historia napraw r32 i starszych.
+R36 naprawia zapis do widocznego Lexical Meta po raporcie expected552/read0. Wykrywanie głębokiego Send z r35 pozostaje zachowane. Starszy kontrakt mirror bez znacznika Lexical nadal działa. Opis i granice weryfikacji: LONGCAT-META.md. Aktualna instalacja to 1.24.44, core/provider r36, parser r13; poniżej historia napraw r32 i starszych.
 
 ## R32 — pełny start mimo wolnych odpowiedzi i wirtualizacji historii
 
@@ -176,7 +176,7 @@ Pasek obu nowych adapterów znajduje się nad wykrytym kompozytorem, bez dopisyw
 
 1. Podmień cały folder rozszerzenia i przeładuj go. Zachowaj jedną aktywną instalację. Chrome/Edge: `PlazCode-Extension`; Firefox: `PlazCode-Extension-Firefox`.
 2. Odśwież kartę Arcee lub dokładnie `https://copilot.com/`. Nie dodano domeny copilot.microsoft.com. EXE pozostaje bez zmian.
-3. Sprawdź wersję **1.24.43**. Raport transportu nowych adapterów: **core:r35/parser:r13/provider:r35**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
+3. Sprawdź wersję **1.24.44**. Raport transportu nowych adapterów: **core:r36/parser:r13/provider:r36**. Na pustym polu Start Agent musi potwierdzić połączenie przez list_commands i odbiór kontekstu.
 4. Jeżeli aktualny interfejs serwisu nadal nie zostanie rozpoznany, zwykły czat pozostaje dostępny, a agent nie powinien klikać przypadkowych przycisków. Dla innej domeny po przekierowaniu ta rejestracja nie obowiązuje.
 
 Nie potrzeba nowego klucza API. Integracja korzysta z otwartej rozmowy w przeglądarce. Wysyłanie obrazów pozostaje niezweryfikowane. Brak potwierdzenia wiadomości przez nowy wpis użytkownika zatrzymuje wysyłkę bez ponownego kliknięcia; przed ręczną próbą sprawdź historię, ponieważ wiadomość mogła dotrzeć.
@@ -205,7 +205,7 @@ PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-layout.cjs
 PLAZCODE_CHROMIUM=/usr/bin/chromium node tests/browser/webchats-startup.cjs
 ```
 
-Sumy bieżącej paczki: `WEBCHATS-R35-SHA256SUMS.txt`.
+Sumy bieżącej paczki: `WEBCHATS-R36-SHA256SUMS.txt`.
 
 
 ### Dodatkowe testy kontrolowanych bibliotek

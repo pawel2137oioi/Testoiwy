@@ -617,7 +617,11 @@ const RSProvider = (() => {
     writingEditor=true;try{return writeValue(ed,value);}finally{writingEditor=false;}
   }
   function writeValue(ed, value) {
-    if(site.id==='meta' && richEditor(ed)){
+    // Meta's hidden textarea can accept an input without updating its visible
+    // Lexical document. Write Lexical through its own native paste/delete
+    // handlers; the exact visible-source check below still gates every Send.
+    // Older non-Lexical controlled composers retain their mirror contract.
+    if(site.id==='meta' && richEditor(ed) && !ed.matches('[data-lexical-editor="true"]')){
       const mirrors=all(strictFrame(ed),'textarea[data-testid="composer-input"]').filter(node=>node!==ed&&!visible(node)&&!node.closest(OWN+','+transcriptSelector)&&composerForm(node)===composerForm(ed));
       if(mirrors.length>1)throw Error('Meta AI: multiple composer mirrors. Nothing was sent.');
       if(mirrors.length===1){
@@ -1208,7 +1212,7 @@ const RSProvider = (() => {
   return {
     id:site.id, displayName:site.name+(site.experimental?' (experimental)':''), supportsVision:false, timings,
     barOutside:!!site.strictComposer, missingComposerDock:site.strictComposer?'top':undefined,
-    build:'r35',
+    build:'r36',
     sysMaxChars:site.id === 'chatwave' ? 12000 : 0,
     // maxChars in the shared prompt builder is a compaction hint, not a cap:
     // Ultra, user preferences and policies are appended afterwards. Defer the

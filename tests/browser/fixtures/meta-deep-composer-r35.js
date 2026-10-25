@@ -18,7 +18,7 @@ window.mountDeepMeta=({depth=10,kind='testid',initialHidden=false,onSend}={})=>{
    window.setNativeBusy=value=>flushSync(()=>setBusy(value));
    const unregister=editor.registerUpdateListener(()=>setText(modelText()));return ()=>{unregister();editor.setRootElement(null);};
   },[]);
-  const submit=()=>{if(busy){window.nativeStops++;setBusy(false);return;}const value=window.modelText();if(!value.trim())return;window.nativeSent.push(value);onSend(value);window.modelClear();};
+  const submit=()=>{if(busy){window.nativeStops++;setBusy(false);return;}const value=window.modelText();if(!value.trim())return;window.nativeModelMirrors.push({model:value,mirror:document.querySelector('#native-card textarea[data-testid="composer-input"]').value});window.nativeSent.push(value);onSend(value);window.modelClear();};
   const editor=React.createElement('div',{ref,contentEditable:true,role:'textbox','data-testid':'composer-input',suppressContentEditableWarning:true,'data-lexical-editor':'true',className:'native-editor'});
   const first=React.createElement('div',null,editor);
   const second=React.createElement('div',null,first,React.createElement('div',{'aria-hidden':'true'}));

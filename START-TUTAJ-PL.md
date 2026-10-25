@@ -1,3 +1,19 @@
+# PlazCode — rozszerzenie 1.24.44, Meta AI r36
+
+## r36 — zapis do widocznego Lexical zamiast ukrytego textarea
+
+Nowy raport r35 potwierdza rozpoznanie lokalnego Send `composer-send-button` na dziewiątym poziomie. Błąd występuje przed kliknięciem: `prepared_text_changed`, `before_send`, oczekiwano 552 znaków, odczytano 0, bez wymiany edytora. R35 wybierało zapis do ukrytego textarea, który nie zapewniał synchronizacji widocznego dokumentu Lexical.
+
+R36 dla rozpoznanego Lexical używa jego natywnej obsługi wklejania i usuwania. Pełny widoczny tekst nadal musi dokładnie odpowiadać wysyłanej wiadomości. Nie pomija się sprawdzenia pustego pola, nie wstawia tekstu przez `textContent` i nie klika Send ponownie. Starszy kompozytor React bez znacznika Lexical zachowuje obsługę własnego mirror.
+
+**Aktualizacja:** podmień cały folder `PlazCode-Extension` (Firefox: `PlazCode-Extension-Firefox`), przeładuj rozszerzenie i odśwież Meta. Sprawdź **1.24.44** oraz **core:r36/parser:r13/provider:r36**. Przed Start Agent usuń pozostały szkic startowy lub zapisz własną wiadomość.
+
+Testy używają rzeczywistego Lexical i React z jednokierunkowym mirror: wpis do ukrytego textarea nie aktualizuje dokumentu Lexical, a edycja Lexical aktualizuje mirror. To odtwarza lukę poprzedniego fixture. Nie testowano zalogowanego konta Meta. Wyniki: [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md); opis: [LONGCAT-META.md](LONGCAT-META.md); sumy: `WEBCHATS-R36-SHA256SUMS.txt`.
+
+Poniżej historia; do aktualizacji obowiązuje r36 powyżej.
+
+---
+
 # PlazCode — rozszerzenie 1.24.43, Meta AI r35
 
 ## r35 — przycisk wysyłania poza sześcioma poziomami edytora

@@ -1,12 +1,18 @@
-# Meta AI i LongCat — rozszerzenie 1.24.43 / r35
+# Meta AI i LongCat — rozszerzenie 1.24.44 / r36
+
+## Meta AI r36: zapis przez natywny model Lexical
+
+Raport r35 potwierdził działające wykrywanie Send `composer-send-button` na poziomie 9. Wskazał też osobny błąd: po zapisie do ukrytego textarea widoczny dokument miał 0 z oczekiwanych 552 znaków. Dla widocznego `data-lexical-editor="true"` adapter używa teraz istniejących natywnych zdarzeń paste/delete, zamiast kończyć zapis po ustawieniu hidden textarea. Nie zmienia prywatnego modelu ani `textContent`; dokładny odczyt widocznego dokumentu nadal blokuje niekompletną wysyłkę. Zachowano starszy kontrakt mirror dla edytorów bez znacznika Lexical.
+
+Nowa regresja używa prawdziwego Lexical i React z jednokierunkowym mirror. Wpis do ukrytego textarea może włączyć Send, ale nie aktualizuje dokumentu Lexical; dopiero edycja Lexical zasila właściwy model i mirror. Poprzednie dwukierunkowe fixture nie ujawniało tej luki. To test kontrolowany, nie obserwacja wewnętrznego modelu zalogowanego konta.
 
 ## Meta AI r35: głębsza struktura kompozytora
 
-Najnowszy raport r34 wskazuje błąd przed wysłaniem wiadomości: wykryto widoczny edytor Lexical `composer-input` i jego ukryty textarea mirror, ale w sześciu sprawdzanych przodkach nie było kontrolek. Na zrzucie widać gotowy szkic i aktywną strzałkę. Resolver ograniczony do sześciu poziomów zwracał fallback do rodzica samego edytora, więc `frame_found:true` nie oznaczało znalezienia przycisku. Nie jest to błąd parsera ani odmowa modelu.
+Wcześniejszy raport r34 wskazuje błąd przed wysłaniem wiadomości: wykryto widoczny edytor Lexical `composer-input` i jego ukryty textarea mirror, ale w sześciu sprawdzanych przodkach nie było kontrolek. Na zrzucie widać gotowy szkic i aktywną strzałkę. Resolver ograniczony do sześciu poziomów zwracał fallback do rodzica samego edytora, więc `frame_found:true` nie oznaczało znalezienia przycisku. Nie jest to błąd parsera ani odmowa modelu.
 
 Dla Meta resolver przechodzi do 24 przodków i wybiera najbliższą lokalną granicę zawierającą rozpoznane Send/Stop oraz jedno widoczne pole. Nie przechodzi przez granice głównej treści, formularzy ani transkryptu i nie szuka dowolnej strzałki na stronie. Ukryty mirror pozostaje częścią jednego kompozytora; niejednoznaczne przyciski lub obce pola blokują wysyłkę. Rozszerzony ograniczony raport pokazuje głębszy kontekst i rozróżnia fallback pola od znalezienia kontrolek. Zasady jednej wysyłki i dokładnego potwierdzenia pozostają wymagane.
 
-Raport nie zawiera rzeczywistych atrybutów Send ani całego drzewa kompozytora. Głębszy układ sprawdza kontrolowana regresja React/Lexical odtwarzająca pierwsze sześć przodków; nie jest to deklaracja bieżącego odczytu całej strony konta. Wcześniejsza odmowa modelu pozostaje osobnym wynikiem opisanym poniżej.
+Raport r34 nie zawierał rzeczywistych atrybutów Send ani całego drzewa kompozytora; późniejszy raport r35 potwierdził `composer-send-button` na poziomie 9. Głębszy układ sprawdza kontrolowana regresja React/Lexical odtwarzająca pierwsze sześć przodków; nie jest to deklaracja bieżącego odczytu całej strony konta. Wcześniejsza odmowa modelu pozostaje osobnym wynikiem opisanym poniżej.
 
 ## Meta AI: odczyt odpowiedzi i odmowa modelu
 
@@ -44,7 +50,7 @@ Publiczne źródła:
 
 ## Instalacja i odtwarzanie testów
 
-Podmień cały folder `PlazCode-Extension` albo `PlazCode-Extension-Firefox`, przeładuj rozszerzenie i odśwież kartę. Zachowaj jedną aktywną instalację. Sprawdź **1.24.43** i **core:r35/parser:r13/provider:r35**. Włącz istniejący PlazCode.exe oraz wybrany silnik. Start Agent wymaga pustego pola i potwierdzonego katalogu oraz odbioru wszystkich części kontekstu. Nowy klucz API nie jest potrzebny. EXE i kanał aktualizacji aplikacji desktopowej pozostają bez zmian.
+Podmień cały folder `PlazCode-Extension` albo `PlazCode-Extension-Firefox`, przeładuj rozszerzenie i odśwież kartę. Zachowaj jedną aktywną instalację. Sprawdź **1.24.44** i **core:r36/parser:r13/provider:r36**. Włącz istniejący PlazCode.exe oraz wybrany silnik. Start Agent wymaga pustego pola i potwierdzonego katalogu oraz odbioru wszystkich części kontekstu. Nowy klucz API nie jest potrzebny. EXE i kanał aktualizacji aplikacji desktopowej pozostają bez zmian.
 
 W katalogu repozytorium, przy dostępnym Chromium i pakiecie playwright dla Node:
 
@@ -54,6 +60,7 @@ npm test --prefix tests
 node tests/browser/meta-r34.cjs
 node tests/browser/meta-native-startup-r34.cjs
 PLAZCODE_BROWSER_DEPS=/tmp/plazcode-ui-r19 node tests/browser/meta-deep-composer-r35.cjs
+node tests/browser/meta-editor-r36.cjs
 PLAZCODE_NEW_SITES=1 node tests/browser/webchats-startup.cjs
 PLAZCODE_NEW_SITES=1 node tests/browser/webchats-layout.cjs
 ```
@@ -67,4 +74,4 @@ node tests/browser/longcat-editor.cjs
 node tests/browser/longcat-native-startup-r34.cjs
 ```
 
-Fixture używa domyślnych parserów bibliotek, bez własnego parsera wklejania. Model strony, odpowiedzi AI i most pozostają kontrolowane; nie łączą się z prawdziwym kontem ani Studio. Wyniki i zakres powtórzonej regresji: [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md). Sumy bieżących plików: `WEBCHATS-R35-SHA256SUMS.txt`.
+Fixture używa domyślnych parserów bibliotek, bez własnego parsera wklejania. Model strony, odpowiedzi AI i most pozostają kontrolowane; nie łączą się z prawdziwym kontem ani Studio. Wyniki i zakres powtórzonej regresji: [TESTY-TRZY-SERWISY.md](TESTY-TRZY-SERWISY.md). Sumy bieżących plików: `WEBCHATS-R36-SHA256SUMS.txt`.
